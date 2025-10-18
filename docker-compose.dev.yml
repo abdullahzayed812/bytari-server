@@ -1,0 +1,10 @@
+# Development override
+services:
+  backend:
+    volumes:
+      # Mount source code for hot reload
+      - ./:/app
+      - /app/node_modules
+    command: bun run dev
+    environment:
+      NODE_ENV: development

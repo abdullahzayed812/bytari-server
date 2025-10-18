@@ -1,0 +1,32 @@
+{
+  "name": "veterinary-backend",
+  "version": "1.0.0",
+  "main": "server.ts",
+  "scripts": {
+    "dev": "bun run --hot server.ts",
+    "start": "bun run server.ts",
+    "build": "bun build server.ts --outdir=dist --target=node",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "bun run db/seed.ts"
+  },
+  "dependencies": {
+    "@hono/trpc-server": "^0.4.0",
+    "@trpc/server": "^11.4.3",
+    "bcryptjs": "^3.0.2",
+    "drizzle-orm": "^0.44.4",
+    "hono": "^4.8.12",
+    "jsonwebtoken": "^9.0.2",
+    "postgres": "^3.4.5",
+    "superjson": "^2.2.2",
+    "zod": "^4.0.14"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "drizzle-kit": "^0.31.4",
+    "typescript": "~5.8.3"
+  },
+  "private": true
+}
