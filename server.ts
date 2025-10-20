@@ -94,11 +94,20 @@ if (process.env.NODE_ENV === "production") {
 app.use(
   "*",
   cors({
-    origin: allowedOrigins,
+    origin: (origin) => {
+      // If no origin (native app or curl), allow it
+      if (!origin || origin === "null") return "*"; // or return true;
+
+      // Allow if in allowed list
+      if (allowedOrigins.includes(origin)) return origin;
+
+      // Disallow everything else
+      return ""; // will result in CORS error
+    },
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: true,
-    maxAge: 86400, // 24 hours
+    maxAge: 86400,
   })
 );
 
