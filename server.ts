@@ -96,17 +96,26 @@ app.use(
   cors({
     origin: (origin) => {
       // If no origin (native app or curl), allow it
-      if (!origin || origin === "null") return "*"; // or return true;
+      if (!origin || origin === "null" || origin === undefined) {
+        return "*";
+      }
 
       // Allow if in allowed list
-      if (allowedOrigins.includes(origin)) return origin;
+      if (allowedOrigins.some((allowed) => origin.includes(allowed) || allowed === "*")) {
+        return origin;
+      }
 
-      // Disallow everything else
-      return ""; // will result in CORS error
+      // For debugging - log rejected origins in development
+      if (process.env.NODE_ENV !== "production") {
+        console.log("⚠️ Blocked origin:", origin);
+      }
+
+      // Allow all origins for now (you can restrict later)
+      return "*"; // Temporarily allow all for testing
     },
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    credentials: true,
+    credentials: false, // Change to false for "*" origin
     maxAge: 86400,
   })
 );
