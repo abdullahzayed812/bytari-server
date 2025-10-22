@@ -20,7 +20,7 @@ export async function seedUsers(db) {
         name: "علي أحمد الكاظمي",
         phone: "+964770100001",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -28,7 +28,7 @@ export async function seedUsers(db) {
         name: "فاطمة محمد النجفي",
         phone: "+964770100002",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -36,7 +36,7 @@ export async function seedUsers(db) {
         name: "حسن علي البصري",
         phone: "+964770100003",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -44,7 +44,7 @@ export async function seedUsers(db) {
         name: "زينب حسين الموصلي",
         phone: "+964770100004",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: false,
       },
       {
@@ -52,7 +52,7 @@ export async function seedUsers(db) {
         name: "عمر سالم الأنبار",
         phone: "+964770100005",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -60,7 +60,7 @@ export async function seedUsers(db) {
         name: "مريم خالد الكربلائي",
         phone: "+964770100006",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -68,7 +68,7 @@ export async function seedUsers(db) {
         name: "يوسف عبد الرحمن الديواني",
         phone: "+964770100007",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -76,7 +76,7 @@ export async function seedUsers(db) {
         name: "نور الهدى جاسم الناصري",
         phone: "+964770100008",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: false,
       },
       {
@@ -84,7 +84,7 @@ export async function seedUsers(db) {
         name: "محمد صالح الحلي",
         phone: "+964770100009",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -92,7 +92,7 @@ export async function seedUsers(db) {
         name: "سارة أحمد الكوفي",
         phone: "+964770100010",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -100,7 +100,7 @@ export async function seedUsers(db) {
         name: "عبد الله حسن السماوي",
         phone: "+964770100011",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -108,7 +108,7 @@ export async function seedUsers(db) {
         name: "رقية علي الحيدري",
         phone: "+964770100012",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: false,
       },
       {
@@ -116,7 +116,7 @@ export async function seedUsers(db) {
         name: "كريم محمود الأربيلي",
         phone: "+964770100013",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -124,7 +124,7 @@ export async function seedUsers(db) {
         name: "هدى سعد الدهوكي",
         phone: "+964770100014",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
       {
@@ -132,7 +132,7 @@ export async function seedUsers(db) {
         name: "أمير فاضل الواسطي",
         phone: "+964770100015",
         password: userPassword,
-        userType: "user",
+        userType: "pet_owner",
         isActive: true,
       },
     ])
@@ -150,7 +150,7 @@ export async function seedUsers(db) {
         name: "د. محمد عبد الله - طبيب بيطري",
         phone: "+964770200001",
         password: vetPassword,
-        userType: "vet",
+        userType: "veterinarian",
         isActive: true,
       },
       {
@@ -158,7 +158,7 @@ export async function seedUsers(db) {
         name: "د. سعاد حسن - طبيبة بيطرية",
         phone: "+964770200002",
         password: vetPassword,
-        userType: "vet",
+        userType: "veterinarian",
         isActive: true,
       },
       {
@@ -166,7 +166,7 @@ export async function seedUsers(db) {
         name: "د. أحمد جاسم - طبيب بيطري",
         phone: "+964770200003",
         password: vetPassword,
-        userType: "vet",
+        userType: "veterinarian",
         isActive: false,
       },
       {
@@ -174,7 +174,7 @@ export async function seedUsers(db) {
         name: "د. نور الهدى - طبيبة بيطرية",
         phone: "+964770200004",
         password: vetPassword,
-        userType: "vet",
+        userType: "veterinarian",
         isActive: true,
       },
       {
@@ -182,7 +182,7 @@ export async function seedUsers(db) {
         name: "د. عبد الرحمن علي - طبيب بيطري",
         phone: "+964770200005",
         password: vetPassword,
-        userType: "vet",
+        userType: "veterinarian",
         isActive: true,
       },
       {
@@ -190,7 +190,7 @@ export async function seedUsers(db) {
         name: "د. زينب محمد - طبيبة بيطرية",
         phone: "+964770200006",
         password: vetPassword,
-        userType: "vet",
+        userType: "veterinarian",
         isActive: true,
       },
       {
@@ -198,7 +198,7 @@ export async function seedUsers(db) {
         name: "د. حسن عبد الله - طبيب بيطري",
         phone: "+964770200007",
         password: vetPassword,
-        userType: "vet",
+        userType: "veterinarian",
         isActive: false,
       },
       {
@@ -206,7 +206,7 @@ export async function seedUsers(db) {
         name: "د. فاطمة أحمد - طبيبة بيطرية",
         phone: "+964770200008",
         password: vetPassword,
-        userType: "vet",
+        userType: "veterinarian",
         isActive: true,
       },
     ])

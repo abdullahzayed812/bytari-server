@@ -527,7 +527,7 @@ CREATE TABLE "users" (
 	"email" text NOT NULL,
 	"name" text NOT NULL,
 	"phone" text,
-	"user_type" text DEFAULT 'user' NOT NULL,
+	"user_type" text DEFAULT 'pet_owner' NOT NULL,
 	"avatar" text,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,

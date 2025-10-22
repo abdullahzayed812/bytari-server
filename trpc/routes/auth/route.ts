@@ -18,7 +18,7 @@ const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(2, "Name must be at least 2 characters"),
   phone: z.string().optional(),
-  userType: z.enum(["user", "vet"]).default("user"),
+  userType: z.enum(["pet_owner", "veterinarian"]).default("pet_owner"),
 });
 
 const loginSchema = z.object({
@@ -158,7 +158,7 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
     const isSuperAdmin = roles.includes("super_admin");
 
     let isVerifiedVet = false;
-    if (user.userType === "vet") {
+    if (user.userType === "veterinarian") {
       const [vet] = await db
         .select({ isVerified: veterinarians.isVerified })
         .from(veterinarians)
@@ -169,9 +169,8 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
       }
     }
 
-    const hasAdminAccess = isVerifiedVet;
-    const isModerator =
-      roles.some((r) => r.includes("moderator") || r.includes("manager")) || hasAdminAccess || isSuperAdmin;
+    const isModerator = roles.some((r) => r.includes("moderator") || r.includes("manager")) || isSuperAdmin;
+    const hasAdminAccess = isSuperAdmin || isModerator;
 
     // Fetch moderator permissions
     let moderatorPermissions: any = {};
@@ -232,7 +231,7 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
 
     console.log("Current user: ", {
       ...userWithoutPassword,
-      accountType: user.userType === "vet" ? "veterinarian" : "pet_owner",
+      accountType: user.userType,
       licenseVerified: isVerifiedVet,
       hasAdminAccess,
       isSuperAdmin,
@@ -245,7 +244,7 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
       message: "Login successful",
       user: {
         ...userWithoutPassword,
-        accountType: user.userType === "vet" ? "veterinarian" : "pet_owner",
+        accountType: user.userType,
         licenseVerified: isVerifiedVet,
         hasAdminAccess,
         isSuperAdmin,
