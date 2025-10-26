@@ -76,7 +76,7 @@ export const createPetApprovalProcedure = publicProcedure
       await db.insert(notifications).values({
         userId: input.ownerId,
         title: "تم إرسال الطلب",
-        content: `تم إرسال طلبك بنجاح وهو الآن في انتظار موافقة الإدارة. سيتم إشعارك عند اتخاذ قرار بشأن الطلب.`,
+        message: `تم إرسال طلبك بنجاح وهو الآن في انتظار موافقة الإدارة. سيتم إشعارك عند اتخاذ قرار بشأن الطلب.`,
         type: "pet_approval",
         data: JSON.stringify({ petId: pet.id, requestType: input.requestType, approvalRequestId: approvalRequest.id }),
       });

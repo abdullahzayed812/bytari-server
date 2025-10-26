@@ -16,7 +16,7 @@ import {
 } from "./routes/auth/route";
 
 // Admin user management
-import { getSupervisorsProcedure } from './routes/admin/users/supervisors';
+import { getSupervisorsProcedure } from "./routes/admin/users/supervisors";
 import {
   getUserProfileProcedure,
   updateUserProfileProcedure,
@@ -49,10 +49,13 @@ import { createInquiryProcedure } from "./routes/inquiries/create/route";
 import { replyInquiryProcedure } from "./routes/inquiries/reply/route";
 import { listForUserProcedure } from "./routes/inquiries/list-for-user";
 import { userReplyInquiryProcedure } from "./routes/inquiries/user-reply/route";
+import { getInquiriesListProcedure, getInquiryDetailsProcedure } from "./routes/inquiries/list/route";
+
 import { createConsultationProcedure } from "./routes/consultations/create/route";
 import { replyConsultationProcedure } from "./routes/consultations/reply/route";
 import { listForUserProcedure as listConsultationsForUserProcedure } from "./routes/consultations/list-for-user";
 import { userReplyConsultationProcedure } from "./routes/consultations/user-reply/route";
+import { getConsultationDetailsProcedure, getConsultationsListProcedure } from "./routes/consultations/list/route";
 
 // Store routes
 import { createStoreProcedure } from "./routes/stores/create/route";
@@ -274,12 +277,16 @@ export const appRouter = createTRPCRouter({
     reply: replyInquiryProcedure, // للمشرفين
     userReply: userReplyInquiryProcedure, // للمستخدمين
     listForUser: listForUserProcedure,
+    getList: getInquiriesListProcedure,
+    getDetails: getInquiryDetailsProcedure,
   }),
   consultations: createTRPCRouter({
     create: createConsultationProcedure,
     reply: replyConsultationProcedure, // للمشرفين
     userReply: userReplyConsultationProcedure, // للمستخدمين
     listForUser: listConsultationsForUserProcedure,
+    getList: getConsultationsListProcedure,
+    getDetails: getConsultationDetailsProcedure,
   }),
 
   // Store routes

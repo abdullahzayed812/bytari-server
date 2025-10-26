@@ -11,7 +11,7 @@ const listInquiriesInputSchema = z.object({
 
 export const listForUserProcedure = publicProcedure.input(listInquiriesInputSchema).query(async ({ input }) => {
   try {
-    if (!input.userId && !input.vetId) {
+    if (!input.userId) {
       throw new Error("Either userId or vetId must be provided.");
     }
 

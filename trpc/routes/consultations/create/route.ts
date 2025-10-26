@@ -1,86 +1,125 @@
-import { z } from 'zod';
-import { publicProcedure } from '../../../create-context';
+import { z } from "zod";
+import { publicProcedure } from "../../../create-context";
+import { db } from "../../../../db";
+import { consultations } from "../../../../db/schema";
+import { eq } from "drizzle-orm";
 
+/* -------------------------------------------------------
+ * 🧩 Zod Validation Schema
+ * -----------------------------------------------------*/
 const createConsultationSchema = z.object({
   userId: z.number(),
   petType: z.string().min(1),
   question: z.string().min(1),
   attachments: z.string().optional(),
-  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
+  priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
 });
 
+/* -------------------------------------------------------
+ * 📦 Function 1: Create Consultation in DB
+ * -----------------------------------------------------*/
+async function createConsultationInDB(input: {
+  userId: number;
+  petType: string;
+  question: string;
+  attachments?: string;
+  priority: "low" | "normal" | "high" | "urgent";
+}) {
+  const urgency =
+    input.priority === "urgent"
+      ? "emergency"
+      : input.priority === "high"
+      ? "high"
+      : input.priority === "low"
+      ? "low"
+      : "medium";
+
+  const [consultation] = await db
+    .insert(consultations)
+    .values({
+      userId: input.userId,
+      title: `استشارة ${input.petType}`,
+      description: input.question,
+      category: input.petType,
+      urgencyLevel: urgency,
+      attachments: input.attachments ? JSON.parse(input.attachments) : null,
+      status: "pending",
+    })
+    .returning();
+
+  console.log("✅ Consultation saved in DB:", consultation);
+  return consultation;
+}
+
+/* -------------------------------------------------------
+ * 🤖 Function 2: AI Consultation Reply Generator
+ * -----------------------------------------------------*/
+async function generateAIConsultationReply(consultation: { id: number; category: string; description: string }) {
+  try {
+    console.log("🤖 Generating AI reply for consultation:", consultation.id);
+
+    const aiResponse = await fetch("https://toolkit.rork.com/text/llm/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "system",
+            content:
+              "أنت طبيب بيطري خبير ومساعد ذكي متخصص في الاستشارات البيطرية. قدم نصائح دقيقة ومهنية وشاملة حول رعاية الحيوانات الأليفة.",
+          },
+          {
+            role: "user",
+            content: `نوع الحيوان: ${consultation.category}\nالسؤال: ${consultation.description}\n\nيرجى تقديم إجابة مهنية ومفصلة.`,
+          },
+        ],
+      }),
+    });
+
+    if (!aiResponse.ok) throw new Error("AI API request failed");
+
+    const aiData = await aiResponse.json();
+    const aiReply = aiData.completion || "عذراً، لم أتمكن من توليد إجابة مناسبة في الوقت الحالي.";
+
+    // 💾 Update consultation with AI reply and mark as answered
+    await db
+      .update(consultations)
+      .set({
+        status: "answered",
+        symptoms: aiReply, // Temporary: use this field until you add a `response` column
+        updatedAt: new Date(),
+      })
+      .where(eq(consultations.id, consultation.id));
+
+    console.log("✅ AI reply saved for consultation:", consultation.id);
+    return aiReply;
+  } catch (err) {
+    console.error("❌ Error generating AI reply:", err);
+    return null;
+  }
+}
+
+/* -------------------------------------------------------
+ * 🚀 TRPC Procedure
+ * -----------------------------------------------------*/
 export const createConsultationProcedure = publicProcedure
   .input(createConsultationSchema)
   .mutation(async ({ input }) => {
     try {
-      console.log('✅ Creating consultation with input:', input);
-      
-      const mockConsultation = {
-        id: Date.now(),
-        userId: input.userId,
-        petType: input.petType,
-        question: input.question,
-        attachments: input.attachments,
-        priority: input.priority,
-        status: 'pending' as const,
-        createdAt: new Date().toISOString(),
-      };
-      
-      console.log('✅ Mock consultation created successfully:', mockConsultation);
+      // Step 1: Create consultation in DB
+      const consultation = await createConsultationInDB(input);
 
-      // تشغيل الرد التلقائي بالذكاء الاصطناعي في الخلفية
-      setTimeout(async () => {
-        try {
-          console.log('🤖 Triggering AI auto-reply for consultation:', mockConsultation.id);
-          
-          // استدعاء API الذكاء الاصطناعي مباشرة
-          const aiResponse = await fetch('https://toolkit.rork.com/text/llm/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              messages: [
-                {
-                  role: 'system',
-                  content: 'أنت طبيب بيطري خبير ومساعد ذكي متخصص في الاستشارات البيطرية. قدم نصائح طبية مفيدة ومهنية ودقيقة للمستخدمين حول رعاية الحيوانات الأليفة وعلاج الأمراض. اجعل ردك شاملاً وعملياً ومطمئناً لصاحب الحيوان.',
-                },
-                {
-                  role: 'user',
-                  content: `نوع الحيوان: ${input.petType}\nالسؤال: ${input.question}\n\nيرجى تقديم رد مفيد ومهني:`,
-                },
-              ],
-            }),
-          });
-          
-          if (aiResponse.ok) {
-            const aiData = await aiResponse.json();
-            const aiReply = aiData.completion || 'عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.';
-            
-            console.log('✅ AI auto-reply generated for consultation:', mockConsultation.id);
-            console.log('🤖 AI Reply Preview:', aiReply.substring(0, 150) + '...');
-            console.log('📝 Full AI Reply:', aiReply);
-            
-            // إشعار للمستخدم بوصول الرد (بدون ذكر الذكاء الاصطناعي)
-            console.log('📱 User Notification: تم الرد على استشارتك');
-            // إشعار للأدمن فقط بأن الرد من الذكاء الاصطناعي
-            console.log('🤖 Admin Log: تم الرد على الاستشارة رقم', mockConsultation.id, 'من قبل الذكاء الاصطناعي');
-            
-          } else {
-            console.log('⚠️ AI auto-reply API failed for consultation:', mockConsultation.id);
-          }
-        } catch (error) {
-          console.error('❌ Error in AI auto-reply for consultation:', error);
-        }
-      }, 5000); // تأخير 5 ثواني قبل الرد التلقائي
+      // Step 2: Generate AI reply in the background
+      // setTimeout(() => generateAIConsultationReply(consultation), 5000);
 
+      // Step 3: Respond to mobile client
       return {
         success: true,
-        consultation: mockConsultation,
-        message: 'تم إرسال الاستشارة بنجاح. سيتم الرد عليها قريباً.',
+        consultation,
+        message: "تم إرسال الاستشارة بنجاح. سيتم الرد عليها قريباً.",
       };
     } catch (error) {
-      console.error('❌ Error creating consultation:', error);
-      throw new Error('فشل في إرسال الاستشارة. يرجى المحاولة مرة أخرى.');
+      console.error("❌ Error creating consultation:", error);
+      throw new Error("فشل في إرسال الاستشارة. يرجى المحاولة مرة أخرى.");
     }
   });

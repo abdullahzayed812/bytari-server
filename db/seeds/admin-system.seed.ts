@@ -161,6 +161,12 @@ export async function seedAdminSystem(db) {
         description: "تعيين الاستفسارات للمشرفين",
         category: "inquiries",
       },
+      {
+        name: "manage_inquiries",
+        displayName: "دارة الاستفسارات",
+        description: "ادارة الاستفسارات",
+        category: "inquiries",
+      },
 
       // Content management
       {
@@ -203,6 +209,12 @@ export async function seedAdminSystem(db) {
         name: "reply_consultations",
         displayName: "الرد على الاستشارات",
         description: "الرد على استشارات المستخدمين",
+        category: "consultations",
+      },
+      {
+        name: "manage_consultations",
+        displayName: "ادارة الاستشارات",
+        description: "ادارة الاستشارات",
         category: "consultations",
       },
 
