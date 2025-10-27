@@ -6,7 +6,7 @@ const createProductSchema = z.object({
   storeId: z.number(),
   name: z.string().min(1, 'اسم المنتج مطلوب'),
   description: z.string().optional(),
-  category: z.enum(['medicine', 'equipment', 'supplements', 'tools']),
+  category: z.enum(['medicine', 'equipment', 'supplements', 'tools', 'surgical', 'diagnostic', 'vaccines', 'poultry', 'food', 'accessories', 'toys', 'grooming']),
   price: z.number().min(0, 'السعر يجب أن يكون أكبر من صفر'),
   discountPrice: z.number().optional(),
   images: z.array(z.string()).optional(),
