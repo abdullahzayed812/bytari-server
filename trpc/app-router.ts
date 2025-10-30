@@ -34,7 +34,10 @@ import {
   searchPetsProcedure,
 } from "./routes/admin/pets/route";
 import { createPetProcedure } from "./routes/pets/create/route";
-import { getUserPetsProcedure, getAllPetsForAdminProcedure } from "./routes/pets/ownership/route";
+import {
+  getUserPetsProcedure,
+  getAllPetsForAdminProcedure,
+} from "./routes/pets/ownership/route";
 import {
   createPetApprovalProcedure,
   getPendingPetApprovalsProcedure,
@@ -49,13 +52,19 @@ import { createInquiryProcedure } from "./routes/inquiries/create/route";
 import { replyInquiryProcedure } from "./routes/inquiries/reply/route";
 import { listForUserProcedure } from "./routes/inquiries/list-for-user";
 import { userReplyInquiryProcedure } from "./routes/inquiries/user-reply/route";
-import { getInquiriesListProcedure, getInquiryDetailsProcedure } from "./routes/inquiries/list/route";
+import {
+  getInquiriesListProcedure,
+  getInquiryDetailsProcedure,
+} from "./routes/inquiries/list/route";
 
 import { createConsultationProcedure } from "./routes/consultations/create/route";
 import { replyConsultationProcedure } from "./routes/consultations/reply/route";
 import { listForUserProcedure as listConsultationsForUserProcedure } from "./routes/consultations/list-for-user";
 import { userReplyConsultationProcedure } from "./routes/consultations/user-reply/route";
-import { getConsultationDetailsProcedure, getConsultationsListProcedure } from "./routes/consultations/list/route";
+import {
+  getConsultationDetailsProcedure,
+  getConsultationsListProcedure,
+} from "./routes/consultations/list/route";
 
 // Store routes
 import { createStoreProcedure } from "./routes/stores/create/route";
@@ -97,7 +106,11 @@ import {
 } from "./routes/warehouses/products/route";
 
 // Admin routes
-import { adminAuthProcedure, adminVerifyProcedure, checkAdminPermissionsProcedure } from "./routes/admin/auth/route";
+import {
+  adminAuthProcedure,
+  adminVerifyProcedure,
+  checkAdminPermissionsProcedure,
+} from "./routes/admin/auth/route";
 import {
   getUserPermissionsProcedure,
   getAllRolesProcedure,
@@ -174,7 +187,11 @@ import {
 } from "./routes/admin/notifications/route";
 
 // AI settings
-import { updateAiSettingsProcedure, getAiSettingsProcedure, toggleAiProcedure } from "./routes/admin/ai-settings/route";
+import {
+  updateAiSettingsProcedure,
+  getAiSettingsProcedure,
+  toggleAiProcedure,
+} from "./routes/admin/ai-settings/route";
 
 // AI auto-reply
 import {
@@ -231,6 +248,9 @@ import {
   getActivePollsProcedure,
 } from "./routes/polls/route";
 
+import { listPoultryFarmsProcedure } from "../trpc/routes/poultry-farms/list/route";
+import { createPoultryFarmProcedure } from "../trpc/routes/poultry-farms/create/route";
+
 import { contentRouter } from "./routes/content/route";
 
 export const appRouter = createTRPCRouter({
@@ -266,6 +286,9 @@ export const appRouter = createTRPCRouter({
   poultryFarms: createTRPCRouter({
     getUserFarms: getUserFarmsAssignmentProcedure,
     getAllForAdmin: getAllFieldsForAdminAssignmentProcedure,
+
+    list: listPoultryFarmsProcedure,
+    create: createPoultryFarmProcedure,
   }),
 
   appointments: createTRPCRouter({
@@ -449,13 +472,16 @@ export const appRouter = createTRPCRouter({
 
     // Veterinarian approvals management
     veterinarianApprovals: createTRPCRouter({
-      getPendingApplications: veterinarianApprovalsRouter.getPendingApplications,
+      getPendingApplications:
+        veterinarianApprovalsRouter.getPendingApplications,
       approveApplication: veterinarianApprovalsRouter.approveApplication,
       rejectApplication: veterinarianApprovalsRouter.rejectApplication,
       getApplicationDetails: veterinarianApprovalsRouter.getApplicationDetails,
       submitApplication: veterinarianApprovalsRouter.submitApplication,
-      checkApplicationStatus: veterinarianApprovalsRouter.checkApplicationStatus,
-      getApprovalNotifications: veterinarianApprovalsRouter.getApprovalNotifications,
+      checkApplicationStatus:
+        veterinarianApprovalsRouter.checkApplicationStatus,
+      getApprovalNotifications:
+        veterinarianApprovalsRouter.getApprovalNotifications,
     }),
 
     // Jobs management
