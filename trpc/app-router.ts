@@ -253,6 +253,15 @@ import { createPoultryFarmProcedure } from "../trpc/routes/poultry-farms/create/
 
 import { contentRouter } from "./routes/content/route";
 
+import {
+  getUserNotificationsProcedure,
+  markNotificationAsReadProcedure as markUserNotificationAsReadProcedure,
+  markAllNotificationsAsReadProcedure as markAllUserNotificationsAsReadProcedure,
+  deleteUserNotificationProcedure,
+  getUnreadNotificationsCountProcedure as getUnreadUserNotificationsCountProcedure,
+  createNotificationProcedure as createUserNotificationProcedure,
+} from "./routes/notifications/route";
+
 export const appRouter = createTRPCRouter({
   // Authentication routes
   auth: createTRPCRouter({
@@ -579,6 +588,16 @@ export const appRouter = createTRPCRouter({
     getResults: getPollResultsProcedure,
     hasVoted: hasUserVotedProcedure,
     getActive: getActivePollsProcedure,
+  }),
+
+  // User notifications
+  notifications: createTRPCRouter({
+    list: getUserNotificationsProcedure,
+    markAsRead: markUserNotificationAsReadProcedure,
+    markAllAsRead: markAllUserNotificationsAsReadProcedure,
+    delete: deleteUserNotificationProcedure,
+    getUnreadCount: getUnreadUserNotificationsCountProcedure,
+    create: createUserNotificationProcedure,
   }),
 });
 
