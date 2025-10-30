@@ -665,6 +665,31 @@ CREATE TABLE "poll_votes" (
   CONSTRAINT "poll_votes_poll_id_fkey" FOREIGN KEY ("poll_id") REFERENCES "polls"("id") ON DELETE CASCADE,
   CONSTRAINT "poll_votes_option_id_fkey" FOREIGN KEY ("option_id") REFERENCES "poll_options"("id") ON DELETE CASCADE
 );
+--> statement-breakpoint
+CREATE TABLE "veterinarian_approvals" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "user_id" integer NOT NULL,
+  "name" text NOT NULL,
+  "email" text NOT NULL,
+  "phone" text NOT NULL,
+  "city" text NOT NULL,
+  "province" text NOT NULL,
+  "gender" text NOT NULL, -- 'male', 'female'
+  "veterinarian_type" text NOT NULL, -- 'student', 'veterinarian'
+  "id_front_image" text,
+  "id_back_image" text,
+  "status" text NOT NULL DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+  "reviewed_by" integer,
+  "reviewed_at" timestamp,
+  "rejection_reason" text,
+  "admin_notes" text,
+  "submitted_at" timestamp NOT NULL DEFAULT now(),
+  "created_at" timestamp NOT NULL DEFAULT now(),
+  "updated_at" timestamp NOT NULL DEFAULT now(),
+  CONSTRAINT "veterinarian_approvals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE,
+  CONSTRAINT "veterinarian_approvals_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "users"("id")
+);
+
 
 --> statement-breakpoint
 ALTER TABLE "admin_activity_logs" ADD CONSTRAINT "admin_activity_logs_admin_id_users_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
