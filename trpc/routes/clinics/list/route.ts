@@ -151,15 +151,12 @@ export const getUserApprovedClinicsProcedure = publicProcedure
 
       // Get approved clinic activation requests for this user
       const approvedRequests = await db
-        .select({
-          id: approvalRequests.id,
-          resourceId: approvalRequests.resourceId,
-        })
+        .select()
         .from(approvalRequests)
         .where(
           and(
             eq(approvalRequests.userId, userId),
-            eq(approvalRequests.requestType, "clinic_activation"),
+            eq(approvalRequests.type, "clinic_activation"),
             eq(approvalRequests.status, "approved")
           )
         );

@@ -175,15 +175,12 @@ export const getUserApprovedWarehousesProcedure = publicProcedure
 
       // Get all approved store activation requests for this user
       const approvedRequests = await db
-        .select({
-          id: approvalRequests.id,
-          resourceId: approvalRequests.resourceId,
-        })
+        .select()
         .from(approvalRequests)
         .where(
           and(
             eq(approvalRequests.userId, userId),
-            eq(approvalRequests.requestType, "store_activation"),
+            eq(approvalRequests.type, "store_activation"),
             eq(approvalRequests.status, "approved")
           )
         );
