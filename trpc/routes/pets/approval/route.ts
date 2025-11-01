@@ -6,6 +6,7 @@ import {
   petApprovalRequests,
   notifications,
   users,
+  petApprovals,
 } from "../../../../db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -21,8 +22,8 @@ export const createPetApprovalProcedure = publicProcedure
       color: z.string().optional(),
       gender: z.string().optional(),
       image: z.string().optional(),
-      medicalHistory: z.string().optional(),
-      vaccinations: z.string().optional(),
+      ownershipProof: z.string().optional(),
+      veterinaryCertificate: z.string().optional(),
       ownerId: z.number(),
       requestType: z.enum(["adoption", "breeding", "lost_pet"]),
       description: z.string().optional(),
@@ -35,25 +36,25 @@ export const createPetApprovalProcedure = publicProcedure
   )
   .mutation(async ({ input }) => {
     try {
-      // Create the pet first
-      const [pet] = await db
-        .insert(pets)
+      // 1️⃣ Insert into pet_approvals instead of pets
+      const [petApproval] = await db
+        .insert(petApprovals)
         .values({
-          name: input.name,
-          type: input.type,
-          breed: input.breed,
-          age: input.age,
-          weight: input.weight,
-          color: input.color,
-          gender: input.gender,
-          image: input.image,
-          medicalHistory: input.medicalHistory,
-          vaccinations: input.vaccinations,
-          ownerId: input.ownerId,
+          userId: input.ownerId,
+          petName: input.name,
+          petType: input.type,
+          petBreed: input.breed,
+          petAge: input.age,
+          petWeight: input.weight,
+          petColor: input.color,
+          petGender: input.gender,
+          petImage: input.image,
+          ownershipProof: input.ownershipProof,
+          veterinaryCertificate: input.veterinaryCertificate,
         })
         .returning();
 
-      // Create approval request
+      // 2️⃣ Create approval request
       const title =
         input.requestType === "adoption"
           ? `طلب تبني - ${input.name}`
@@ -64,12 +65,12 @@ export const createPetApprovalProcedure = publicProcedure
       const [approvalRequest] = await db
         .insert(petApprovalRequests)
         .values({
-          petId: pet.id,
+          petId: petApproval.id,
           ownerId: input.ownerId,
           requestType: input.requestType,
           title,
           description: input.description,
-          images: input.image ? JSON.stringify(input.image) : null,
+          images: input.images ? JSON.stringify(input.images) : null,
           contactInfo: input.contactInfo,
           location: input.location,
           price: input.price,
@@ -77,14 +78,15 @@ export const createPetApprovalProcedure = publicProcedure
         })
         .returning();
 
-      // Send notification to user
+      // 3️⃣ Send user notification
       await db.insert(notifications).values({
         userId: input.ownerId,
         title: "تم إرسال الطلب",
-        message: `تم إرسال طلبك بنجاح وهو الآن في انتظار موافقة الإدارة. سيتم إشعارك عند اتخاذ قرار بشأن الطلب.`,
+        message:
+          "تم إرسال طلبك بنجاح وهو الآن في انتظار موافقة الإدارة. سيتم إشعارك عند اتخاذ قرار بشأن الطلب.",
         type: "pet_approval",
         data: JSON.stringify({
-          petId: pet.id,
+          petApprovalId: petApproval.id,
           requestType: input.requestType,
           approvalRequestId: approvalRequest.id,
         }),
@@ -92,7 +94,7 @@ export const createPetApprovalProcedure = publicProcedure
 
       return {
         success: true,
-        pet,
+        petApproval,
         approvalRequest,
         message: "تم إرسال الطلب بنجاح وهو في انتظار موافقة الإدارة",
       };

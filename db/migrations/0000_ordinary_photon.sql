@@ -472,6 +472,36 @@ CREATE TABLE "stores" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "vet_stores" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "owner_id" integer NOT NULL,
+  "name" text NOT NULL,
+  "description" text,
+  "address" text,
+  "phone" text,
+  "email" text,
+  "website" text,
+  "logo" text,
+  "banner_image" text,
+  "category" text NOT NULL,
+  "working_hours" jsonb,
+  "images" jsonb DEFAULT '[]'::jsonb,
+  "services" jsonb DEFAULT '[]'::jsonb,
+  "is_active" boolean DEFAULT true NOT NULL,
+  "is_verified" boolean DEFAULT false NOT NULL,
+  "show_on_vet_home" boolean DEFAULT false NOT NULL,
+  "rating" real DEFAULT 0,
+  "total_sales" real DEFAULT 0,
+  "activation_end_date" timestamp with time zone,
+  "needs_renewal" boolean DEFAULT false NOT NULL,
+  "subscription_status" text DEFAULT 'active', -- 'active', 'expired', 'pending'
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "vet_stores_subscription_status_check" CHECK (
+    subscription_status IN ('active', 'expired', 'pending')
+  )
+);
+--> statement-breakpoint
 CREATE TABLE "system_message_recipients" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"message_id" integer NOT NULL,
@@ -733,6 +763,11 @@ ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_permission_id_ad
 ALTER TABLE "store_products" ADD CONSTRAINT "store_products_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "store_products" ADD CONSTRAINT "store_products_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "stores" ADD CONSTRAINT "stores_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "vet_stores"
+  ADD CONSTRAINT "vet_stores_owner_id_users_id_fk"
+  FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id")
+  ON DELETE NO ACTION
+  ON UPDATE NO ACTION;--> statement-breakpoint
 ALTER TABLE "system_message_recipients" ADD CONSTRAINT "system_message_recipients_message_id_system_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."system_messages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "system_message_recipients" ADD CONSTRAINT "system_message_recipients_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_recipient_id_users_id_fk" FOREIGN KEY ("recipient_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

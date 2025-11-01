@@ -331,8 +331,35 @@ export const stores = pgTable("stores", {
     .defaultNow(),
 });
 
-// Alias for backward compatibility
-export const vetStores = stores;
+export const vetStores = pgTable("vet_stores", {
+  id: serial("id").primaryKey(),
+  ownerId: integer("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  address: text("address"),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  logo: text("logo"),
+  bannerImage: text("banner_image"),
+  category: text("category").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  isVerified: boolean("is_verified").notNull().default(false),
+  showOnVetHome: boolean("show_on_vet_home").notNull().default(false),
+  rating: real("rating").default(0),
+  totalSales: real("total_sales").default(0),
+  activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
+  needsRenewal: boolean("needs_renewal").notNull().default(false),
+  subscriptionStatus: text("subscription_status").default("active"), // 'active', 'expired', 'pending'
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 // Store products table
 export const storeProducts = pgTable("store_products", {

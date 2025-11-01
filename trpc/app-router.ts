@@ -248,7 +248,10 @@ import {
   getActivePollsProcedure,
 } from "./routes/polls/route";
 
-import { listPoultryFarmsProcedure } from "../trpc/routes/poultry-farms/list/route";
+import {
+  getPoultryFarmDetailsProcedure,
+  listPoultryFarmsProcedure,
+} from "../trpc/routes/poultry-farms/list/route";
 import { createPoultryFarmProcedure } from "../trpc/routes/poultry-farms/create/route";
 
 import { contentRouter } from "./routes/content/route";
@@ -298,6 +301,7 @@ export const appRouter = createTRPCRouter({
 
     list: listPoultryFarmsProcedure,
     create: createPoultryFarmProcedure,
+    get: getPoultryFarmDetailsProcedure,
   }),
 
   appointments: createTRPCRouter({
