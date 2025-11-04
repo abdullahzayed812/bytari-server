@@ -740,6 +740,54 @@ CREATE TABLE "veterinarian_approvals" (
   CONSTRAINT "veterinarian_approvals_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "users"("id")
 );
 
+--> statement-breakpoint
+CREATE TABLE clinic_stats (
+  id SERIAL PRIMARY KEY,
+  clinic_id INTEGER NOT NULL,
+  total_animals INTEGER DEFAULT 0,
+  active_patients INTEGER DEFAULT 0,
+  completed_treatments INTEGER DEFAULT 0,
+  monthly_report JSONB,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT clinic_stats_clinic_id_fkey
+    FOREIGN KEY (clinic_id)
+    REFERENCES clinics(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+);
+
+--> statement-breakpoint
+CREATE TABLE reminders (
+  id SERIAL PRIMARY KEY,
+  clinic_id INTEGER NOT NULL,
+  pet_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  reminder_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  due_date TIMESTAMPTZ NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  priority TEXT NOT NULL DEFAULT 'normal',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT reminders_clinic_id_fkey
+    FOREIGN KEY (clinic_id)
+    REFERENCES clinics(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT reminders_pet_id_fkey
+    FOREIGN KEY (pet_id)
+    REFERENCES pets(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT reminders_user_id_fkey
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+);
+
+
 
 --> statement-breakpoint
 ALTER TABLE "admin_activity_logs" ADD CONSTRAINT "admin_activity_logs_admin_id_users_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-import { eq, desc } from "drizzle-orm";
 import { db, pets, users } from "../../../../db";
 
 const createPetSchema = z.object({
@@ -17,36 +16,30 @@ const createPetSchema = z.object({
   vaccinations: z.string().optional(),
 });
 
-export const createPetProcedure = protectedProcedure
-  .input(createPetSchema)
-  .mutation(async ({ ctx, input }) => {
-    try {
-      const [newPet] = await db
-        .insert(pets)
-        .values({
-          ownerId: input.ownerId,
-          name: input.name,
-          type: input.type,
-          breed: input.breed,
-          age: input.age,
-          weight: input.weight,
-          color: input.color,
-          gender: input.gender,
-          image: input.image,
-          medicalHistory: input.medicalHistory,
-          vaccinations: input.vaccinations
-            ? JSON.parse(
-                JSON.stringify(
-                  input.vaccinations.split(",").map((v) => v.trim())
-                )
-              )
-            : [],
-        })
-        .returning();
+export const createPetProcedure = protectedProcedure.input(createPetSchema).mutation(async ({ ctx, input }) => {
+  try {
+    const [newPet] = await db
+      .insert(pets)
+      .values({
+        ownerId: input.ownerId,
+        name: input.name,
+        type: input.type,
+        breed: input.breed,
+        age: input.age,
+        weight: input.weight,
+        color: input.color,
+        gender: input.gender,
+        image: input.image,
+        medicalHistory: input.medicalHistory,
+        vaccinations: input.vaccinations
+          ? JSON.parse(JSON.stringify(input.vaccinations.split(",").map((v) => v.trim())))
+          : [],
+      })
+      .returning();
 
-      return { success: true, pet: newPet };
-    } catch (error) {
-      console.error("Error creating pet:", error);
-      throw new Error("فشل في إنشاء الحيوان الأليف");
-    }
-  });
+    return { success: true, pet: newPet };
+  } catch (error) {
+    console.error("Error creating pet:", error);
+    throw new Error("فشل في إنشاء الحيوان الأليف");
+  }
+});

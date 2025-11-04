@@ -27,53 +27,36 @@ export const getUserClinicsProcedure = publicProcedure
           rejectionReason: approvalRequests.rejectionReason,
         })
         .from(approvalRequests)
-        .where(
-          and(
-            eq(approvalRequests.requesterId, userId),
-            eq(approvalRequests.requestType, "clinic_activation")
-          )
-        );
+        .where(and(eq(approvalRequests.requesterId, userId), eq(approvalRequests.requestType, "clinic_activation")));
 
       // Get clinic details for approved requests
-      const clinicIds = requests
-        .filter((req) => req.status === "approved")
-        .map((req) => req.resourceId);
+      const clinicIds = requests.filter((req) => req.status === "approved").map((req) => req.resourceId);
 
       let userClinics: any[] = [];
       if (clinicIds.length > 0) {
         userClinics = await db
           .select()
           .from(clinics)
-          .where(
-            and(eq(clinics.isActive, true), inArray(clinics.id, clinicIds))
-          );
+          .where(and(eq(clinics.isActive, true), inArray(clinics.id, clinicIds)));
       }
 
       return {
         success: true,
         clinics: userClinics.map((clinic: any) => ({
           ...clinic,
-          workingHours: clinic.workingHours
-            ? JSON.parse(clinic.workingHours)
-            : null,
+          workingHours: clinic.workingHours ? JSON.parse(clinic.workingHours) : null,
           services: clinic.services ? JSON.parse(clinic.services) : [],
           images: clinic.images ? JSON.parse(clinic.images) : [],
         })),
         requests: requests.map((req: any) => ({
           ...req,
           createdAt: new Date(Number(req.createdAt) * 1000).toISOString(),
-          reviewedAt: req.reviewedAt
-            ? new Date(Number(req.reviewedAt) * 1000).toISOString()
-            : null,
+          reviewedAt: req.reviewedAt ? new Date(Number(req.reviewedAt) * 1000).toISOString() : null,
         })),
       };
     } catch (error) {
       console.error("Error getting user clinics:", error);
-      throw new Error(
-        error instanceof Error
-          ? error.message
-          : "حدث خطأ أثناء جلب بيانات العيادات"
-      );
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب بيانات العيادات");
     }
   });
 
@@ -81,20 +64,17 @@ export const getClinicDetailsProcedure = publicProcedure
   .input(
     z.object({
       clinicId: z.number(),
+      userId: z.number(),
     })
   )
   .query(async ({ input }) => {
     try {
       // Mock user ID for development - in production, get from authentication
-      const userId = 1;
+      const userId = input.userId;
       console.log("Getting clinic details for clinic:", input.clinicId);
 
       // Get clinic details
-      const [clinic] = await db
-        .select()
-        .from(clinics)
-        .where(eq(clinics.id, input.clinicId))
-        .limit(1);
+      const [clinic] = await db.select().from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
 
       if (!clinic) {
         throw new Error("العيادة غير موجودة");
@@ -119,21 +99,15 @@ export const getClinicDetailsProcedure = publicProcedure
         success: true,
         clinic: {
           ...clinic,
-          workingHours: clinic.workingHours
-            ? JSON.parse(clinic.workingHours)
-            : null,
-          services: clinic.services ? JSON.parse(clinic.services) : [],
-          images: clinic.images ? JSON.parse(clinic.images) : [],
+          // workingHours: clinic.workingHours ? JSON.parse(clinic.workingHours) : null,
+          // services: clinic.services ? JSON.parse(clinic.services) : [],
+          // images: clinic.images ? JSON.parse(clinic.images) : [],
         },
         isOwner,
       };
     } catch (error) {
       console.error("Error getting clinic details:", error);
-      throw new Error(
-        error instanceof Error
-          ? error.message
-          : "حدث خطأ أثناء جلب تفاصيل العيادة"
-      );
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب تفاصيل العيادة");
     }
   });
 
@@ -189,10 +163,6 @@ export const getUserApprovedClinicsProcedure = publicProcedure
       };
     } catch (error) {
       console.error("Error getting user approved clinics:", error);
-      throw new Error(
-        error instanceof Error
-          ? error.message
-          : "حدث خطأ أثناء جلب العيادات الموافق عليها"
-      );
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب العيادات الموافق عليها");
     }
   });

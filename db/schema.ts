@@ -1053,4 +1053,46 @@ export const veterinarianApprovals = pgTable("veterinarian_approvals", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(), // Changed to timestamp
 });
 
+
+// Clinic stats table
+export const clinicStats = pgTable("clinic_stats", {
+  id: serial("id").primaryKey(),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id),
+  totalAnimals: integer("total_animals").default(0),
+  activePatients: integer("active_patients").default(0),
+  completedTreatments: integer("completed_treatments").default(0),
+  monthlyReport: jsonb("monthly_report"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const reminders = pgTable("reminders", {
+  id: serial("id").primaryKey(),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id),
+  petId: integer("pet_id")
+    .notNull()
+    .references(() => pets.id),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  reminderType: text("reminder_type").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  dueDate: timestamp("due_date", { withTimezone: true }).notNull(),
+  status: text("status").notNull().default("pending"),
+  priority: text("priority").notNull().default("normal"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export * from "drizzle-orm";
+
