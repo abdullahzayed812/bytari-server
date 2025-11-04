@@ -6,7 +6,10 @@ import {
   veterinarianApprovals,
   users,
   notifications,
+  approvalRequests,
+  adminNotifications,
 } from "../../../../db/schema";
+import { hashPassword } from "../../../../lib/auth";
 
 export const veterinarianApprovalsRouter = {
   // Get all pending veterinarian applications
@@ -343,107 +346,114 @@ export const veterinarianApprovalsRouter = {
         idBackImage: z.string().optional(),
       })
     )
-    .mutation(
-      async ({
-        input,
-        ctx,
-      }: {
-        input: {
-          name: string;
-          email: string;
-          phone: string;
-          city: string;
-          province: string;
-          gender: "male" | "female";
-          veterinarianType: "student" | "veterinarian";
-          password: string;
-          idFrontImage?: string;
-          idBackImage?: string;
-        };
-        ctx: any;
-      }) => {
-        try {
-          console.log("Submitting veterinarian application for:", input.email);
+    .mutation(async ({ input, ctx }) => {
+      try {
+        console.log("Submitting veterinarian application for:", input.email);
 
-          // Check if user already exists
-          const existingUser = await db
-            .select()
-            .from(users)
-            .where(eq(users.email, input.email))
-            .limit(1);
+        // Check if user already exists
+        const existingUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, input.email))
+          .limit(1);
 
-          if (existingUser && existingUser.length > 0) {
-            return {
-              success: false,
-              message: "البريد الإلكتروني مستخدم بالفعل",
-            };
-          }
-
-          // Create a new user with user_type = 'user' (not 'vet' until approved)
-          const newUser = await db
-            .insert(users)
-            .values({
-              email: input.email,
-              name: input.name,
-              phone: input.phone,
-              userType: "user",
-              isActive: true,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .returning();
-
-          if (!newUser || newUser.length === 0) {
-            return {
-              success: false,
-              message: "حدث خطأ أثناء إنشاء الحساب",
-            };
-          }
-
-          const userId = newUser[0].id;
-
-          // Create a VeterinarianApproval record with status = 'pending'
-          const newApplication = await db
-            .insert(veterinarianApprovals)
-            .values({
-              userId: userId,
-              name: input.name,
-              email: input.email,
-              phone: input.phone,
-              city: input.city,
-              province: input.province,
-              gender: input.gender,
-              veterinarianType: input.veterinarianType,
-              idFrontImage: input.idFrontImage || "",
-              idBackImage: input.idBackImage || "",
-              status: "pending",
-              submittedAt: new Date(),
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .returning();
-
-          if (!newApplication || newApplication.length === 0) {
-            return {
-              success: false,
-              message: "حدث خطأ أثناء إرسال الطلب",
-            };
-          }
-
-          return {
-            success: true,
-            message: "تم إرسال طلب التسجيل بنجاح. سيتم إشعارك عند المراجعة.",
-            applicationId: newApplication[0].id.toString(),
-          };
-        } catch (error) {
-          console.error("Error submitting application:", error);
+        if (existingUser && existingUser.length > 0) {
           return {
             success: false,
-            message: "حدث خطأ أثناء إرسال طلب التسجيل",
+            message: "البريد الإلكتروني مستخدم بالفعل",
           };
         }
+
+        const hashedPassword = await hashPassword(input.password);
+
+        // Create user
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            email: input.email,
+            name: input.name,
+            phone: input.phone,
+            password: hashedPassword,
+            userType: "veterinarian",
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+
+        const userId = newUser.id;
+
+        // Create vet approval record - use timestamp (seconds since epoch)
+        const timestamp = Math.floor(Date.now() / 1000);
+
+        const [newApplication] = await db
+          .insert(veterinarianApprovals)
+          .values({
+            userId,
+            name: input.name,
+            email: input.email,
+            phone: input.phone,
+            city: input.city,
+            province: input.province,
+            gender: input.gender,
+            veterinarianType: input.veterinarianType,
+            idFrontImage: input.idFrontImage || "",
+            idBackImage: input.idBackImage || "",
+            status: "pending",
+            submittedAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+
+        // 🆕 Create approval request record
+        await db.insert(approvalRequests).values({
+          requestType: "vet_registration",
+          requesterId: userId,
+          resourceId: newApplication.id,
+          title: `طلب تسجيل طبيب بيطري - ${input.name}`,
+          description: `طلب تسجيل كطبيب بيطري من ${input.city}, ${input.province}`,
+          identityImages: JSON.stringify(
+            [input.idFrontImage, input.idBackImage].filter(Boolean)
+          ),
+          status: "pending",
+          priority: "normal",
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+
+        // 📨 Notify admins
+        const adminUsers = await db
+          .select()
+          .from(users)
+          .where(eq(users.userType, "admin"));
+
+        for (const admin of adminUsers) {
+          await db.insert(adminNotifications).values({
+            recipientId: admin.id,
+            type: "approval_request",
+            title: "طلب تسجيل جديد كطبيب بيطري",
+            content: `تم تقديم طلب تسجيل جديد كطبيب بيطري من ${input.name} (${input.email})`,
+            relatedResourceType: "vet_registration",
+            relatedResourceId: newApplication.id,
+            actionUrl: "/admin-approvals/vet",
+            priority: "normal",
+          });
+        }
+
+        return {
+          success: true,
+          message: "تم إرسال طلب التسجيل بنجاح. سيتم مراجعته من قبل الإدارة.",
+          applicationId: newApplication.id.toString(),
+        };
+      } catch (error) {
+        console.error("Error submitting application:", error);
+        return {
+          success: false,
+          message: "حدث خطأ أثناء إرسال طلب التسجيل",
+        };
       }
-    ),
+    }),
 
   // Check application status
   checkApplicationStatus: publicProcedure

@@ -155,8 +155,8 @@ export const getUserApprovedClinicsProcedure = publicProcedure
         .from(approvalRequests)
         .where(
           and(
-            eq(approvalRequests.userId, userId),
-            eq(approvalRequests.type, "clinic_activation"),
+            eq(approvalRequests.requesterId, userId),
+            eq(approvalRequests.requestType, "clinic_activation"),
             eq(approvalRequests.status, "approved")
           )
         );
@@ -180,11 +180,11 @@ export const getUserApprovedClinicsProcedure = publicProcedure
         success: true,
         clinics: userClinics.map((clinic: any) => ({
           ...clinic,
-          workingHours: clinic.workingHours
-            ? JSON.parse(clinic.workingHours)
-            : null,
-          services: clinic.services ? JSON.parse(clinic.services) : [],
-          images: clinic.images ? JSON.parse(clinic.images) : [],
+          // workingHours: clinic.workingHours
+          //   ? JSON.parse(clinic.workingHours)
+          //   : null,
+          // services: clinic.services ? JSON.parse(clinic?.services) : [],
+          // images: clinic.images ? JSON.parse(clinic?.images) : [],
         })),
       };
     } catch (error) {

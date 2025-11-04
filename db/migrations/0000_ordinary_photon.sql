@@ -132,19 +132,33 @@ CREATE TABLE "appointments" (
 );
 --> statement-breakpoint
 CREATE TABLE "approval_requests" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"user_id" integer NOT NULL,
-	"type" text NOT NULL,
-	"entity_id" integer,
-	"data" jsonb,
-	"status" text DEFAULT 'pending' NOT NULL,
-	"reviewed_by" integer,
-	"review_notes" text,
-	"reviewed_at" timestamp with time zone,
-	"expires_at" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+  "id" serial PRIMARY KEY NOT NULL,
+  "request_type" text NOT NULL,
+  "requester_id" integer NOT NULL,
+  "resource_id" integer NOT NULL,
+  "title" text NOT NULL,
+  "description" text,
+  "documents" text,
+  "license_images" text,
+  "identity_images" text,
+  "official_documents" text,
+  "payment_status" text DEFAULT 'pending' NOT NULL,
+  "payment_amount" real,
+  "payment_method" text,
+  "payment_transaction_id" text,
+  "payment_completed_at" integer,
+  "payment_receipt" text,
+  "status" text DEFAULT 'pending' NOT NULL,
+  "reviewed_by" integer,
+  "reviewed_at" integer,
+  "rejection_reason" text,
+  "admin_notes" text,
+  "priority" text DEFAULT 'normal' NOT NULL,
+  "created_at" integer DEFAULT (extract(epoch from now())) NOT NULL,
+  "updated_at" integer DEFAULT (extract(epoch from now())) NOT NULL
 );
+
+
 --> statement-breakpoint
 CREATE TABLE "clinics" (
 	"id" serial PRIMARY KEY NOT NULL,
@@ -460,14 +474,20 @@ CREATE TABLE "stores" (
 	"logo" text,
 	"banner_image" text,
 	"category" text NOT NULL,
-	"is_active" boolean DEFAULT true NOT NULL,
+	"latitude" real,
+	"longitude" real,
+	"license_number" text,
+	"license_image" text,
+	"working_hours" text,
+	"is_active" boolean DEFAULT false NOT NULL,
 	"is_verified" boolean DEFAULT false NOT NULL,
 	"show_on_vet_home" boolean DEFAULT false NOT NULL,
 	"rating" real DEFAULT 0,
 	"total_sales" real DEFAULT 0,
 	"activation_end_date" timestamp with time zone,
 	"needs_renewal" boolean DEFAULT false NOT NULL,
-	"subscription_status" text DEFAULT 'active',
+	"subscription_status" text DEFAULT 'pending',
+	"images" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -730,8 +750,18 @@ ALTER TABLE "appointments" ADD CONSTRAINT "appointments_user_id_users_id_fk" FOR
 ALTER TABLE "appointments" ADD CONSTRAINT "appointments_vet_id_veterinarians_id_fk" FOREIGN KEY ("vet_id") REFERENCES "public"."veterinarians"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "appointments" ADD CONSTRAINT "appointments_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "appointments" ADD CONSTRAINT "appointments_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "approval_requests" ADD CONSTRAINT "approval_requests_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "approval_requests" ADD CONSTRAINT "approval_requests_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "approval_requests"
+ADD CONSTRAINT "approval_requests_requester_id_users_id_fk"
+FOREIGN KEY ("requester_id")
+REFERENCES "public"."users"("id")
+ON DELETE NO ACTION
+ON UPDATE NO ACTION;--> statement-breakpoint
+ALTER TABLE "approval_requests"
+ADD CONSTRAINT "approval_requests_reviewed_by_users_id_fk"
+FOREIGN KEY ("reviewed_by")
+REFERENCES "public"."users"("id")
+ON DELETE NO ACTION
+ON UPDATE NO ACTION;--> statement-breakpoint
 ALTER TABLE "consultation_replies" ADD CONSTRAINT "consultation_replies_consultation_id_consultations_id_fk" FOREIGN KEY ("consultation_id") REFERENCES "public"."consultations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "consultation_replies" ADD CONSTRAINT "consultation_replies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "consultations" ADD CONSTRAINT "consultations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

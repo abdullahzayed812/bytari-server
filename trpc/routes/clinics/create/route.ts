@@ -26,15 +26,16 @@ export const createClinicProcedure = protectedProcedure
     try {
       const userId = ctx.user.id;
 
-      // Ensure user exists
+      // 🧩 Ensure user exists
       const [user] = await db
         .select()
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
+
       if (!user) throw new Error("المستخدم غير موجود");
 
-      // 1️⃣ Create clinic record (inactive until approved)
+      // 1️⃣ Create the clinic record (inactive until approved)
       const [clinic] = await db
         .insert(clinics)
         .values({
@@ -54,25 +55,33 @@ export const createClinicProcedure = protectedProcedure
         })
         .returning();
 
-      // 2️⃣ Create approval request (generic structure)
+      // 2️⃣ Create approval request using new schema
       const [approvalRequest] = await db
         .insert(approvalRequests)
         .values({
-          userId,
-          type: "clinic_activation",
-          entityId: clinic.id,
-          data: {
-            clinicName: input.name,
-            address: input.address,
-            licenseNumber: input.licenseNumber,
-            licenseImages: input.licenseImages,
-            identityImages: input.identityImages,
-            officialDocuments: input.officialDocuments,
-            contact: {
-              phone: input.phone,
-              email: input.email,
-            },
-          },
+          requestType: "clinic_activation",
+          requesterId: userId,
+          resourceId: clinic.id,
+          title: `طلب تفعيل عيادة ${input.name}`,
+          description: `طلب تفعيل عيادة ${input.name} في ${input.address}`,
+          documents: JSON.stringify(["clinic_registration_form.pdf"]), // optional static or dynamic
+          licenseImages: JSON.stringify(input.licenseImages),
+          identityImages: JSON.stringify(input.identityImages),
+          officialDocuments: input.officialDocuments
+            ? JSON.stringify(input.officialDocuments)
+            : null,
+
+          paymentStatus: "not_required", // default for now
+          paymentAmount: null,
+          paymentMethod: null,
+          paymentTransactionId: null,
+          paymentCompletedAt: null,
+          paymentReceipt: null,
+
+          status: "pending",
+          priority: "normal",
+          createdAt: Math.floor(Date.now() / 1000),
+          updatedAt: Math.floor(Date.now() / 1000),
         })
         .returning();
 
@@ -84,7 +93,7 @@ export const createClinicProcedure = protectedProcedure
         requestId: approvalRequest.id,
       };
     } catch (error) {
-      console.error("Error creating clinic registration:", error);
+      console.error("❌ Error creating clinic registration:", error);
       throw new Error(
         error instanceof Error ? error.message : "حدث خطأ أثناء تسجيل العيادة"
       );

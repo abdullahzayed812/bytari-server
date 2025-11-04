@@ -34,53 +34,65 @@ export async function seedDatabase() {
     const userData = await seedUsers(db);
 
     // Inquiries
-    const inquiryData = await seedInquiries(db, userData.regularUsers, userData.veterinarians);
+    // const inquiryData = await seedInquiries(
+    //   db,
+    //   userData.regularUsers,
+    //   userData.veterinarians
+    // );
 
-    // Clinics
-    const clinicData = await seedClinics(db);
+    // // Clinics
+    // const clinicData = await seedClinics(db);
 
-    // Stores
-    const storeData = await seedStores(db, userData.veterinarians);
+    // // Stores
+    // const storeData = await seedStores(db, userData.veterinarians);
 
-    // Pets
-    const petData = await seedPets(db, userData.regularUsers);
+    // // Pets
+    // const petData = await seedPets(db, userData.regularUsers);
 
     // Approval requests
-    await seedApprovals(db, {
-      vets: userData.veterinarians,
-      users: userData.regularUsers,
-      clinics: clinicData,
-      superAdmin: adminData.superAdmin,
-      pets: petData,
-      stores: storeData,
-    });
+    // await seedApprovals(db, {
+    //   vets: userData.veterinarians,
+    //   users: userData.regularUsers,
+    //   clinics: clinicData,
+    //   superAdmin: adminData.superAdmin,
+    //   pets: petData,
+    //   stores: storeData,
+    // });
 
     // Content (advertisements, app sections)
-    await seedContent(db);
+    // await seedContent(db);
 
-    // AI Settings
-    await seedAISettings(db, adminData.superAdmin);
+    // // AI Settings
+    // await seedAISettings(db, adminData.superAdmin);
 
-    // Vet Books
-    const vetBooksData = await seedVetBooks(db, adminData.superAdmin);
+    // // Vet Books
+    // const vetBooksData = await seedVetBooks(db, adminData.superAdmin);
 
-    // Vet Magazines
-    const vetMagazinesData = await seedVetMagazines(db, adminData.superAdmin);
+    // // Vet Magazines
+    // const vetMagazinesData = await seedVetMagazines(db, adminData.superAdmin);
 
-    // Tips
-    const tipsData = await seedTips(db, adminData.superAdmin);
+    // // Tips
+    // const tipsData = await seedTips(db, adminData.superAdmin);
 
-    // Courses
-    const coursesData = await seedCourses(db, adminData.superAdmin, userData.veterinarians);
+    // // Courses
+    // const coursesData = await seedCourses(
+    //   db,
+    //   adminData.superAdmin,
+    //   userData.veterinarians
+    // );
 
-    // Products
-    const productsData = await seedProducts(db, storeData);
+    // // Products
+    // const productsData = await seedProducts(db, storeData);
 
-    // Warehouses
-    const warehousesData = await seedWarehouses(db, userData.veterinarians);
+    // // Warehouses
+    // const warehousesData = await seedWarehouses(db, userData.veterinarians);
 
-    // Poultry Farms
-    const poultryFarmsData = await seedPoultryFarms(db, userData.regularUsers, userData.veterinarians);
+    // // Poultry Farms
+    // const poultryFarmsData = await seedPoultryFarms(
+    //   db,
+    //   userData.regularUsers,
+    //   userData.veterinarians
+    // );
 
     // Success message
     console.log("\n✅ Database seeding completed successfully!\n");
@@ -101,20 +113,24 @@ export async function seedDatabase() {
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     console.log("📊 Database Statistics:");
     console.log(
-      `  - Total Users: ${userData.regularUsers.length + userData.vets.length + Object.keys(adminData.admins).length}`
+      `  - Total Users: ${
+        userData.regularUsers.length +
+        userData.vets.length +
+        Object.keys(adminData.admins).length
+      }`
     );
-    console.log(`  - Clinics: ${clinicData.length}`);
-    console.log(`  - Vet Stores: ${storeData.length}`);
-    console.log(`  - Pets: ${petData.length}`);
-    console.log(`  - Advertisements: 6`);
-    console.log(`  - Vet Books: ${vetBooksData?.length || 0}`);
-    console.log(`  - Vet Magazines: ${vetMagazinesData?.length || 0}`);
-    console.log(`  - Inquiries: ${inquiryData?.length || 0}`);
-    console.log(`  - Tips: ${tipsData?.length || 0}`);
-    console.log(`  - Courses: ${coursesData?.length || 0}`);
-    console.log(`  - Products: ${productsData?.length || 0}`);
-    console.log(`  - Warehouses: ${warehousesData?.length || 0}`);
-    console.log(`  - Poultry Farms: ${poultryFarmsData?.length || 0}`);
+    // console.log(`  - Clinics: ${clinicData.length}`);
+    // console.log(`  - Vet Stores: ${storeData.length}`);
+    // console.log(`  - Pets: ${petData.length}`);
+    // console.log(`  - Advertisements: 6`);
+    // console.log(`  - Vet Books: ${vetBooksData?.length || 0}`);
+    // console.log(`  - Vet Magazines: ${vetMagazinesData?.length || 0}`);
+    // console.log(`  - Inquiries: ${inquiryData?.length || 0}`);
+    // console.log(`  - Tips: ${tipsData?.length || 0}`);
+    // console.log(`  - Courses: ${coursesData?.length || 0}`);
+    // console.log(`  - Products: ${productsData?.length || 0}`);
+    // console.log(`  - Warehouses: ${warehousesData?.length || 0}`);
+    // console.log(`  - Poultry Farms: ${poultryFarmsData?.length || 0}`);
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
   } catch (error) {
     console.error("❌ Error seeding database:", error);

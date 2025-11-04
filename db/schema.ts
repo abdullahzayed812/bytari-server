@@ -301,6 +301,7 @@ export const consultationReplies = pgTable("consultation_replies", {
 export const consultationResponses = consultationReplies;
 
 // Stores table
+// Stores table with additional fields for licensing
 export const stores = pgTable("stores", {
   id: serial("id").primaryKey(),
   ownerId: integer("owner_id")
@@ -315,14 +316,36 @@ export const stores = pgTable("stores", {
   logo: text("logo"),
   bannerImage: text("banner_image"),
   category: text("category").notNull(),
-  isActive: boolean("is_active").notNull().default(true),
+
+  // Location
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+
+  // License information
+  licenseNumber: text("license_number"),
+  licenseImage: text("license_image"),
+
+  // Working hours
+  workingHours: text("working_hours"),
+
+  // Status flags
+  isActive: boolean("is_active").notNull().default(false), // Default false until approved
   isVerified: boolean("is_verified").notNull().default(false),
   showOnVetHome: boolean("show_on_vet_home").notNull().default(false),
+
+  // Rating and sales
   rating: real("rating").default(0),
   totalSales: real("total_sales").default(0),
+
+  // Subscription management
   activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
   needsRenewal: boolean("needs_renewal").notNull().default(false),
-  subscriptionStatus: text("subscription_status").default("active"), // 'active', 'expired', 'pending'
+  subscriptionStatus: text("subscription_status").default("pending"), // 'active', 'expired', 'pending'
+
+  // Additional images
+  images: text("images"), // JSON array of image URLs
+
+  // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -762,23 +785,43 @@ export const petApprovals = pgTable("pet_approvals", {
 // Approval requests table (generic)
 export const approvalRequests = pgTable("approval_requests", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id")
+
+  requestType: text("request_type").notNull(),
+  requesterId: integer("requester_id")
     .notNull()
     .references(() => users.id),
-  type: text("type").notNull(), // 'clinic', 'warehouse', 'store', 'vet_registration'
-  entityId: integer("entity_id"), // ID of the entity being approved
-  data: jsonb("data"), // JSON data containing approval details
-  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  resourceId: integer("resource_id").notNull(),
+
+  title: text("title").notNull(),
+  description: text("description"),
+
+  documents: text("documents"),
+  licenseImages: text("license_images"),
+  identityImages: text("identity_images"),
+  officialDocuments: text("official_documents"),
+
+  paymentStatus: text("payment_status").notNull().default("pending"),
+  paymentAmount: real("payment_amount"),
+  paymentMethod: text("payment_method"),
+  paymentTransactionId: text("payment_transaction_id"),
+  paymentCompletedAt: integer("payment_completed_at", { mode: "timestamp" }),
+  paymentReceipt: text("payment_receipt"),
+
+  status: text("status").notNull().default("pending"),
   reviewedBy: integer("reviewed_by").references(() => users.id),
-  reviewNotes: text("review_notes"),
-  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
+  reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+  rejectionReason: text("rejection_reason"),
+  adminNotes: text("admin_notes"),
+
+  priority: text("priority").notNull().default("normal"),
+
+  // ✅ PostgreSQL-compatible defaults
+  createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .default(sql`extract(epoch from now())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
-    .defaultNow(),
+    .default(sql`extract(epoch from now())`),
 });
 
 // Pet approval requests table (for adoption, breeding, missing pets)
@@ -996,24 +1039,18 @@ export const veterinarianApprovals = pgTable("veterinarian_approvals", {
   phone: text("phone").notNull(),
   city: text("city").notNull(),
   province: text("province").notNull(),
-  gender: text("gender").notNull(), // 'male', 'female'
-  veterinarianType: text("veterinarian_type").notNull(), // 'student', 'veterinarian'
-  idFrontImage: text("id_front_image"), // صورة الهوية الأمامية
-  idBackImage: text("id_back_image"), // صورة الهوية الخلفية
-  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  gender: text("gender").notNull(),
+  veterinarianType: text("veterinarian_type").notNull(),
+  idFrontImage: text("id_front_image"),
+  idBackImage: text("id_back_image"),
+  status: text("status").notNull().default("pending"),
   reviewedBy: integer("reviewed_by").references(() => users.id),
-  reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+  reviewedAt: timestamp("reviewed_at"), // Changed to timestamp
   rejectionReason: text("rejection_reason"),
   adminNotes: text("admin_notes"),
-  submittedAt: integer("submitted_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(), // Changed to timestamp
+  createdAt: timestamp("created_at").notNull().defaultNow(), // Changed to timestamp
+  updatedAt: timestamp("updated_at").notNull().defaultNow(), // Changed to timestamp
 });
 
 export * from "drizzle-orm";

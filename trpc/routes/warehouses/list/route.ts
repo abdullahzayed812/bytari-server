@@ -179,8 +179,8 @@ export const getUserApprovedWarehousesProcedure = publicProcedure
         .from(approvalRequests)
         .where(
           and(
-            eq(approvalRequests.userId, userId),
-            eq(approvalRequests.type, "store_activation"),
+            eq(approvalRequests.requesterId, userId),
+            eq(approvalRequests.requestType, "store_activation"),
             eq(approvalRequests.status, "approved")
           )
         );
