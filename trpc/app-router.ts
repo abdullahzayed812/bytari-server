@@ -191,23 +191,9 @@ import {
 
 // Field assignments
 import {
-  getFieldAssignments,
-  getAvailableVets,
-  getAvailableSupervisors,
-  getAvailableFarms,
-  assignVetToField,
-  assignSupervisorToField,
-  removeVetFromField,
-  removeSupervisorFromField,
-  getFieldAssignment,
-  getAssignedFieldsForVet,
-  getAssignedFieldsForSupervisor,
-  assignVetProcedure,
-  assignSupervisorProcedure,
-  getAssignedFieldsForVetProcedure,
-  getAllFieldsForAdminProcedure as getAllFieldsForAdminAssignmentProcedure,
-  getUserFarmsProcedure as getUserFarmsAssignmentProcedure,
-} from "./routes/admin/field-assignments/route";
+  getUserFarmsAssignmentProcedure,
+  getAllFieldsForAdminAssignmentProcedure,
+} from "./routes/poultry-farms/assignments/route";
 
 // Courses management
 import {
@@ -237,6 +223,11 @@ import {
 
 import { getPoultryFarmDetailsProcedure, listPoultryFarmsProcedure } from "../trpc/routes/poultry-farms/list/route";
 import { createPoultryFarmProcedure } from "../trpc/routes/poultry-farms/create/route";
+import {
+  getAvailableSupervisors,
+  getAvailableVets,
+  getFieldAssignments,
+} from "../trpc/routes/admin/field-assignments/route";
 
 import { contentRouter } from "./routes/content/route";
 
@@ -248,6 +239,19 @@ import {
   getUnreadNotificationsCountProcedure as getUnreadUserNotificationsCountProcedure,
   createNotificationProcedure as createUserNotificationProcedure,
 } from "./routes/notifications/route";
+
+// Poultry batches and daily data
+import { addPoultryBatchProcedure, addDailyDataProcedure, sellBatchProcedure } from "./routes/poultry-batches/route";
+
+// Assignment requests (vet, supervisor, removal)
+import {
+  requestSupervisorAssignmentProcedure,
+  requestVetAssignmentProcedure,
+  requestRemovalProcedure,
+  getAssignmentRequestsProcedure,
+  approveAssignmentRequestProcedure,
+  rejectAssignmentRequestProcedure,
+} from "./routes/assignment-requests/route";
 
 export const appRouter = createTRPCRouter({
   // Authentication routes
@@ -286,7 +290,22 @@ export const appRouter = createTRPCRouter({
 
     list: listPoultryFarmsProcedure,
     create: createPoultryFarmProcedure,
-    get: getPoultryFarmDetailsProcedure,
+    getDetails: getPoultryFarmDetailsProcedure,
+  }),
+
+  poultryBatches: createTRPCRouter({
+    add: addPoultryBatchProcedure,
+    addDailyData: addDailyDataProcedure,
+    sell: sellBatchProcedure,
+  }),
+
+  assignmentRequests: createTRPCRouter({
+    requestVet: requestVetAssignmentProcedure,
+    requestSupervisor: requestSupervisorAssignmentProcedure,
+    requestRemoval: requestRemovalProcedure,
+    getAll: getAssignmentRequestsProcedure,
+    approve: approveAssignmentRequestProcedure,
+    reject: rejectAssignmentRequestProcedure,
   }),
 
   appointments: createTRPCRouter({
@@ -531,20 +550,6 @@ export const appRouter = createTRPCRouter({
       getFieldAssignments: getFieldAssignments,
       getAvailableVets: getAvailableVets,
       getAvailableSupervisors: getAvailableSupervisors,
-      getAvailableFarms: getAvailableFarms,
-      assignVetToField: assignVetToField,
-      assignSupervisorToField: assignSupervisorToField,
-      removeVetFromField: removeVetFromField,
-      removeSupervisorFromField: removeSupervisorFromField,
-      getFieldAssignment: getFieldAssignment,
-      getAssignedFieldsForVet: getAssignedFieldsForVet,
-      getAssignedFieldsForSupervisor: getAssignedFieldsForSupervisor,
-      // New procedures for ownership control
-      assignVetProcedure: assignVetProcedure,
-      assignSupervisorProcedure: assignSupervisorProcedure,
-      getAssignedFieldsForVetProcedure: getAssignedFieldsForVetProcedure,
-      getAllFieldsForAdmin: getAllFieldsForAdminAssignmentProcedure,
-      getUserFarms: getUserFarmsAssignmentProcedure,
     }),
   }),
 

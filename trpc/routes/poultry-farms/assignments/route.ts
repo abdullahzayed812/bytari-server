@@ -1,160 +1,49 @@
-import { z } from 'zod';
-import { publicProcedure } from '../../../create-context';
-import { db } from '../../../../db';
-import { vetFarmAssignments, poultryFarms, veterinarians, users } from '../../../../db/schema';
-import { eq } from 'drizzle-orm';
+import { z } from "zod";
+import { protectedProcedure } from "../../../create-context";
+import { db, poultryFarms, users } from "../../../../db";
+import { eq } from "drizzle-orm";
 
-const assignVetToFarmSchema = z.object({
-  vetId: z.number().int().positive(),
-  farmId: z.number().int().positive(),
-  assignmentType: z.enum(['doctor', 'supervisor']),
-  assignedBy: z.number().int().positive(),
-  notes: z.string().optional(),
-});
-
-export const assignVetToFarmProcedure = publicProcedure
-  .input(assignVetToFarmSchema)
-  .mutation(async ({ input }) => {
-    console.log('Assigning vet to farm:', input);
-    
+export const getUserFarmsAssignmentProcedure = protectedProcedure.query(
+  async ({ ctx }) => {
     try {
-      // Check if farm exists
-      const [farm] = await db.select()
+      const userFarms = await db
+        .select()
         .from(poultryFarms)
-        .where(eq(poultryFarms.id, input.farmId));
-      
-      if (!farm) {
-        throw new Error('حقل الدواجن غير موجود');
-      }
+        .where(eq(poultryFarms.ownerId, ctx.user.id));
 
-      // Check if vet exists
-      const [vet] = await db.select()
-        .from(veterinarians)
-        .where(eq(veterinarians.id, input.vetId));
-      
-      if (!vet) {
-        throw new Error('الطبيب البيطري غير موجود');
-      }
-
-      // Create assignment record
-      const [assignment] = await db.insert(vetFarmAssignments).values({
-        vetId: input.vetId,
-        farmId: input.farmId,
-        assignmentType: input.assignmentType,
-        assignedBy: input.assignedBy,
-        notes: input.notes,
-        isActive: true,
-      }).returning();
-
-      // Update farm with assigned vet/supervisor
-      if (input.assignmentType === 'doctor') {
-        await db.update(poultryFarms)
-          .set({ assignedVetId: input.vetId })
-          .where(eq(poultryFarms.id, input.farmId));
-      } else if (input.assignmentType === 'supervisor') {
-        await db.update(poultryFarms)
-          .set({ assignedSupervisorId: vet.userId })
-          .where(eq(poultryFarms.id, input.farmId));
-      }
-      
-      console.log('Vet assigned to farm successfully:', assignment);
-      return {
-        success: true,
-        assignment,
-        message: input.assignmentType === 'doctor' 
-          ? 'تم تعيين الطبيب للحقل بنجاح'
-          : 'تم تعيين المشرف للحقل بنجاح'
-      };
+      return userFarms;
     } catch (error) {
-      console.error('Error assigning vet to farm:', error);
-      throw new Error('فشل في تعيين الطبيب للحقل');
+      console.error("Error fetching user farms:", error);
+      throw new Error("Failed to fetch farms");
     }
-  });
+  }
+);
 
-export const unassignVetFromFarmProcedure = publicProcedure
-  .input(z.object({
-    assignmentId: z.number().int().positive(),
-    unassignedBy: z.number().int().positive(),
-  }))
-  .mutation(async ({ input }) => {
-    console.log('Unassigning vet from farm:', input);
-    
+export const getAllFieldsForAdminAssignmentProcedure = protectedProcedure
+  .input(z.object({ adminId: z.number() }))
+  .query(async ({ input, ctx }) => {
     try {
-      // Get assignment details
-      const [assignment] = await db.select()
-        .from(vetFarmAssignments)
-        .where(eq(vetFarmAssignments.id, input.assignmentId));
-      
-      if (!assignment) {
-        throw new Error('التعيين غير موجود');
-      }
+      // In real app, check admin permissions here
 
-      // Update assignment as inactive
-      await db.update(vetFarmAssignments)
-        .set({ 
-          isActive: false,
-          unassignedAt: new Date(),
-          unassignedBy: input.unassignedBy
+      const fields = await db
+        .select({
+          id: poultryFarms.id,
+          name: poultryFarms.name,
+          location: poultryFarms.location,
+          ownerName: users.name,
+          ownerEmail: users.email,
+          ownerPhone: users.phone,
+          assignedVetId: poultryFarms.vetId,
+          assignedSupervisorId: poultryFarms.supervisorId,
+          status: poultryFarms.status,
+          createdAt: poultryFarms.createdAt,
         })
-        .where(eq(vetFarmAssignments.id, input.assignmentId));
+        .from(poultryFarms)
+        .leftJoin(users, eq(poultryFarms.ownerId, users.id));
 
-      // Update farm to remove assigned vet/supervisor
-      if (assignment.assignmentType === 'doctor') {
-        await db.update(poultryFarms)
-          .set({ assignedVetId: null })
-          .where(eq(poultryFarms.id, assignment.farmId));
-      } else if (assignment.assignmentType === 'supervisor') {
-        await db.update(poultryFarms)
-          .set({ assignedSupervisorId: null })
-          .where(eq(poultryFarms.id, assignment.farmId));
-      }
-      
-      console.log('Vet unassigned from farm successfully');
-      return {
-        success: true,
-        message: assignment.assignmentType === 'doctor' 
-          ? 'تم إلغاء تعيين الطبيب من الحقل بنجاح'
-          : 'تم إلغاء تعيين المشرف من الحقل بنجاح'
-      };
+      return fields;
     } catch (error) {
-      console.error('Error unassigning vet from farm:', error);
-      throw new Error('فشل في إلغاء تعيين الطبيب من الحقل');
-    }
-  });
-
-export const getVetAssignmentsProcedure = publicProcedure
-  .input(z.object({
-    vetId: z.number().int().positive(),
-  }))
-  .query(async ({ input }) => {
-    console.log('Getting vet assignments:', input);
-    
-    try {
-      const assignments = await db.select({
-        id: vetFarmAssignments.id,
-        assignmentType: vetFarmAssignments.assignmentType,
-        isActive: vetFarmAssignments.isActive,
-        assignedAt: vetFarmAssignments.assignedAt,
-        notes: vetFarmAssignments.notes,
-        farmId: poultryFarms.id,
-        farmName: poultryFarms.name,
-        farmAddress: poultryFarms.address,
-        farmType: poultryFarms.farmType,
-        ownerId: users.id,
-        ownerName: users.name,
-        ownerPhone: users.phone
-      }).from(vetFarmAssignments)
-      .leftJoin(poultryFarms, eq(vetFarmAssignments.farmId, poultryFarms.id))
-      .leftJoin(users, eq(poultryFarms.ownerId, users.id))
-      .where(eq(vetFarmAssignments.vetId, input.vetId));
-      
-      console.log('Vet assignments retrieved successfully:', assignments.length);
-      return {
-        success: true,
-        assignments
-      };
-    } catch (error) {
-      console.error('Error getting vet assignments:', error);
-      throw new Error('فشل في جلب تعيينات الطبيب');
+      console.error("Error fetching all fields for admin:", error);
+      throw new Error("Failed to fetch fields");
     }
   });

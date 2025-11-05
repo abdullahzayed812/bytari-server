@@ -410,9 +410,12 @@ CREATE TABLE "poultry_farms" (
 	"owner_id" integer NOT NULL,
 	"name" text NOT NULL,
 	"location" text NOT NULL,
+	"address" text,
+	"description" text,
 	"farm_type" text NOT NULL,
-	"capacity" integer,
+	"capacity" integer NOT NULL,
 	"current_population" integer DEFAULT 0,
+	"total_area" numeric(10, 2),
 	"established_date" timestamp with time zone,
 	"license_number" text,
 	"contact_person" text,
@@ -421,8 +424,65 @@ CREATE TABLE "poultry_farms" (
 	"facilities" jsonb,
 	"health_status" text DEFAULT 'healthy',
 	"last_inspection" timestamp with time zone,
+	"images" text,
+	"status" varchar(20) DEFAULT 'active' NOT NULL,
+	"assigned_vet_id" integer,
+	"assigned_supervisor_id" integer,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"is_verified" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+-- ============== CREATE ASSIGNMENT REQUESTS TABLE ==============
+CREATE TABLE  "assignment_requests" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"farm_id" integer NOT NULL,
+	"request_type" varchar(20) NOT NULL,
+	"requested_by" integer NOT NULL,
+	"status" varchar(20) DEFAULT 'pending' NOT NULL,
+	"notes" text,
+	"is_removal_request" boolean DEFAULT false,
+	"target_user_id" integer,
+	"reviewed_by" integer,
+	"reviewed_at" timestamp with time zone,
+	"review_notes" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+-- ============== CREATE POULTRY DAILY DATA TABLE ==============
+CREATE TABLE "poultry_daily_data" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"batch_id" integer NOT NULL,
+	"day_number" integer NOT NULL,
+	"date" timestamp with time zone NOT NULL,
+	"feed_consumption" numeric(10, 2) NOT NULL,
+	"feed_cost" numeric(10, 2),
+	"average_weight" numeric(10, 2) NOT NULL,
+	"mortality" integer DEFAULT 0 NOT NULL,
+	"mortality_reasons" jsonb DEFAULT '[]'::jsonb,
+	"treatments" jsonb DEFAULT '[]'::jsonb,
+	"vaccinations" jsonb DEFAULT '[]'::jsonb,
+	"estimated_profit" numeric(10, 2) DEFAULT 0,
+	"notes" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+-- ============== CREATE POULTRY BATCHES TABLE ==============
+CREATE TABLE "poultry_batches" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"farm_id" integer NOT NULL,
+	"batch_number" integer NOT NULL,
+	"start_date" timestamp with time zone NOT NULL,
+	"end_date" timestamp with time zone,
+	"initial_count" integer NOT NULL,
+	"current_count" integer NOT NULL,
+	"final_count" integer,
+	"chicks_age" integer DEFAULT 0 NOT NULL,
+	"initial_weight" numeric(10, 2),
+	"price_per_chick" numeric(10, 2) NOT NULL,
+	"total_investment" numeric(12, 2) NOT NULL,
+	"total_profit" numeric(12, 2),
+	"status" varchar(20) DEFAULT 'active' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -834,8 +894,65 @@ ALTER TABLE "pet_approval_requests" ADD CONSTRAINT "pet_approval_requests_owner_
 ALTER TABLE "pet_approval_requests" ADD CONSTRAINT "pet_approval_requests_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "pet_approvals" ADD CONSTRAINT "pet_approvals_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "pet_approvals" ADD CONSTRAINT "pet_approvals_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pets" ADD CONSTRAINT "pets_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "poultry_farms" ADD CONSTRAINT "poultry_farms_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pets" ADD CONSTRAINT "pets_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+
+--> statement-breakpoint
+ALTER TABLE "poultry_farms"
+	ADD CONSTRAINT "poultry_farms_assigned_vet_id_fkey"
+		FOREIGN KEY ("assigned_vet_id") REFERENCES "veterinarians"("id");
+
+--> statement-breakpoint
+ALTER TABLE "poultry_farms"
+	ADD CONSTRAINT "poultry_farms_assigned_supervisor_id_fkey"
+		FOREIGN KEY ("assigned_supervisor_id") REFERENCES "users"("id");
+
+--> statement-breakpoint
+ALTER TABLE "poultry_farms"
+	ADD CONSTRAINT "poultry_farms_owner_id_users_id_fk"
+		FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id")
+		ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+--> statement-breakpoint
+ALTER TABLE "assignment_requests"
+	ADD CONSTRAINT "assignment_requests_farm_id_fkey"
+		FOREIGN KEY ("farm_id") REFERENCES "poultry_farms"("id") ON DELETE CASCADE;
+
+--> statement-breakpoint
+ALTER TABLE "assignment_requests"
+	ADD CONSTRAINT "assignment_requests_requested_by_fkey"
+		FOREIGN KEY ("requested_by") REFERENCES "users"("id");
+
+--> statement-breakpoint
+ALTER TABLE "assignment_requests"
+	ADD CONSTRAINT "assignment_requests_target_user_id_fkey"
+		FOREIGN KEY ("target_user_id") REFERENCES "users"("id");
+
+--> statement-breakpoint
+ALTER TABLE "assignment_requests"
+	ADD CONSTRAINT "assignment_requests_reviewed_by_fkey"
+		FOREIGN KEY ("reviewed_by") REFERENCES "users"("id");
+
+--> statement-breakpoint
+ALTER TABLE "poultry_daily_data"
+	ADD CONSTRAINT "poultry_daily_data_batch_id_fkey"
+		FOREIGN KEY ("batch_id") REFERENCES "poultry_batches"("id") ON DELETE CASCADE;
+
+--> statement-breakpoint
+ALTER TABLE "poultry_daily_data"
+	ADD CONSTRAINT "unique_batch_day_number"
+		UNIQUE ("batch_id", "day_number");
+
+--> statement-breakpoint
+ALTER TABLE "poultry_batches"
+	ADD CONSTRAINT "poultry_batches_farm_id_fkey"
+		FOREIGN KEY ("farm_id") REFERENCES "poultry_farms"("id") ON DELETE CASCADE;
+
+--> statement-breakpoint
+ALTER TABLE "poultry_batches"
+	ADD CONSTRAINT "unique_farm_batch_number"
+		UNIQUE ("farm_id", "batch_number");
+
+--> statement-breakpoint
 ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_role_id_admin_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."admin_roles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_permission_id_admin_permissions_id_fk" FOREIGN KEY ("permission_id") REFERENCES "public"."admin_permissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "store_products" ADD CONSTRAINT "store_products_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

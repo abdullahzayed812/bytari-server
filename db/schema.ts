@@ -1,14 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  integer,
-  pgTable,
-  text,
-  real,
-  boolean,
-  timestamp,
-  serial,
-  jsonb,
-} from "drizzle-orm/pg-core";
+import { integer, pgTable, text, real, boolean, timestamp, serial, jsonb, decimal, varchar } from "drizzle-orm/pg-core";
 
 // Users table
 export const users = pgTable("users", {
@@ -27,12 +18,8 @@ export const users = pgTable("users", {
     withTimezone: true,
   }),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Pets table
@@ -52,12 +39,8 @@ export const pets = pgTable("pets", {
   medicalHistory: text("medical_history"),
   vaccinations: jsonb("vaccinations"), // JSON data
   isLost: boolean("is_lost").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Veterinarians table
@@ -73,12 +56,8 @@ export const veterinarians = pgTable("veterinarians", {
   isVerified: boolean("is_verified").notNull().default(false),
   rating: real("rating").default(0),
   consultationFee: real("consultation_fee"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Clinics table
@@ -100,12 +79,8 @@ export const clinics = pgTable("clinics", {
   }),
   activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
   needsRenewal: boolean("needs_renewal").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Appointments table
@@ -128,12 +103,8 @@ export const appointments = pgTable("appointments", {
   type: text("type").notNull(), // 'consultation', 'vaccination', 'surgery', etc.
   notes: text("notes"),
   fee: real("fee"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Lost pets table
@@ -153,12 +124,8 @@ export const lostPets = pgTable("lost_pets", {
   reward: real("reward"),
   contactInfo: text("contact_info"),
   status: text("status").notNull().default("lost"), // 'lost', 'found', 'closed'
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Products table
@@ -175,12 +142,8 @@ export const products = pgTable("products", {
   stockQuantity: integer("stock_quantity").default(0),
   sku: text("sku").unique(),
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Orders table
@@ -195,12 +158,8 @@ export const orders = pgTable("orders", {
   paymentMethod: text("payment_method"),
   paymentStatus: text("payment_status").notNull().default("pending"),
   notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Order items table
@@ -229,12 +188,8 @@ export const inquiries = pgTable("inquiries", {
   status: text("status").notNull().default("pending"), // 'pending', 'answered', 'closed'
   priority: text("priority").default("medium"), // 'low', 'medium', 'high'
   attachments: jsonb("attachments"), // JSON data
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Inquiry replies table
@@ -249,9 +204,7 @@ export const inquiryReplies = pgTable("inquiry_replies", {
   content: text("content").notNull(),
   isFromAdmin: boolean("is_from_admin").notNull().default(false),
   attachments: jsonb("attachments"), // JSON data
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Alias for backward compatibility
@@ -271,12 +224,8 @@ export const consultations = pgTable("consultations", {
   status: text("status").notNull().default("pending"), // 'pending', 'answered', 'closed'
   category: text("category").notNull(),
   attachments: jsonb("attachments"), // JSON data
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Consultation replies table
@@ -292,9 +241,7 @@ export const consultationReplies = pgTable("consultation_replies", {
   isFromVet: boolean("is_from_vet").notNull().default(false),
   isAiGenerated: boolean("is_ai_generated").notNull().default(false),
   attachments: jsonb("attachments"), // JSON data
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Alias for backward compatibility
@@ -346,12 +293,8 @@ export const stores = pgTable("stores", {
   images: text("images"), // JSON array of image URLs
 
   // Timestamps
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const vetStores = pgTable("vet_stores", {
@@ -376,12 +319,8 @@ export const vetStores = pgTable("vet_stores", {
   activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
   needsRenewal: boolean("needs_renewal").notNull().default(false),
   subscriptionStatus: text("subscription_status").default("active"), // 'active', 'expired', 'pending'
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Store products table
@@ -419,12 +358,8 @@ export const warehouses = pgTable("warehouses", {
   }),
   activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
   needsRenewal: boolean("needs_renewal").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Warehouse products table
@@ -446,12 +381,8 @@ export const warehouseProducts = pgTable("warehouse_products", {
   images: jsonb("images"), // JSON data
   specifications: jsonb("specifications"), // JSON data
   isAvailable: boolean("is_available").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Tips table
@@ -467,12 +398,8 @@ export const tips = pgTable("tips", {
   isPublished: boolean("is_published").notNull().default(false),
   viewCount: integer("view_count").default(0),
   likeCount: integer("like_count").default(0),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Courses table
@@ -493,12 +420,8 @@ export const courses = pgTable("courses", {
   isPublished: boolean("is_published").notNull().default(false),
   enrollmentCount: integer("enrollment_count").default(0),
   rating: real("rating").default(0),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Course enrollments table
@@ -514,9 +437,7 @@ export const courseEnrollments = pgTable("course_enrollments", {
   progress: integer("progress").default(0), // percentage
   completedAt: timestamp("completed_at", { withTimezone: true }),
   certificateIssued: boolean("certificate_issued").notNull().default(false),
-  enrolledAt: timestamp("enrolled_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Notifications table
@@ -530,9 +451,7 @@ export const notifications = pgTable("notifications", {
   type: text("type").notNull(), // 'info', 'warning', 'success', 'error'
   data: jsonb("data"), // JSON data
   isRead: boolean("is_read").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Admin notifications table (for admin-specific notifications)
@@ -551,12 +470,8 @@ export const adminNotifications = pgTable("admin_notifications", {
   isRead: boolean("is_read").notNull().default(false),
   readAt: timestamp("read_at", { withTimezone: true }),
   metadata: jsonb("metadata"), // Additional data as JSON
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Email notifications table (for tracking email notifications)
@@ -574,12 +489,8 @@ export const emailNotifications = pgTable("email_notifications", {
   failureReason: text("failure_reason"),
   retryCount: integer("retry_count").default(0),
   metadata: jsonb("metadata"), // Additional data as JSON
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // System messages table
@@ -594,9 +505,7 @@ export const systemMessages = pgTable("system_messages", {
   isRead: boolean("is_read").notNull().default(false),
   readAt: timestamp("read_at", { withTimezone: true }),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // System message recipients table (junction table for tracking message delivery)
@@ -610,12 +519,8 @@ export const systemMessageRecipients = pgTable("system_message_recipients", {
     .references(() => users.id),
   isRead: boolean("is_read").notNull().default(false),
   readAt: timestamp("read_at", { withTimezone: true }),
-  deliveredAt: timestamp("delivered_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Admin activity logs table (for tracking admin actions)
@@ -630,9 +535,7 @@ export const adminActivityLogs = pgTable("admin_activity_logs", {
   details: text("details"), // JSON string with additional details
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // App sections table (for app navigation/UI configuration)
@@ -649,12 +552,8 @@ export const appSections = pgTable("app_sections", {
   userType: text("user_type").notNull().default("all"), // 'all', 'user', 'vet', 'admin'
   requiredRole: text("required_role"), // Optional role requirement
   metadata: jsonb("metadata"), // JSON data for additional config
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Veterinary books table (for educational content)
@@ -675,12 +574,8 @@ export const vetBooks = pgTable("vet_books", {
   downloadCount: integer("download_count").default(0),
   rating: real("rating").default(0),
   uploadedBy: integer("uploaded_by").references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Veterinary magazines table (for periodical content)
@@ -701,12 +596,8 @@ export const vetMagazines = pgTable("vet_magazines", {
   downloadCount: integer("download_count").default(0),
   rating: real("rating").default(0),
   uploadedBy: integer("uploaded_by").references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Admin content table (for admin-managed content like contact info, settings, etc.)
@@ -721,12 +612,8 @@ export const adminContent = pgTable("admin_content", {
   publishedAt: timestamp("published_at", { withTimezone: true }),
   createdBy: integer("created_by").references(() => users.id),
   updatedBy: integer("updated_by").references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Advertisements table
@@ -746,12 +633,8 @@ export const advertisements = pgTable("advertisements", {
   budget: real("budget"),
   costPerClick: real("cost_per_click"),
   targetAudience: jsonb("target_audience"), // JSON data
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Pet approvals table
@@ -774,12 +657,8 @@ export const petApprovals = pgTable("pet_approvals", {
   reviewedBy: integer("reviewed_by").references(() => users.id),
   reviewNotes: text("review_notes"),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Approval requests table (generic)
@@ -846,12 +725,8 @@ export const petApprovalRequests = pgTable("pet_approval_requests", {
   reviewedBy: integer("reviewed_by").references(() => users.id),
   rejectionReason: text("rejection_reason"),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // AI settings table
@@ -865,9 +740,7 @@ export const aiSettings = pgTable("ai_settings", {
   customPrompts: jsonb("custom_prompts"), // JSON data
   apiKey: text("api_key"),
   model: text("model").default("gpt-3.5-turbo"),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Poultry farms table
@@ -878,25 +751,151 @@ export const poultryFarms = pgTable("poultry_farms", {
     .references(() => users.id),
   name: text("name").notNull(),
   location: text("location").notNull(),
-  farmType: text("farm_type").notNull(), // 'broiler', 'layer', 'breeder', 'mixed'
-  capacity: integer("capacity"),
-  currentPopulation: integer("current_population").default(0),
-  establishedDate: timestamp("established_date", { withTimezone: true }),
-  licenseNumber: text("license_number"),
+
+  // Existing fields
+  farmType: varchar("farm_type", { length: 50 }),
+  licenseNumber: varchar("license_number", { length: 100 }),
   contactPerson: text("contact_person"),
-  phone: text("phone"),
-  email: text("email"),
-  facilities: jsonb("facilities"), // JSON data
-  healthStatus: text("health_status").default("healthy"), // 'healthy', 'quarantine', 'sick'
-  lastInspection: timestamp("last_inspection", { withTimezone: true }),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 255 }),
+  facilities: jsonb("facilities"),
+  healthStatus: varchar("health_status", { length: 50 }),
+  lastInspection: timestamp("last_inspection"),
+  establishedDate: timestamp("established_date"),
+  images: text("images"),
+  isVerified: boolean("is_verified").default(false),
+
+  // New fields for poultry management
+  address: text("address"),
+  description: text("description"),
+  totalArea: decimal("total_area", { precision: 10, scale: 2 }), // متر مربع
+  capacity: integer("capacity").notNull(), // السعة القصوى
+  currentPopulation: integer("current_population").default(0),
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, inactive, suspended
+
+  // Assignment tracking
+  assignedVetId: integer("assigned_vet_id").references(() => veterinarians.id),
+  assignedSupervisorId: integer("assigned_supervisor_id").references(() => users.id),
+
   isActive: boolean("is_active").notNull().default(true),
-  isVerified: boolean("is_verified").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true })
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ============== POULTRY BATCHES TABLE ==============
+export const poultryBatches = pgTable("poultry_batches", {
+  id: serial("id").primaryKey(),
+  farmId: integer("farm_id")
     .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .references(() => poultryFarms.id, { onDelete: "cascade" }),
+  batchNumber: integer("batch_number").notNull(), // رقم الدفعة
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"), // تاريخ البيع/الانتهاء
+
+  // Counts
+  initialCount: integer("initial_count").notNull(), // العدد الأولي
+  currentCount: integer("current_count").notNull(), // العدد الحالي
+  finalCount: integer("final_count"), // العدد النهائي عند البيع
+
+  // Age and weight
+  chicksAge: integer("chicks_age").notNull().default(0), // العمر بالأيام
+  initialWeight: decimal("initial_weight", { precision: 10, scale: 2 }), // وزن الفرد الأولي (جرام)
+
+  // Financial
+  pricePerChick: decimal("price_per_chick", { precision: 10, scale: 2 }).notNull(), // سعر الفرد
+  totalInvestment: decimal("total_investment", { precision: 12, scale: 2 }).notNull(), // إجمالي الاستثمار
+  totalProfit: decimal("total_profit", { precision: 12, scale: 2 }), // الربح الصافي
+
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, completed, sold
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ============== POULTRY DAILY DATA TABLE ==============
+export const poultryDailyData = pgTable("poultry_daily_data", {
+  id: serial("id").primaryKey(),
+  batchId: integer("batch_id")
     .notNull()
-    .defaultNow(),
+    .references(() => poultryBatches.id, { onDelete: "cascade" }),
+  dayNumber: integer("day_number").notNull(), // رقم اليوم في الدفعة
+  date: timestamp("date").notNull(),
+
+  // Feed consumption
+  feedConsumption: decimal("feed_consumption", { precision: 10, scale: 2 }).notNull(), // كيلو
+  feedCost: decimal("feed_cost", { precision: 10, scale: 2 }), // تكلفة العلف
+
+  // Weight
+  averageWeight: decimal("average_weight", { precision: 10, scale: 2 }).notNull(), // جرام
+
+  // Mortality
+  mortality: integer("mortality").notNull().default(0), // عدد النفوق
+  mortalityReasons: jsonb("mortality_reasons").$type<string[]>().default([]), // أسباب النفوق
+
+  // Treatments
+  treatments: jsonb("treatments")
+    .$type<
+      {
+        id: string;
+        name: string;
+        dosage: string;
+        frequency: string;
+        duration: number;
+        administeredBy: string;
+        cost: number;
+        reason: string;
+        notes: string;
+      }[]
+    >()
+    .default([]),
+
+  // Vaccinations
+  vaccinations: jsonb("vaccinations")
+    .$type<
+      {
+        id: string;
+        name: string;
+        dosage: string;
+        administeredBy: string;
+        batchNumber: string;
+        cost: number;
+        notes: string;
+      }[]
+    >()
+    .default([]),
+
+  // Profit estimation
+  estimatedProfit: decimal("estimated_profit", { precision: 10, scale: 2 }).default("0"),
+
+  notes: text("notes"), // ملاحظات اليوم
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ============== ASSIGNMENT REQUESTS TABLE ==============
+export const assignmentRequests = pgTable("assignment_requests", {
+  id: serial("id").primaryKey(),
+  farmId: integer("farm_id")
+    .notNull()
+    .references(() => poultryFarms.id, { onDelete: "cascade" }),
+  requestType: varchar("request_type", { length: 20 }).notNull(), // vet, supervisor
+  requestedBy: integer("requested_by")
+    .notNull()
+    .references(() => users.id),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
+  notes: text("notes"),
+
+  // If it's a removal request
+  isRemovalRequest: boolean("is_removal_request").default(false),
+  targetUserId: integer("target_user_id").references(() => users.id), // المستخدم المراد إزالته
+
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Field assignments table
@@ -907,9 +906,7 @@ export const fieldAssignments = pgTable("field_assignments", {
     .references(() => poultryFarms.id),
   veterinarianId: integer("veterinarian_id").references(() => veterinarians.id),
   supervisorId: integer("supervisor_id").references(() => users.id),
-  assignedDate: timestamp("assigned_date", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  assignedDate: timestamp("assigned_date", { withTimezone: true }).notNull().defaultNow(),
   status: text("status").notNull().default("active"), // 'active', 'completed', 'cancelled'
   visitFrequency: text("visit_frequency"), // 'daily', 'weekly', 'monthly'
   lastVisit: timestamp("last_visit", { withTimezone: true }),
@@ -917,12 +914,8 @@ export const fieldAssignments = pgTable("field_assignments", {
   notes: text("notes"),
   reports: jsonb("reports"), // JSON data
   completedAt: timestamp("completed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Export all tables for relationships
@@ -933,12 +926,8 @@ export const adminRoles = pgTable("admin_roles", {
   displayName: text("display_name").notNull(),
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // User roles table (junction table)
@@ -952,12 +941,8 @@ export const userRoles = pgTable("user_roles", {
     .references(() => adminRoles.id),
   isActive: boolean("is_active").notNull().default(true),
   assignedBy: integer("assigned_by").references(() => users.id),
-  assignedAt: timestamp("assigned_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Admin permissions table
@@ -968,9 +953,7 @@ export const adminPermissions = pgTable("admin_permissions", {
   description: text("description"),
   category: text("category").notNull(), // 'users', 'content', 'system', etc.
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Role permissions table (junction table)
@@ -983,9 +966,7 @@ export const rolePermissions = pgTable("role_permissions", {
     .notNull()
     .references(() => adminPermissions.id),
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Polls table
@@ -1053,7 +1034,6 @@ export const veterinarianApprovals = pgTable("veterinarian_approvals", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(), // Changed to timestamp
 });
 
-
 // Clinic stats table
 export const clinicStats = pgTable("clinic_stats", {
   id: serial("id").primaryKey(),
@@ -1064,9 +1044,7 @@ export const clinicStats = pgTable("clinic_stats", {
   activePatients: integer("active_patients").default(0),
   completedTreatments: integer("completed_treatments").default(0),
   monthlyReport: jsonb("monthly_report"),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const reminders = pgTable("reminders", {
@@ -1086,13 +1064,8 @@ export const reminders = pgTable("reminders", {
   dueDate: timestamp("due_date", { withTimezone: true }).notNull(),
   status: text("status").notNull().default("pending"),
   priority: text("priority").notNull().default("normal"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export * from "drizzle-orm";
-
