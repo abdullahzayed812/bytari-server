@@ -41,9 +41,9 @@ export const requestVetAssignmentProcedure = publicProcedure
 // ============== GET ALL ASSIGNMENT REQUESTS =============
 export const getAssignmentRequestsProcedure = publicProcedure.query(async () => {
   try {
-    // Create aliases for user joins
     const owners = alias(users, "owners");
     const requesters = alias(users, "requesters");
+    const vetUsers = alias(users, "vetUsers");
     const supervisors = alias(users, "supervisors");
 
     const requests = await db
@@ -61,57 +61,32 @@ export const getAssignmentRequestsProcedure = publicProcedure.query(async () => 
         notes: assignmentRequests.notes,
         createdAt: assignmentRequests.createdAt,
 
-        // Assignment info from farm
-        assignedVetId: poultryFarms?.assignedVetId ?? null,
-        assignedSupervisorId: poultryFarms?.assignedSupervisorId ?? null,
+        // Assignment IDs
+        assignedVetId: poultryFarms.assignedVetId,
+        assignedSupervisorId: poultryFarms.assignedSupervisorId,
 
-        // Vet info
-        assignedVetName: veterinarians?.name ?? null,
-        assignedVetPhone: veterinarians?.phone ?? null,
+        // Vet info from users table
+        assignedVetName: vetUsers.name,
+        assignedVetPhone: vetUsers.phone,
 
         // Supervisor info
-        assignedSupervisorName: supervisors?.name ?? null,
-        assignedSupervisorPhone: supervisors?.phone ?? null,
+        assignedSupervisorName: supervisors.name,
+        assignedSupervisorPhone: supervisors.phone,
       })
       .from(assignmentRequests)
       .leftJoin(poultryFarms, eq(assignmentRequests.farmId, poultryFarms.id))
       .leftJoin(owners, eq(poultryFarms.ownerId, owners.id))
       .leftJoin(requesters, eq(assignmentRequests.requestedBy, requesters.id))
+      // Join veterinarians table, then join to users for vet details
       .leftJoin(veterinarians, eq(poultryFarms.assignedVetId, veterinarians.id))
+      .leftJoin(vetUsers, eq(veterinarians.userId, vetUsers.id))
+      // Supervisor is directly in users table
       .leftJoin(supervisors, eq(poultryFarms.assignedSupervisorId, supervisors.id))
       .orderBy(desc(assignmentRequests.createdAt));
 
-    const transformed = requests.map((req) => ({
-      id: req.id,
-      farmId: req.farmId,
-      farmName: req.farmName,
-      ownerName: req.ownerName,
-      requestedBy: req.requestedBy,
-      requesterName: req.requesterName,
-      requestType:
-        req.isRemovalRequest === true
-          ? `removal_${req.requestType}`
-          : req.requestType === "vet"
-          ? "vet_assignment"
-          : req.requestType === "supervisor"
-          ? "supervision"
-          : "general",
-      status: req.status,
-      notes: req.notes || "",
-      createdAt: req.createdAt,
-
-      // Assignment info
-      assignedVetId: req.assignedVetId,
-      assignedVetName: req.assignedVetName,
-      assignedVetPhone: req.assignedVetPhone,
-      assignedSupervisorId: req.assignedSupervisorId,
-      assignedSupervisorName: req.assignedSupervisorName,
-      assignedSupervisorPhone: req.assignedSupervisorPhone,
-    }));
-
     return {
       success: true,
-      requests: transformed,
+      requests,
     };
   } catch (error) {
     console.error("Error fetching assignment requests:", error);
@@ -130,27 +105,79 @@ export const approveAssignmentRequestProcedure = publicProcedure
   )
   .mutation(async ({ input }) => {
     try {
+      // First, get the request to check its type
       const [request] = await db
+        .select()
+        .from(assignmentRequests)
+        .where(eq(assignmentRequests.id, input.assignmentRequestId))
+        .limit(1);
+
+      if (!request) {
+        throw new Error("لم يتم العثور على الطلب");
+      }
+
+      // 🔹 Handle normal vet assignment
+      if (request.requestType === "vet" && input.vetId) {
+        const [vet] = await db.select().from(veterinarians).where(eq(veterinarians.id, input.vetId)).limit(1);
+
+        if (!vet) {
+          throw new Error("الطبيب البيطري غير موجود");
+        }
+
+        await db.update(poultryFarms).set({ assignedVetId: input.vetId }).where(eq(poultryFarms.id, request.farmId));
+
+        console.log(`✅ Vet ${input.vetId} assigned to farm ${request.farmId}`);
+      }
+
+      // 🔹 Handle normal supervisor assignment
+      else if (request.requestType === "supervisor" && input.supervisorId) {
+        const [supervisor] = await db.select().from(users).where(eq(users.id, input.supervisorId)).limit(1);
+
+        if (!supervisor) {
+          throw new Error("المشرف غير موجود");
+        }
+
+        await db
+          .update(poultryFarms)
+          .set({ assignedSupervisorId: input.supervisorId })
+          .where(eq(poultryFarms.id, request.farmId));
+
+        console.log(`✅ Supervisor ${input.supervisorId} assigned to farm ${request.farmId}`);
+      }
+
+      // 🔹 Handle vet removal requests
+      else if (request.requestType === "removeVet" || (request.isRemovalRequest && request.requestType === "vet")) {
+        await db.update(poultryFarms).set({ assignedVetId: null }).where(eq(poultryFarms.id, request.farmId));
+
+        console.log(`🗑️ Vet removed from farm ${request.farmId}`);
+      }
+
+      // 🔹 Handle supervisor removal requests
+      else if (
+        request.requestType === "removeSupervisor" ||
+        (request.isRemovalRequest && request.requestType === "supervisor")
+      ) {
+        await db.update(poultryFarms).set({ assignedSupervisorId: null }).where(eq(poultryFarms.id, request.farmId));
+
+        console.log(`🗑️ Supervisor removed from farm ${request.farmId}`);
+      }
+
+      // 🔹 Finally, mark request as approved
+      const [updatedRequest] = await db
         .update(assignmentRequests)
         .set({ status: "approved" })
         .where(eq(assignmentRequests.id, input.assignmentRequestId))
         .returning();
 
-      if (request.requestType === "vet" && input.vetId) {
-        await db.update(poultryFarms).set({ assignedVetId: input.vetId }).where(eq(poultryFarms.id, request.farmId));
-      } else if (request.requestType === "supervisor" && input.supervisorId) {
-        await db
-          .update(poultryFarms)
-          .set({ assignedSupervisorId: input.supervisorId })
-          .where(eq(poultryFarms.id, request.farmId));
-      }
-
       return {
         success: true,
-        request,
+        request: updatedRequest,
       };
     } catch (error) {
       console.error("Error approving assignment request:", error);
+      if (error instanceof Error) {
+        throw error;
+      }
       throw new Error("فشل في الموافقة على طلب التعيين");
     }
   });
@@ -181,7 +208,6 @@ export const rejectAssignmentRequestProcedure = publicProcedure
   });
 
 // ============== REQUEST SUPERVISOR ASSIGNMENT =============
-
 export const requestSupervisorAssignmentProcedure = publicProcedure
   .input(
     z.object({
@@ -222,7 +248,7 @@ export const requestRemovalProcedure = publicProcedure
     z.object({
       farmId: z.number().int().positive(),
       requestedBy: z.number().int().positive(),
-      requestType: z.enum(["vet", "supervisor"]),
+      requestType: z.enum(["vet", "supervisor", "removeVet", "removeSupervisor"]),
       targetUserId: z.number().int().positive(),
       notes: z.string().optional(),
     })
@@ -252,5 +278,53 @@ export const requestRemovalProcedure = publicProcedure
     } catch (error) {
       console.error("Error creating removal request:", error);
       throw new Error("فشل في إرسال طلب الإزالة");
+    }
+  });
+
+// ============== REMOVE VET FROM FARM ==============
+export const removeVetProcedure = publicProcedure
+  .input(
+    z.object({
+      farmId: z.number().int().positive(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    console.log("Removing vet from farm:", input);
+
+    try {
+      await db.update(poultryFarms).set({ assignedVetId: null }).where(eq(poultryFarms.id, input.farmId));
+
+      console.log("Vet removed from farm successfully");
+      return {
+        success: true,
+        message: "تم إلغاء تعيين الطبيب البيطري بنجاح",
+      };
+    } catch (error) {
+      console.error("Error removing vet:", error);
+      throw new Error("فشل في إلغاء تعيين الطبيب البيطري");
+    }
+  });
+
+// ============== REMOVE SUPERVISOR FROM FARM ==============
+export const removeSupervisorProcedure = publicProcedure
+  .input(
+    z.object({
+      farmId: z.number().int().positive(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    console.log("Removing supervisor from farm:", input);
+
+    try {
+      await db.update(poultryFarms).set({ assignedSupervisorId: null }).where(eq(poultryFarms.id, input.farmId));
+
+      console.log("Supervisor removed from farm successfully");
+      return {
+        success: true,
+        message: "تم إلغاء تعيين المشرف بنجاح",
+      };
+    } catch (error) {
+      console.error("Error removing supervisor:", error);
+      throw new Error("فشل في إلغاء تعيين المشرف");
     }
   });

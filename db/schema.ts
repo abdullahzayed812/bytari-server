@@ -879,7 +879,7 @@ export const assignmentRequests = pgTable("assignment_requests", {
   farmId: integer("farm_id")
     .notNull()
     .references(() => poultryFarms.id, { onDelete: "cascade" }),
-  requestType: varchar("request_type", { length: 20 }).notNull(), // vet, supervisor
+  requestType: varchar("request_type", { length: 20 }).notNull(), // vet, supervisor, remove_vet, remove_supervisor
   requestedBy: integer("requested_by")
     .notNull()
     .references(() => users.id),

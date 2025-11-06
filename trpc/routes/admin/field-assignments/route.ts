@@ -8,15 +8,16 @@ export const getFieldAssignments = getAssignmentRequestsProcedure;
 export const getAvailableVets = publicProcedure.query(async () => {
   const vets = await db
     .select({
-      id: users.id,
+      id: veterinarians.id,
+      userId: users.id,
       name: users.name,
       email: users.email,
       phone: users.phone,
       specialization: veterinarians.specialization,
     })
-    .from(users)
-    .leftJoin(veterinarians, eq(users.id, veterinarians.userId))
-    .where(eq(users.userType, "vet"));
+    .from(veterinarians)
+    .innerJoin(users, eq(veterinarians.userId, users.id))
+    .where(eq(users.userType, "veterinarian"));
   return vets;
 });
 
