@@ -1,20 +1,20 @@
 import { db } from "..";
 import { seedAdminSystem } from "./admin-system.seed";
 import { seedUsers } from "./users.seed";
-import { seedClinics } from "./clinics.seed";
-import { seedStores } from "./stores.seed";
-import { seedPets } from "./pets.seed";
-import { seedApprovals } from "./approvals.seed";
-import { seedContent } from "./content.seed";
-import { seedAISettings } from "./ai-settings.seed";
-import { seedVetBooks } from "./vet-books.seed";
-import { seedVetMagazines } from "./vet-magazines.seed";
-import { seedInquiries } from "./inquiries.seed";
-import { seedTips } from "./tips.seed";
-import { seedCourses } from "./courses.seed";
-import { seedProducts } from "./products.seed";
-import { seedWarehouses } from "./warehouses.seed";
-import { seedPoultryFarms } from "./poultry-farms.seed";
+// import { seedClinics } from "./clinics.seed";
+// import { seedStores } from "./stores.seed";
+// import { seedPets } from "./pets.seed";
+// import { seedApprovals } from "./approvals.seed";
+// import { seedContent } from "./content.seed";
+// import { seedAISettings } from "./ai-settings.seed";
+// import { seedVetBooks } from "./vet-books.seed";
+// import { seedVetMagazines } from "./vet-magazines.seed";
+// import { seedInquiries } from "./inquiries.seed";
+// import { seedTips } from "./tips.seed";
+// import { seedCourses } from "./courses.seed";
+// import { seedProducts } from "./products.seed";
+// import { seedWarehouses } from "./warehouses.seed";
+// import { seedPoultryFarms } from "./poultry-farms.seed";
 import { cleanDatabase } from "./helpers";
 
 export async function seedDatabase() {
@@ -113,11 +113,7 @@ export async function seedDatabase() {
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     console.log("📊 Database Statistics:");
     console.log(
-      `  - Total Users: ${
-        userData.regularUsers.length +
-        userData.vets.length +
-        Object.keys(adminData.admins).length
-      }`
+      `  - Total Users: ${userData.regularUsers.length + userData.vets.length + Object.keys(adminData.admins).length}`
     );
     // console.log(`  - Clinics: ${clinicData.length}`);
     // console.log(`  - Vet Stores: ${storeData.length}`);

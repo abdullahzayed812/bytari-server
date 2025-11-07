@@ -1,337 +1,348 @@
-import { z } from 'zod';
-import { publicProcedure, protectedProcedure } from '../../create-context';
+import { z } from "zod";
+import { publicProcedure, protectedProcedure } from "../../create-context";
+import { db } from "../../../db";
+import { courses, courseRegistrations } from "../../../db/schema";
+import { eq, and, or, like, desc, sql, inArray } from "drizzle-orm";
 
 // Schema for course data
 const CourseSchema = z.object({
-  title: z.string().min(1, 'عنوان الدورة مطلوب'),
-  organizer: z.string().min(1, 'اسم المنظم مطلوب'),
-  date: z.string().min(1, 'تاريخ الدورة مطلوب'),
-  location: z.string().min(1, 'مكان الدورة مطلوب'),
-  type: z.enum(['course', 'seminar']),
-  duration: z.string().min(1, 'مدة الدورة مطلوبة'),
-  capacity: z.number().min(1, 'عدد المقاعد يجب أن يكون أكبر من صفر'),
-  price: z.string().min(1, 'سعر الدورة مطلوب'),
-  description: z.string().min(1, 'وصف الدورة مطلوب'),
-  courseUrl: z.string().optional(),
-  registrationType: z.enum(['link', 'internal']),
-  status: z.enum(['active', 'inactive', 'completed']).default('active'),
+  title: z.string().min(1, "عنوان الدورة مطلوب"),
+  organizer: z.string().min(1, "اسم المنظم مطلوب"),
+  date: z.string().min(1, "تاريخ الدورة مطلوب"),
+  location: z.string().min(1, "مكان الدورة مطلوب"),
+  type: z.enum(["course", "seminar"]),
+  duration: z.string().min(1, "مدة الدورة مطلوبة"),
+  capacity: z.number().min(1, "عدد المقاعد يجب أن يكون أكبر من صفر"),
+  price: z.string().min(1, "سعر الدورة مطلوب"),
+  description: z.string().min(1, "وصف الدورة مطلوب"),
+  category: z.string().min(1, "التصنيف مطلوب"),
+  courseUrl: z.string().url("رابط غير صحيح").optional().or(z.literal("")),
+  registrationType: z.enum(["link", "internal"]),
+  status: z.enum(["active", "inactive", "completed"]).default("active"),
+  thumbnailImage: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 const CourseRegistrationSchema = z.object({
-  courseId: z.string().min(1, 'معرف الدورة مطلوب'),
-  courseName: z.string().min(1, 'اسم الدورة مطلوب'),
-  participantName: z.string().min(1, 'اسم المشارك مطلوب'),
-  participantEmail: z.string().email('البريد الإلكتروني غير صحيح'),
-  participantPhone: z.string().min(1, 'رقم الهاتف مطلوب'),
+  userId: z.number(),
+  courseId: z.number().min(1, "معرف الدورة مطلوب"),
+  courseName: z.string().min(1, "اسم الدورة مطلوب"),
+  participantName: z.string().min(1, "اسم المشارك مطلوب"),
+  participantEmail: z.string().email("البريد الإلكتروني غير صحيح"),
+  participantPhone: z.string().min(1, "رقم الهاتف مطلوب"),
 });
-
-// Mock data for development
-const mockCourses = [
-  {
-    id: '1',
-    title: 'دورة الطب البيطري الحديث',
-    organizer: 'الجمعية السعودية للأطباء البيطريين',
-    date: '15 أغسطس 2024',
-    location: 'الرياض - مركز المؤتمرات',
-    type: 'course' as const,
-    duration: '3 أيام',
-    capacity: 50,
-    registered: 35,
-    price: '1500 ريال',
-    description: 'دورة شاملة تغطي أحدث التطورات في مجال الطب البيطري والتقنيات الحديثة',
-    courseUrl: 'https://vetcourse.com/modern-veterinary',
-    registrationType: 'link' as const,
-    status: 'active' as const,
-    createdAt: '2024-07-01',
-  },
-  {
-    id: '2',
-    title: 'ندوة: مستقبل الطب البيطري في المملكة',
-    organizer: 'وزارة البيئة والمياه والزراعة',
-    date: '22 أغسطس 2024',
-    location: 'جدة - فندق الريتز كارلتون',
-    type: 'seminar' as const,
-    duration: 'يوم واحد',
-    capacity: 100,
-    registered: 78,
-    price: 'مجاني',
-    description: 'ندوة تناقش التحديات والفرص في مجال الطب البيطري ودوره في التنمية المستدامة',
-    registrationType: 'internal' as const,
-    status: 'active' as const,
-    createdAt: '2024-07-05',
-  },
-];
-
-const mockRegistrations: Array<{
-  id: string;
-  courseId: string;
-  courseName: string;
-  participantName: string;
-  participantEmail: string;
-  participantPhone: string;
-  registrationDate: string;
-  status: 'pending' | 'approved' | 'rejected';
-}> = [
-  {
-    id: '1',
-    courseId: '2',
-    courseName: 'ندوة: مستقبل الطب البيطري في المملكة',
-    participantName: 'د. أحمد محمد',
-    participantEmail: 'ahmed@example.com',
-    participantPhone: '0501234567',
-    registrationDate: '2024-07-20',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    courseId: '2',
-    courseName: 'ندوة: مستقبل الطب البيطري في المملكة',
-    participantName: 'د. فاطمة علي',
-    participantEmail: 'fatima@example.com',
-    participantPhone: '0507654321',
-    registrationDate: '2024-07-21',
-    status: 'approved',
-  },
-];
 
 // Get all courses
 export const getCoursesListProcedure = publicProcedure
-  .input(z.object({
-    type: z.enum(['all', 'course', 'seminar']).optional().default('all'),
-    status: z.enum(['all', 'active', 'inactive', 'completed']).optional().default('all'),
-    search: z.string().optional(),
-  }))
+  .input(
+    z.object({
+      userId: z.number().optional(), // <-- current logged-in user
+      type: z.enum(["all", "course", "seminar"]).optional().default("all"),
+      status: z.enum(["all", "active", "inactive", "completed"]).optional().default("all"),
+      search: z.string().optional(),
+    })
+  )
   .query(async ({ input }) => {
-    console.log('Getting courses list with filters:', input);
-    
-    let filteredCourses = [...mockCourses];
-    
-    // Filter by type
-    if (input.type !== 'all') {
-      filteredCourses = filteredCourses.filter(course => course.type === input.type);
+    try {
+      const conditions = [];
+
+      if (input.type !== "all") conditions.push(eq(courses.type, input.type));
+      if (input.status !== "all") conditions.push(eq(courses.status, input.status));
+
+      if (input.search) {
+        const searchLower = `%${input.search.toLowerCase()}%`;
+        conditions.push(
+          or(like(sql`LOWER(${courses.title})`, searchLower), like(sql`LOWER(${courses.organizer})`, searchLower))
+        );
+      }
+
+      conditions.push(eq(courses.isPublished, true));
+
+      // Fetch courses
+      const result = await db
+        .select()
+        .from(courses)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(courses.createdAt));
+
+      // If userId is provided, fetch registration status
+      if (input.userId) {
+        const courseIds = result.map((c) => c.id);
+        const registrations = await db
+          .select()
+          .from(courseRegistrations)
+          .where(and(eq(courseRegistrations.userId, input.userId), inArray(courseRegistrations.courseId, courseIds)));
+
+        // Map registration status to each course
+        result.forEach((course) => {
+          const registration = registrations.find((r) => r.courseId === course.id);
+          course.userRegistrationStatus = registration ? registration.status : null;
+        });
+      }
+
+      return { success: true, courses: result, total: result.length };
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      return { success: false, error: "حدث خطأ أثناء جلب الدورات", details: String(error) };
     }
-    
-    // Filter by status
-    if (input.status !== 'all') {
-      filteredCourses = filteredCourses.filter(course => course.status === input.status);
-    }
-    
-    // Filter by search
-    if (input.search) {
-      const searchLower = input.search.toLowerCase();
-      filteredCourses = filteredCourses.filter(course => 
-        course.title.toLowerCase().includes(searchLower) ||
-        course.organizer.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    return {
-      success: true,
-      courses: filteredCourses,
-      total: filteredCourses.length,
-    };
   });
 
 // Get course by ID
-export const getCourseProcedure = publicProcedure
-  .input(z.object({ id: z.string() }))
-  .query(async ({ input }) => {
-    console.log('Getting course by ID:', input.id);
-    
-    const course = mockCourses.find(c => c.id === input.id);
-    
+export const getCourseProcedure = publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+  try {
+    const [course] = await db.select().from(courses).where(eq(courses.id, input.id)).limit(1);
+
     if (!course) {
-      throw new Error('الدورة غير موجودة');
+      return { success: false, error: "الدورة غير موجودة" };
     }
-    
-    return {
-      success: true,
-      course,
-    };
-  });
 
-// Create new course
-export const createCourseProcedure = protectedProcedure
-  .input(CourseSchema)
-  .mutation(async ({ input, ctx }) => {
-    console.log('Creating new course:', input);
-    console.log('User ID:', ctx.userId);
-    
-    // In a real app, you would save to database
-    const newCourse = {
-      id: Date.now().toString(),
-      ...input,
-      registered: 0,
-      createdAt: new Date().toISOString().split('T')[0],
-    } as any;
-    
-    mockCourses.push(newCourse);
-    
-    return {
-      success: true,
-      courseId: newCourse.id,
-      message: 'تم إنشاء الدورة بنجاح',
-    };
-  });
+    await db
+      .update(courses)
+      .set({ viewCount: sql`${courses.viewCount} + 1` })
+      .where(eq(courses.id, input.id));
 
-// Update course
+    return { success: true, course };
+  } catch (error) {
+    console.error("Error fetching course:", error);
+    return { success: false, error: "حدث خطأ أثناء جلب بيانات الدورة", details: String(error) };
+  }
+});
+
+// Create new course (Admin only)
+export const createCourseProcedure = protectedProcedure.input(CourseSchema).mutation(async ({ input, ctx }) => {
+  try {
+    const [newCourse] = await db
+      .insert(courses)
+      .values({
+        ...input,
+        instructorId: ctx?.user?.id,
+        registered: 0,
+        viewCount: 0,
+        isPublished: true,
+        images: input.images || [],
+        tags: input.tags || [],
+      })
+      .returning();
+
+    return { success: true, courseId: newCourse.id, message: "تم إنشاء الدورة بنجاح" };
+  } catch (error) {
+    console.error("Error creating course:", error);
+    return { success: false, error: "حدث خطأ أثناء إنشاء الدورة", details: String(error) };
+  }
+});
+
+// Update course (Admin only)
 export const updateCourseProcedure = protectedProcedure
-  .input(z.object({
-    id: z.string(),
-    data: CourseSchema,
-  }))
-  .mutation(async ({ input, ctx }) => {
-    console.log('Updating course:', input.id, input.data);
-    console.log('User ID:', ctx.userId);
-    
-    const courseIndex = mockCourses.findIndex(c => c.id === input.id);
-    
-    if (courseIndex === -1) {
-      throw new Error('الدورة غير موجودة');
+  .input(z.object({ id: z.number(), data: CourseSchema }))
+  .mutation(async ({ input }) => {
+    try {
+      const [course] = await db.select().from(courses).where(eq(courses.id, input.id)).limit(1);
+
+      if (!course) {
+        return { success: false, error: "الدورة غير موجودة" };
+      }
+
+      await db
+        .update(courses)
+        .set({
+          ...input.data,
+          images: input.data.images || [],
+          tags: input.data.tags || [],
+          updatedAt: new Date(),
+        })
+        .where(eq(courses.id, input.id));
+
+      return { success: true, message: "تم تحديث الدورة بنجاح" };
+    } catch (error) {
+      console.error("Error updating course:", error);
+      return { success: false, error: "حدث خطأ أثناء تحديث الدورة", details: String(error) };
     }
-    
-    // In a real app, you would update in database
-    mockCourses[courseIndex] = {
-      ...mockCourses[courseIndex],
-      ...input.data,
-    } as any;
-    
-    return {
-      success: true,
-      message: 'تم تحديث الدورة بنجاح',
-    };
   });
 
-// Delete course
+// Delete course (Admin only)
 export const deleteCourseProcedure = protectedProcedure
-  .input(z.object({ id: z.string() }))
-  .mutation(async ({ input, ctx }) => {
-    console.log('Deleting course:', input.id);
-    console.log('User ID:', ctx.userId);
-    
-    const courseIndex = mockCourses.findIndex(c => c.id === input.id);
-    
-    if (courseIndex === -1) {
-      throw new Error('الدورة غير موجودة');
+  .input(z.object({ id: z.number() }))
+  .mutation(async ({ input }) => {
+    try {
+      const [course] = await db.select().from(courses).where(eq(courses.id, input.id)).limit(1);
+
+      if (!course) {
+        return { success: false, error: "الدورة غير موجودة" };
+      }
+
+      await db.delete(courses).where(eq(courses.id, input.id));
+
+      return { success: true, message: "تم حذف الدورة بنجاح" };
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      return { success: false, error: "حدث خطأ أثناء حذف الدورة", details: String(error) };
     }
-    
-    // In a real app, you would delete from database
-    mockCourses.splice(courseIndex, 1);
-    
-    return {
-      success: true,
-      message: 'تم حذف الدورة بنجاح',
-    };
   });
 
 // Register for course
 export const registerForCourseProcedure = publicProcedure
   .input(CourseRegistrationSchema)
   .mutation(async ({ input }) => {
-    console.log('Registering for course:', input);
-    
-    const course = mockCourses.find(c => c.id === input.courseId);
-    
-    if (!course) {
-      throw new Error('الدورة غير موجودة');
+    try {
+      const [course] = await db.select().from(courses).where(eq(courses.id, input.courseId)).limit(1);
+
+      if (!course) return { success: false, error: "الدورة غير موجودة" };
+      if (course.registered >= course.capacity) return { success: false, error: "الدورة مكتملة العدد" };
+      if (course.status !== "active") return { success: false, error: "الدورة غير متاحة للتسجيل حالياً" };
+
+      const existing = await db
+        .select()
+        .from(courseRegistrations)
+        .where(
+          and(
+            eq(courseRegistrations.courseId, input.courseId),
+            eq(courseRegistrations.participantEmail, input.participantEmail)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) return { success: false, error: "لقد قمت بالتسجيل في هذه الدورة من قبل" };
+
+      const [newRegistration] = await db
+        .insert(courseRegistrations)
+        .values({ ...input, status: "pending" })
+        .returning();
+
+      return {
+        success: true,
+        registrationId: newRegistration.id,
+        message: "تم تسجيل طلبك بنجاح. سيتم مراجعته من قبل الإدارة.",
+      };
+    } catch (error) {
+      console.error("Error registering for course:", error);
+      return { success: false, error: "حدث خطأ أثناء التسجيل", details: String(error) };
     }
-    
-    if (course.registered >= course.capacity) {
-      throw new Error('الدورة مكتملة العدد');
-    }
-    
-    if (course.status !== 'active') {
-      throw new Error('الدورة غير متاحة للتسجيل حالياً');
-    }
-    
-    // In a real app, you would save to database
-    const newRegistration = {
-      id: Date.now().toString(),
-      ...input,
-      registrationDate: new Date().toISOString().split('T')[0],
-      status: 'pending' as const,
-    };
-    
-    mockRegistrations.push(newRegistration as any);
-    
-    return {
-      success: true,
-      registrationId: newRegistration.id,
-      message: 'تم تسجيل طلبك بنجاح. سيتم مراجعته من قبل الإدارة.',
-    };
   });
 
-// Get course registrations
+// Get course registrations (Admin only)
 export const getCourseRegistrationsProcedure = protectedProcedure
-  .input(z.object({
-    courseId: z.string().optional(),
-    status: z.enum(['all', 'pending', 'approved', 'rejected']).optional().default('all'),
-    search: z.string().optional(),
-  }))
-  .query(async ({ input, ctx }) => {
-    console.log('Getting course registrations:', input);
-    console.log('User ID:', ctx.userId);
-    
-    let filteredRegistrations = [...mockRegistrations];
-    
-    // Filter by course ID
-    if (input.courseId) {
-      filteredRegistrations = filteredRegistrations.filter(reg => reg.courseId === input.courseId);
+  .input(
+    z.object({
+      courseId: z.number().optional(),
+      status: z.enum(["all", "pending", "approved", "rejected"]).optional().default("all"),
+      search: z.string().optional(),
+    })
+  )
+  .query(async ({ input }) => {
+    try {
+      const conditions = [];
+
+      if (input.courseId) conditions.push(eq(courseRegistrations.courseId, input.courseId));
+      if (input.status !== "all") conditions.push(eq(courseRegistrations.status, input.status));
+
+      if (input.search) {
+        const searchLower = `%${input.search.toLowerCase()}%`;
+        conditions.push(
+          or(
+            like(sql`LOWER(${courseRegistrations.participantName})`, searchLower),
+            like(sql`LOWER(${courseRegistrations.courseName})`, searchLower),
+            like(sql`LOWER(${courseRegistrations.participantEmail})`, searchLower)
+          )
+        );
+      }
+
+      const result = await db
+        .select()
+        .from(courseRegistrations)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(courseRegistrations.createdAt));
+
+      return { success: true, registrations: result, total: result.length };
+    } catch (error) {
+      console.error("Error fetching registrations:", error);
+      return { success: false, error: "حدث خطأ أثناء جلب التسجيلات", details: String(error) };
     }
-    
-    // Filter by status
-    if (input.status !== 'all') {
-      filteredRegistrations = filteredRegistrations.filter(reg => reg.status === input.status);
-    }
-    
-    // Filter by search
-    if (input.search) {
-      const searchLower = input.search.toLowerCase();
-      filteredRegistrations = filteredRegistrations.filter(reg => 
-        reg.participantName.toLowerCase().includes(searchLower) ||
-        reg.courseName.toLowerCase().includes(searchLower) ||
-        reg.participantEmail.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    return {
-      success: true,
-      registrations: filteredRegistrations,
-      total: filteredRegistrations.length,
-    };
   });
 
-// Update registration status
-export const updateRegistrationStatusProcedure = protectedProcedure
-  .input(z.object({
-    registrationId: z.string(),
-    status: z.enum(['approved', 'rejected']),
-    notes: z.string().optional(),
-  }))
-  .mutation(async ({ input, ctx }) => {
-    console.log('Updating registration status:', input);
-    console.log('User ID:', ctx.userId);
-    
-    const registrationIndex = mockRegistrations.findIndex(r => r.id === input.registrationId);
-    
-    if (registrationIndex === -1) {
-      throw new Error('التسجيل غير موجود');
-    }
-    
-    // In a real app, you would update in database
-    (mockRegistrations[registrationIndex] as any).status = input.status;
-    
-    // Update course registered count if approved
-    if (input.status === 'approved') {
-      const courseId = mockRegistrations[registrationIndex].courseId;
-      const courseIndex = mockCourses.findIndex(c => c.id === courseId);
-      if (courseIndex !== -1) {
-        mockCourses[courseIndex].registered += 1;
+export const getAllCoursesRegistrationsProcedure = protectedProcedure
+  .input(
+    z.object({
+      status: z.enum(["all", "pending", "approved", "rejected"]).optional().default("all"),
+      search: z.string().optional(),
+    })
+  )
+  .query(async ({ input }) => {
+    try {
+      const conditions = [];
+
+      if (input.status !== "all") conditions.push(eq(courseRegistrations.status, input.status));
+
+      if (input.search) {
+        const searchLower = `%${input.search.toLowerCase()}%`;
+        conditions.push(
+          or(
+            like(sql`LOWER(${courseRegistrations.participantName})`, searchLower),
+            like(sql`LOWER(${courseRegistrations.courseName})`, searchLower),
+            like(sql`LOWER(${courseRegistrations.participantEmail})`, searchLower)
+          )
+        );
       }
+
+      const result = await db
+        .select()
+        .from(courseRegistrations)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(courseRegistrations.createdAt));
+
+      return { success: true, registrations: result, total: result.length };
+    } catch (error) {
+      console.error("Error fetching registrations:", error);
+      return { success: false, error: "حدث خطأ أثناء جلب التسجيلات", details: String(error) };
     }
-    
-    return {
-      success: true,
-      message: `تم ${input.status === 'approved' ? 'قبول' : 'رفض'} التسجيل بنجاح`,
-    };
+  });
+
+// Update registration status (Admin only)
+export const updateRegistrationStatusProcedure = protectedProcedure
+  .input(
+    z.object({
+      registrationId: z.number(),
+      status: z.enum(["approved", "rejected"]),
+      notes: z.string().optional(),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    try {
+      const [registration] = await db
+        .select()
+        .from(courseRegistrations)
+        .where(eq(courseRegistrations.id, input.registrationId))
+        .limit(1);
+
+      if (!registration) return { success: false, error: "التسجيل غير موجود" };
+
+      await db
+        .update(courseRegistrations)
+        .set({
+          status: input.status,
+          notes: input.notes,
+          reviewedBy: ctx?.user?.id,
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(courseRegistrations.id, input.registrationId));
+
+      if (input.status === "approved") {
+        await db
+          .update(courses)
+          .set({
+            registered: sql`${courses.registered} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(courses.id, registration.courseId));
+      }
+
+      return {
+        success: true,
+        message: `تم ${input.status === "approved" ? "قبول" : "رفض"} التسجيل بنجاح`,
+      };
+    } catch (error) {
+      console.error("Error updating registration status:", error);
+      return { success: false, error: "حدث خطأ أثناء تحديث حالة التسجيل", details: String(error) };
+    }
   });

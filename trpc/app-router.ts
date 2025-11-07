@@ -205,6 +205,7 @@ import {
   registerForCourseProcedure,
   getCourseRegistrationsProcedure,
   updateRegistrationStatusProcedure,
+  getAllCoursesRegistrationsProcedure,
 } from "./routes/courses/route";
 
 // Orders routes
@@ -228,6 +229,9 @@ import {
   getAvailableVets,
   getFieldAssignments,
 } from "../trpc/routes/admin/field-assignments/route";
+
+import { hospitalRouter } from "./routes/hospital";
+import { announcementRouter } from "./routes/announcement";
 
 import { contentRouter } from "./routes/content/route";
 
@@ -526,6 +530,7 @@ export const appRouter = createTRPCRouter({
       register: registerForCourseProcedure,
       getRegistrations: getCourseRegistrationsProcedure,
       updateRegistrationStatus: updateRegistrationStatusProcedure,
+      getAllCoursesRegistrations: getAllCoursesRegistrationsProcedure,
     }),
 
     // Notifications management

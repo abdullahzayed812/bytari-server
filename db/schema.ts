@@ -402,42 +402,91 @@ export const tips = pgTable("tips", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// Courses table
+// Enhanced Courses table
 export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
   instructorId: integer("instructor_id").references(() => users.id),
+
+  // Basic Information
   title: text("title").notNull(),
+  organizer: text("organizer").notNull(),
   description: text("description").notNull(),
   content: text("content"),
+
+  // Type and Category
+  type: text("type").notNull(), // 'course' | 'seminar'
   category: text("category").notNull(),
-  level: text("level").notNull(), // 'beginner', 'intermediate', 'advanced'
-  duration: integer("duration"), // in hours
-  price: real("price").default(0),
+
+  // Date and Location
+  date: text("date").notNull(),
+  location: text("location").notNull(),
+  duration: text("duration").notNull(),
+
+  // Capacity and Registration
+  capacity: integer("capacity").notNull(),
+  registered: integer("registered").default(0).notNull(),
+
+  // Pricing
+  price: text("price").notNull(),
+
+  // Registration Type
+  registrationType: text("registration_type").notNull(), // 'link' | 'internal'
+  courseUrl: text("course_url"),
+
+  // Status
+  status: text("status").notNull().default("active"), // 'active' | 'inactive' | 'completed'
+
+  // Additional fields (from old schema)
+  level: text("level"),
   thumbnailImage: text("thumbnail_image"),
   videoUrl: text("video_url"),
-  materials: jsonb("materials"), // JSON data
-  prerequisites: jsonb("prerequisites"), // JSON data
-  isPublished: boolean("is_published").notNull().default(false),
+  images: jsonb("images").default(sql`'[]'::jsonb`),
+  tags: jsonb("tags").default(sql`'[]'::jsonb`),
+  materials: jsonb("materials"),
+  prerequisites: jsonb("prerequisites"),
+
+  // Publishing and Statistics
+  isPublished: boolean("is_published").notNull().default(true),
   enrollmentCount: integer("enrollment_count").default(0),
+  viewCount: integer("view_count").default(0),
   rating: real("rating").default(0),
+
+  // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// Course enrollments table
-export const courseEnrollments = pgTable("course_enrollments", {
+// Course Registrations table
+export const courseRegistrations = pgTable("course_registrations", {
   id: serial("id").primaryKey(),
+
+  // Course Reference
   courseId: integer("course_id")
     .notNull()
-    .references(() => courses.id),
-  userId: integer("user_id")
-    .notNull()
-    .references(() => users.id),
-  status: text("status").notNull().default("enrolled"), // 'enrolled', 'completed', 'cancelled'
-  progress: integer("progress").default(0), // percentage
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-  certificateIssued: boolean("certificate_issued").notNull().default(false),
-  enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull().defaultNow(),
+    .references(() => courses.id, { onDelete: "cascade" }),
+
+  // User Reference (optional for public registrations)
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+
+  // Registration Information
+  courseName: text("course_name").notNull(),
+  participantName: text("participant_name").notNull(),
+  participantEmail: text("participant_email").notNull(),
+  participantPhone: text("participant_phone").notNull(),
+
+  // Status
+  status: text("status").notNull().default("pending"), // 'pending' | 'approved' | 'rejected'
+
+  // Review Information
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+  notes: text("notes"),
+
+  // Timestamps
+  registrationDate: timestamp("registration_date", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Notifications table
@@ -1066,6 +1115,44 @@ export const reminders = pgTable("reminders", {
   priority: text("priority").notNull().default("normal"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hospitals = pgTable("hospitals", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  location: text("location").notNull(),
+  province: text("province").notNull(),
+  phone: text("phone"),
+  workingHours: text("working_hours"),
+  description: text("description"),
+  specialties: jsonb("specialties").$type<string[]>(),
+  image: text("image"),
+  rating: real("rating").default(0),
+  isMain: boolean("is_main").default(false),
+  status: text("status").default('active'), // 'active'/'inactive'
+  followersCount: integer("followers_count").default(0),
+  announcementsCount: integer("announcements_count").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hospitalAnnouncements = pgTable("hospital_announcements", {
+  id: serial("id").primaryKey(),
+  hospitalId: integer("hospital_id").notNull().references(() => hospitals.id),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  type: text("type").notNull().default('announcement'), // 'news', 'announcement', 'event'
+  image: text("image"),
+  scheduledDate: timestamp("scheduled_date", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hospitalFollowers = pgTable("hospital_followers", {
+  id: serial("id").primaryKey(),
+  hospitalId: integer("hospital_id").notNull().references(() => hospitals.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export * from "drizzle-orm";

@@ -206,33 +206,52 @@ CREATE TABLE "consultations" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "course_enrollments" (
+CREATE TABLE  "course_registrations" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"course_id" integer NOT NULL,
-	"user_id" integer NOT NULL,
-	"status" text DEFAULT 'enrolled' NOT NULL,
-	"progress" integer DEFAULT 0,
-	"completed_at" timestamp with time zone,
-	"certificate_issued" boolean DEFAULT false NOT NULL,
-	"enrolled_at" timestamp with time zone DEFAULT now() NOT NULL
+	"user_id" integer,
+	"course_name" text NOT NULL,
+	"participant_name" text NOT NULL,
+	"participant_email" text NOT NULL,
+	"participant_phone" text NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL, -- 'pending' | 'approved' | 'rejected'
+	"reviewed_by" integer,
+	"reviewed_at" timestamp with time zone,
+	"rejection_reason" text,
+	"notes" text,
+	"registration_date" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "courses" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"instructor_id" integer,
 	"title" text NOT NULL,
+	"organizer" text NOT NULL,
 	"description" text NOT NULL,
 	"content" text,
 	"category" text NOT NULL,
-	"level" text NOT NULL,
-	"duration" integer,
-	"price" real DEFAULT 0,
+	"type" text NOT NULL, -- 'course' | 'seminar'
+	"date" text NOT NULL,
+	"location" text NOT NULL,
+	"duration" text NOT NULL,
+	"capacity" integer NOT NULL,
+	"registered" integer DEFAULT 0 NOT NULL,
+	"price" text NOT NULL,
+	"registration_type" text NOT NULL, -- 'link' | 'internal'
+	"course_url" text,
+	"status" text DEFAULT 'active' NOT NULL, -- 'active' | 'inactive' | 'completed'
+	"level" text,
 	"thumbnail_image" text,
 	"video_url" text,
+	"images" jsonb DEFAULT '[]'::jsonb,
+	"tags" jsonb DEFAULT '[]'::jsonb,
 	"materials" jsonb,
 	"prerequisites" jsonb,
-	"is_published" boolean DEFAULT false NOT NULL,
+	"is_published" boolean DEFAULT true NOT NULL,
 	"enrollment_count" integer DEFAULT 0,
+	"view_count" integer DEFAULT 0,
 	"rating" real DEFAULT 0,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -874,9 +893,17 @@ ALTER TABLE "consultation_replies" ADD CONSTRAINT "consultation_replies_consulta
 ALTER TABLE "consultation_replies" ADD CONSTRAINT "consultation_replies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "consultations" ADD CONSTRAINT "consultations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "consultations" ADD CONSTRAINT "consultations_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "course_enrollments" ADD CONSTRAINT "course_enrollments_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "course_enrollments" ADD CONSTRAINT "course_enrollments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "courses" ADD CONSTRAINT "courses_instructor_id_users_id_fk" FOREIGN KEY ("instructor_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_course_id_courses_id_fk" 
+	FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_user_id_users_id_fk" 
+	FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+
+ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_reviewed_by_users_id_fk" 
+	FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE "courses" ADD CONSTRAINT "courses_instructor_id_users_id_fk" 
+	FOREIGN KEY ("instructor_id") REFERENCES "public"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;--> statement-breakpoint
 ALTER TABLE "field_assignments" ADD CONSTRAINT "field_assignments_farm_id_poultry_farms_id_fk" FOREIGN KEY ("farm_id") REFERENCES "public"."poultry_farms"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "field_assignments" ADD CONSTRAINT "field_assignments_veterinarian_id_veterinarians_id_fk" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "field_assignments" ADD CONSTRAINT "field_assignments_supervisor_id_users_id_fk" FOREIGN KEY ("supervisor_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
