@@ -819,6 +819,48 @@ CREATE TABLE "veterinarian_approvals" (
   CONSTRAINT "veterinarian_approvals_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "users"("id")
 );
 
+-- Hospitals table
+CREATE TABLE "hospitals" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"location" text NOT NULL,
+	"province" text NOT NULL,
+	"phone" text,
+	"working_hours" text,
+	"description" text,
+	"specialties" jsonb,
+	"image" text,
+	"rating" real DEFAULT 0,
+	"is_main" boolean DEFAULT false,
+	"status" text DEFAULT 'active',
+	"followers_count" integer DEFAULT 0,
+	"announcements_count" integer DEFAULT 0,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Hospital Announcements table
+CREATE TABLE "hospital_announcements" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"hospital_id" integer NOT NULL,
+	"title" text NOT NULL,
+	"content" text NOT NULL,
+	"type" text NOT NULL DEFAULT 'announcement',
+	"image" text,
+	"scheduled_date" timestamp NOT NULL DEFAULT now(),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Hospital Followers table
+CREATE TABLE "hospital_followers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"hospital_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
 --> statement-breakpoint
 CREATE TABLE clinic_stats (
   id SERIAL PRIMARY KEY,
@@ -901,6 +943,15 @@ ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_user_id_
 
 ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_reviewed_by_users_id_fk" 
 	FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE "hospital_announcements" ADD CONSTRAINT "hospital_announcements_hospital_id_fkey" 
+	FOREIGN KEY ("hospital_id") REFERENCES "hospitals"("id") ON DELETE CASCADE;
+
+ALTER TABLE "hospital_followers" ADD CONSTRAINT "hospital_followers_hospital_id_fkey" 
+	FOREIGN KEY ("hospital_id") REFERENCES "hospitals"("id") ON DELETE CASCADE;
+
+ALTER TABLE "hospital_followers" ADD CONSTRAINT "hospital_followers_user_id_fkey" 
+	FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
 
 ALTER TABLE "courses" ADD CONSTRAINT "courses_instructor_id_users_id_fk" 
 	FOREIGN KEY ("instructor_id") REFERENCES "public"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;--> statement-breakpoint

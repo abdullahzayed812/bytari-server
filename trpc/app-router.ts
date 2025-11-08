@@ -230,8 +230,8 @@ import {
   getFieldAssignments,
 } from "../trpc/routes/admin/field-assignments/route";
 
-import { hospitalRouter } from "./routes/hospital";
-import { announcementRouter } from "./routes/announcement";
+import { hospitalRouter } from "./routes/hospitals/hospital";
+import { announcementRouter } from "./routes/hospitals/announcement";
 
 import { contentRouter } from "./routes/content/route";
 
@@ -557,6 +557,9 @@ export const appRouter = createTRPCRouter({
       getAvailableSupervisors: getAvailableSupervisors,
     }),
   }),
+
+  hospitals: hospitalRouter,
+  announcements: announcementRouter,
 
   // AI auto-reply system
   ai: createTRPCRouter({
