@@ -1,5 +1,17 @@
 import { sql } from "drizzle-orm";
-import { integer, pgTable, text, real, boolean, timestamp, serial, jsonb, decimal, varchar } from "drizzle-orm/pg-core";
+import {
+  integer,
+  pgTable,
+  text,
+  real,
+  boolean,
+  timestamp,
+  serial,
+  jsonb,
+  decimal,
+  varchar,
+  pgEnum,
+} from "drizzle-orm/pg-core";
 
 // Users table
 export const users = pgTable("users", {
@@ -107,23 +119,123 @@ export const appointments = pgTable("appointments", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Adoption pets table
+export const adoptionPets = pgTable("adoption_pets", {
+  id: serial("id").primaryKey(),
+  ownerId: integer("owner_id")
+    .notNull()
+    .references(() => users.id),
+
+  // Pet details
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  breed: text("breed"),
+  age: integer("age"),
+  weight: real("weight"),
+  color: text("color"),
+  gender: text("gender"),
+  image: text("image"),
+
+  // Documents
+  ownershipProof: text("ownership_proof"),
+  veterinaryCertificate: text("veterinary_certificate"),
+
+  // Adoption specific fields
+  description: text("description"),
+  images: jsonb("images"), // JSON array of image URLs
+  contactInfo: text("contact_info"),
+  location: text("location"),
+  price: real("price"),
+  specialRequirements: text("special_requirements"),
+
+  // Status
+  isAvailable: boolean("is_available").notNull().default(false), // False until approved
+  adoptedBy: integer("adopted_by").references(() => users.id),
+  adoptedAt: timestamp("adopted_at", { withTimezone: true }),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Breeding pets table
+export const breedingPets = pgTable("breeding_pets", {
+  id: serial("id").primaryKey(),
+  ownerId: integer("owner_id")
+    .notNull()
+    .references(() => users.id),
+
+  // Pet details
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  breed: text("breed"),
+  age: integer("age"),
+  weight: real("weight"),
+  color: text("color"),
+  gender: text("gender"),
+  image: text("image"),
+
+  // Documents
+  ownershipProof: text("ownership_proof"),
+  veterinaryCertificate: text("veterinary_certificate"),
+
+  // Breeding specific fields
+  description: text("description"),
+  images: jsonb("images"), // JSON array of image URLs
+  contactInfo: text("contact_info"),
+  location: text("location"),
+  price: real("price"),
+  specialRequirements: text("special_requirements"),
+
+  // Breeding details
+  pedigree: text("pedigree"),
+  healthCertificates: jsonb("health_certificates"),
+  breedingHistory: jsonb("breeding_history"),
+
+  // Status
+  isAvailable: boolean("is_available").notNull().default(false), // False until approved
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Lost pets table
 export const lostPets = pgTable("lost_pets", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
-    .notNull()
-    .references(() => pets.id),
-  reporterId: integer("reporter_id")
+  ownerId: integer("owner_id")
     .notNull()
     .references(() => users.id),
+
+  // Pet details
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  breed: text("breed"),
+  age: integer("age"),
+  weight: real("weight"),
+  color: text("color"),
+  gender: text("gender"),
+  image: text("image"),
+
+  // Documents
+  ownershipProof: text("ownership_proof"),
+  veterinaryCertificate: text("veterinary_certificate"),
+
+  // Lost pet specific fields
+  description: text("description"),
+  images: jsonb("images"), // JSON array of image URLs
+  contactInfo: text("contact_info"),
+  location: text("location"),
   lastSeenLocation: text("last_seen_location").notNull(),
   lastSeenDate: timestamp("last_seen_date", { withTimezone: true }).notNull(),
   latitude: real("latitude"),
   longitude: real("longitude"),
-  description: text("description"),
   reward: real("reward"),
-  contactInfo: text("contact_info"),
-  status: text("status").notNull().default("lost"), // 'lost', 'found', 'closed'
+  specialRequirements: text("special_requirements"),
+
+  // Status: 'pending' (waiting approval), 'lost' (approved and still lost), 'found', 'closed'
+  status: text("status").notNull().default("pending"),
+  foundBy: integer("found_by").references(() => users.id),
+  foundAt: timestamp("found_at", { withTimezone: true }),
+
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -755,9 +867,7 @@ export const approvalRequests = pgTable("approval_requests", {
 // Pet approval requests table (for adoption, breeding, missing pets)
 export const petApprovalRequests = pgTable("pet_approval_requests", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
-    .notNull()
-    .references(() => pets.id),
+  petId: integer("pet_id").notNull(),
   ownerId: integer("owner_id")
     .notNull()
     .references(() => users.id),
@@ -1129,7 +1239,7 @@ export const hospitals = pgTable("hospitals", {
   image: text("image"),
   rating: real("rating").default(0),
   isMain: boolean("is_main").default(false),
-  status: text("status").default('active'), // 'active'/'inactive'
+  status: text("status").default("active"), // 'active'/'inactive'
   followersCount: integer("followers_count").default(0),
   announcementsCount: integer("announcements_count").default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1138,10 +1248,12 @@ export const hospitals = pgTable("hospitals", {
 
 export const hospitalAnnouncements = pgTable("hospital_announcements", {
   id: serial("id").primaryKey(),
-  hospitalId: integer("hospital_id").notNull().references(() => hospitals.id),
+  hospitalId: integer("hospital_id")
+    .notNull()
+    .references(() => hospitals.id),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  type: text("type").notNull().default('announcement'), // 'news', 'announcement', 'event'
+  type: text("type").notNull().default("announcement"), // 'news', 'announcement', 'event'
   image: text("image"),
   scheduledDate: timestamp("scheduled_date", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1150,9 +1262,95 @@ export const hospitalAnnouncements = pgTable("hospital_announcements", {
 
 export const hospitalFollowers = pgTable("hospital_followers", {
   id: serial("id").primaryKey(),
-  hospitalId: integer("hospital_id").notNull().references(() => hospitals.id),
-  userId: integer("user_id").notNull().references(() => users.id),
+  hospitalId: integer("hospital_id")
+    .notNull()
+    .references(() => hospitals.id),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const unionRoleEnum = pgEnum("union_role", ["admin", "moderator", "member"]);
+export const unionAnnouncementTypeEnum = pgEnum("union_announcement_type", ["general", "urgent", "event", "meeting"]);
+export const unionBranchRegionEnum = pgEnum("union_branch_region", ["central", "northern", "southern", "kurdistan"]);
+
+export const unionMain = pgTable("union_main", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: text("description"),
+  logoUrl: varchar("logo_url", { length: 1024 }),
+  establishedYear: varchar("established_year", { length: 4 }),
+  memberCount: varchar("member_count", { length: 256 }),
+  phone1: varchar("phone1", { length: 256 }),
+  phone2: varchar("phone2", { length: 256 }),
+  email: varchar("email", { length: 256 }),
+  website: varchar("website", { length: 256 }),
+  address: text("address"),
+  services: jsonb("services"),
+});
+
+export const unionBranches = pgTable("union_branches", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  governorate: varchar("governorate", { length: 256 }),
+  region: unionBranchRegionEnum("region"),
+  address: text("address"),
+  phone: varchar("phone", { length: 256 }),
+  email: varchar("email", { length: 256 }),
+  president: varchar("president", { length: 256 }),
+  membersCount: integer("members_count"),
+  rating: integer("rating"),
+  description: text("description"),
+  establishedYear: integer("established_year"),
+  services: jsonb("services"),
+});
+
+export const unionAnnouncements = pgTable("union_announcements", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 256 }).notNull(),
+  content: text("content").notNull(),
+  branchId: integer("branch_id").references(() => unionBranches.id),
+  mainUnionId: integer("main_union_id").references(() => unionMain.id),
+  type: unionAnnouncementTypeEnum("type").default("general"),
+  isImportant: boolean("is_important").default(false),
+  image: varchar("image", { length: 1024 }),
+  link: varchar("link", { length: 1024 }),
+  linkText: varchar("link_text", { length: 256 }),
+  author: varchar("author", { length: 256 }),
+  views: integer("views").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const unionFollowers = pgTable("union_followers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  branchId: integer("branch_id").references(() => unionBranches.id),
+  mainUnionId: integer("main_union_id").references(() => unionMain.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const unionSettings = pgTable("union_settings", {
+  id: serial("id").primaryKey(),
+  unionName: varchar("union_name", { length: 256 }),
+  unionDescription: text("union_description"),
+  contactEmail: varchar("contact_email", { length: 256 }),
+  contactPhone: varchar("contact_phone", { length: 256 }),
+  isMaintenanceMode: boolean("is_maintenance_mode").default(false),
+  allowRegistration: boolean("allow_registration").default(true),
+  requireApproval: boolean("require_approval").default(true),
+});
+
+export const unionUsers = pgTable("union_users", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  role: unionRoleEnum("role").default("member"),
+  branchId: integer("branch_id").references(() => unionBranches.id),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export * from "drizzle-orm";

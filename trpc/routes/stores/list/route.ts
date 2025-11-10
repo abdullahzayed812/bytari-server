@@ -20,7 +20,7 @@ export const listStoresProcedure = publicProcedure
         stores: rawStores.map((store: any) => ({
           ...store,
           images: store.images ? JSON.parse(store.images) : [],
-          workingHours: store.workingHours ? JSON.parse(store.workingHours) : null,
+          workingHours: store.workingHours,
         })),
       };
     } catch (error) {
@@ -53,7 +53,7 @@ export const listActiveStoresProcedure = publicProcedure
         stores: rawStores.map((store: any) => ({
           ...store,
           images: store.images ? JSON.parse(store.images) : [],
-          workingHours: store.workingHours ? JSON.parse(store.workingHours) : null,
+          workingHours: store.workingHours,
         })),
       };
     } catch (error) {

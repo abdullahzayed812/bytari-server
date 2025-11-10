@@ -16,46 +16,42 @@ const createStoreSchema = z.object({
   licenseNumber: z.string().min(1, "رقم الترخيص مطلوب"),
   licenseImage: z.string().min(1, "صورة الترخيص مطلوبة"),
   images: z.array(z.string()).optional(),
+  adminId: z.number().optional(),
 });
 
-export const createStoreProcedure = protectedProcedure
-  .input(createStoreSchema)
-  .mutation(async ({ input, ctx }) => {
-    try {
-      const userId = ctx.user.id;
+export const createStoreProcedure = protectedProcedure.input(createStoreSchema).mutation(async ({ input, ctx }) => {
+  try {
+    const userId = ctx.user.id;
 
-      // Ensure user exists
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
+    // Ensure user exists
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
-      if (!user) throw new Error("المستخدم غير موجود");
+    if (!user) throw new Error("المستخدم غير موجود");
 
-      // 1️⃣ Create the store record (inactive until approved)
-      const [store] = await db
-        .insert(stores)
-        .values({
-          ownerId: userId,
-          name: input.name,
-          description: input.description,
-          address: input.address,
-          phone: input.phone,
-          email: input.email,
-          category: input.category,
-          latitude: input.latitude,
-          longitude: input.longitude,
-          workingHours: input.workingHours,
-          licenseImage: input.licenseImage,
-          licenseNumber: input.licenseNumber,
-          images: input.images ? JSON.stringify(input.images) : null,
-          subscriptionStatus: "pending",
-          isActive: false,
-          isVerified: false,
-        })
-        .returning();
+    // 1️⃣ Create the store record (inactive until approved)
+    const [store] = await db
+      .insert(stores)
+      .values({
+        ownerId: userId,
+        name: input.name,
+        description: input.description,
+        address: input.address,
+        phone: input.phone,
+        email: input.email,
+        category: input.category,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        workingHours: input.workingHours,
+        licenseImage: input.licenseImage,
+        licenseNumber: input.licenseNumber,
+        images: input.images ? JSON.stringify(input.images) : null,
+        subscriptionStatus: "pending",
+        isActive: input.adminId ? true : false,
+        isVerified: input.adminId ? true : false,
+      })
+      .returning();
 
+    if (!input.adminId) {
       // 2️⃣ Create approval request
       const [approvalRequest] = await db
         .insert(approvalRequests)
@@ -86,15 +82,19 @@ export const createStoreProcedure = protectedProcedure
 
       return {
         success: true,
-        message:
-          "تم إرسال طلب تسجيل المذخر بنجاح. سيتم مراجعته من قبل الإدارة ويتطلب دفع اشتراك شهري 25 دولار.",
+        message: "تم إرسال طلب تسجيل المذخر بنجاح. سيتم مراجعته من قبل الإدارة ويتطلب دفع اشتراك شهري 25 دولار.",
         storeId: store.id,
         requestId: approvalRequest.id,
       };
-    } catch (error) {
-      console.error("❌ Error creating store registration:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "حدث خطأ أثناء تسجيل المذخر"
-      );
     }
-  });
+
+    return {
+      success: true,
+      message: "تم إرسال طلب تسجيل المذخر بنجاح. سيتم مراجعته من قبل الإدارة ويتطلب دفع اشتراك شهري 25 دولار.",
+      storeId: store.id,
+    };
+  } catch (error) {
+    console.error("❌ Error creating store registration:", error);
+    throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء تسجيل المذخر");
+  }
+});

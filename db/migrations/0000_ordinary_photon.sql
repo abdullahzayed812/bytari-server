@@ -314,21 +314,119 @@ CREATE TABLE "inquiry_replies" (
 	"attachments" jsonb,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
---> statement-breakpoint
+-- Adoption Pets Table
+CREATE TABLE "adoption_pets" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "owner_id" integer NOT NULL,
+  
+  -- Pet details
+  "name" text NOT NULL,
+  "type" text NOT NULL,
+  "breed" text,
+  "age" integer,
+  "weight" real,
+  "color" text,
+  "gender" text,
+  "image" text,
+  
+  -- Documents
+  "ownership_proof" text,
+  "veterinary_certificate" text,
+  
+  -- Adoption specific fields
+  "description" text,
+  "images" jsonb,
+  "contact_info" text,
+  "location" text,
+  "price" real,
+  "special_requirements" text,
+  
+  -- Status
+  "is_available" boolean DEFAULT false NOT NULL,
+  "adopted_by" integer,
+  "adopted_at" timestamp with time zone,
+  
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Breeding Pets Table
+CREATE TABLE "breeding_pets" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "owner_id" integer NOT NULL,
+  
+  -- Pet details
+  "name" text NOT NULL,
+  "type" text NOT NULL,
+  "breed" text,
+  "age" integer,
+  "weight" real,
+  "color" text,
+  "gender" text,
+  "image" text,
+  
+  -- Documents
+  "ownership_proof" text,
+  "veterinary_certificate" text,
+  
+  -- Breeding specific fields
+  "description" text,
+  "images" jsonb,
+  "contact_info" text,
+  "location" text,
+  "price" real,
+  "special_requirements" text,
+  
+  -- Breeding details
+  "pedigree" text,
+  "health_certificates" jsonb,
+  "breeding_history" jsonb,
+  
+  -- Status
+  "is_available" boolean DEFAULT false NOT NULL,
+  
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Lost Pets Enhanced Table
 CREATE TABLE "lost_pets" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" integer NOT NULL,
-	"reporter_id" integer NOT NULL,
-	"last_seen_location" text NOT NULL,
-	"last_seen_date" timestamp with time zone NOT NULL,
-	"latitude" real,
-	"longitude" real,
-	"description" text,
-	"reward" real,
-	"contact_info" text,
-	"status" text DEFAULT 'lost' NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+  "id" serial PRIMARY KEY NOT NULL,
+  "owner_id" integer NOT NULL,
+  
+  -- Pet details
+  "name" text NOT NULL,
+  "type" text NOT NULL,
+  "breed" text,
+  "age" integer,
+  "weight" real,
+  "color" text,
+  "gender" text,
+  "image" text,
+  
+  -- Documents
+  "ownership_proof" text,
+  "veterinary_certificate" text,
+  
+  -- Lost pet specific fields
+  "description" text,
+  "images" jsonb,
+  "contact_info" text,
+  "location" text,
+  "last_seen_location" text NOT NULL,
+  "last_seen_date" timestamp with time zone NOT NULL,
+  "latitude" real,
+  "longitude" real,
+  "reward" real,
+  "special_requirements" text,
+  
+  -- Status: 'pending' (waiting approval), 'lost' (approved and still lost), 'found', 'closed'
+  "status" text DEFAULT 'pending' NOT NULL,
+  "found_by" integer,
+  "found_at" timestamp with time zone,
+  
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "notifications" (
@@ -861,6 +959,99 @@ CREATE TABLE "hospital_followers" (
 );
 
 
+-- Union Main table
+CREATE TABLE "union_main" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" varchar(256) NOT NULL,
+	"description" text,
+	"logo_url" varchar(1024),
+	"established_year" varchar(4),
+	"member_count" varchar(256),
+	"phone1" varchar(256),
+	"phone2" varchar(256),
+	"email" varchar(256),
+	"website" varchar(256),
+	"address" text,
+	"services" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Union Branches table
+CREATE TABLE "union_branches" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" varchar(256) NOT NULL,
+	"governorate" varchar(256),
+	"region" text DEFAULT 'central',
+	"address" text,
+	"phone" varchar(256),
+	"email" varchar(256),
+	"president" varchar(256),
+	"members_count" integer DEFAULT 0,
+	"rating" integer DEFAULT 0,
+	"description" text,
+	"established_year" integer,
+	"services" jsonb,
+	"status" text DEFAULT 'active',
+	"followers_count" integer DEFAULT 0,
+	"announcements_count" integer DEFAULT 0,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Union Announcements table
+CREATE TABLE "union_announcements" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"title" varchar(256) NOT NULL,
+	"content" text NOT NULL,
+	"branch_id" integer,
+	"main_union_id" integer,
+	"type" text DEFAULT 'general',
+	"is_important" boolean DEFAULT false,
+	"image" varchar(1024),
+	"link" varchar(1024),
+	"link_text" varchar(256),
+	"author" varchar(256),
+	"views" integer DEFAULT 0,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Union Followers table
+CREATE TABLE "union_followers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"branch_id" integer,
+	"main_union_id" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Union Settings table
+CREATE TABLE "union_settings" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"union_name" varchar(256),
+	"union_description" text,
+	"contact_email" varchar(256),
+	"contact_phone" varchar(256),
+	"is_maintenance_mode" boolean DEFAULT false,
+	"allow_registration" boolean DEFAULT true,
+	"require_approval" boolean DEFAULT true,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Union Users table
+CREATE TABLE "union_users" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"role" text DEFAULT 'member',
+	"branch_id" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+
 --> statement-breakpoint
 CREATE TABLE clinic_stats (
   id SERIAL PRIMARY KEY,
@@ -961,13 +1152,43 @@ ALTER TABLE "field_assignments" ADD CONSTRAINT "field_assignments_supervisor_id_
 ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inquiry_replies" ADD CONSTRAINT "inquiry_replies_inquiry_id_inquiries_id_fk" FOREIGN KEY ("inquiry_id") REFERENCES "public"."inquiries"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inquiry_replies" ADD CONSTRAINT "inquiry_replies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "lost_pets" ADD CONSTRAINT "lost_pets_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "lost_pets" ADD CONSTRAINT "lost_pets_reporter_id_users_id_fk" FOREIGN KEY ("reporter_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+
+-- Add Foreign Key Constraints
+ALTER TABLE "adoption_pets" 
+  ADD CONSTRAINT "adoption_pets_owner_id_fkey" 
+  FOREIGN KEY ("owner_id") 
+  REFERENCES "users"("id") 
+  ON DELETE CASCADE;
+
+ALTER TABLE "adoption_pets" 
+  ADD CONSTRAINT "adoption_pets_adopted_by_fkey" 
+  FOREIGN KEY ("adopted_by") 
+  REFERENCES "users"("id") 
+  ON DELETE SET NULL;
+
+ALTER TABLE "breeding_pets" 
+  ADD CONSTRAINT "breeding_pets_owner_id_fkey" 
+  FOREIGN KEY ("owner_id") 
+  REFERENCES "users"("id") 
+  ON DELETE CASCADE;
+
+ALTER TABLE "lost_pets" 
+  ADD CONSTRAINT "lost_pets_owner_id_fkey" 
+  FOREIGN KEY ("owner_id") 
+  REFERENCES "users"("id") 
+  ON DELETE CASCADE;
+
+ALTER TABLE "lost_pets" 
+  ADD CONSTRAINT "lost_pets_found_by_fkey" 
+  FOREIGN KEY ("found_by") 
+  REFERENCES "users"("id") 
+  ON DELETE SET NULL;
+
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "order_items" ADD CONSTRAINT "order_items_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "order_items" ADD CONSTRAINT "order_items_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "orders" ADD CONSTRAINT "orders_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pet_approval_requests" ADD CONSTRAINT "pet_approval_requests_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+
 ALTER TABLE "pet_approval_requests" ADD CONSTRAINT "pet_approval_requests_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "pet_approval_requests" ADD CONSTRAINT "pet_approval_requests_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "pet_approvals" ADD CONSTRAINT "pet_approvals_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -1055,3 +1276,26 @@ ALTER TABLE "veterinarians" ADD CONSTRAINT "veterinarians_user_id_users_id_fk" F
 ALTER TABLE "veterinarians" ADD CONSTRAINT "veterinarians_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "warehouse_products" ADD CONSTRAINT "warehouse_products_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "warehouses" ADD CONSTRAINT "warehouses_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+
+
+
+ ALTER TABLE "union_announcements" ADD CONSTRAINT "union_announcements_branch_id_fkey" 
+	FOREIGN KEY ("branch_id") REFERENCES "union_branches"("id") ON DELETE CASCADE;
+
+ALTER TABLE "union_announcements" ADD CONSTRAINT "union_announcements_main_union_id_fkey" 
+	FOREIGN KEY ("main_union_id") REFERENCES "union_main"("id") ON DELETE CASCADE;
+
+ALTER TABLE "union_followers" ADD CONSTRAINT "union_followers_user_id_fkey" 
+	FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
+
+ALTER TABLE "union_followers" ADD CONSTRAINT "union_followers_branch_id_fkey" 
+	FOREIGN KEY ("branch_id") REFERENCES "union_branches"("id") ON DELETE CASCADE;
+
+ALTER TABLE "union_followers" ADD CONSTRAINT "union_followers_main_union_id_fkey" 
+	FOREIGN KEY ("main_union_id") REFERENCES "union_main"("id") ON DELETE CASCADE;
+
+ALTER TABLE "union_users" ADD CONSTRAINT "union_users_user_id_fkey" 
+	FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
+
+ALTER TABLE "union_users" ADD CONSTRAINT "union_users_branch_id_fkey" 
+	FOREIGN KEY ("branch_id") REFERENCES "union_branches"("id") ON DELETE CASCADE;

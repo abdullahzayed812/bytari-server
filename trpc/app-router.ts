@@ -2,6 +2,7 @@ import { createTRPCRouter } from "./create-context";
 import hiRoute, { testQuery } from "./routes/example/hi/route";
 import { createUserProcedure } from "./routes/users/create/route";
 import { getUsersProcedure } from "./routes/users/list/route";
+import { unionRouter } from "./routes/union";
 
 // Auth routes
 import {
@@ -43,7 +44,11 @@ import {
   getPetApprovalStatsProcedure,
   getApprovedPetsProcedure,
 } from "./routes/pets/approval/route";
-import { getAllPetsProcedure } from "./routes/pets/get/route";
+import {
+  getAdoptionBreedingPetDetailsProcedure,
+  getAllPetsProcedure,
+  getLostPetDetailsProcedure,
+} from "./routes/pets/get/route";
 import { createAppointmentProcedure } from "./routes/appointments/create/route";
 import { listAppointmentsProcedure } from "./routes/appointments/list/route";
 import { createInquiryProcedure } from "./routes/inquiries/create/route";
@@ -64,6 +69,8 @@ import { listStoresProcedure } from "./routes/stores/list/route";
 import { createProductProcedure } from "./routes/stores/products/create/route";
 import { listProductsProcedure } from "./routes/stores/products/list/route";
 import { getStoreByIdProcedure } from "./routes/stores/getById/route";
+import { updateStoreProcedure } from "./routes/stores/update/route";
+import { deleteStoreProcedure } from "./routes/stores/delete/route";
 
 // Clinic routes
 import {
@@ -144,6 +151,7 @@ import {
   bulkUpdateStoreHomeVisibilityProcedure,
   updateContactInfoProcedure,
   getContactInfoProcedure,
+  deleteVetMagazineProcedure,
 } from "./routes/admin/content/route";
 import {
   getSystemStatsProcedure,
@@ -282,6 +290,8 @@ export const appRouter = createTRPCRouter({
     create: createPetProcedure,
     getUserPets: getUserPetsProcedure,
     getAllForAdmin: getAllPetsForAdminProcedure,
+    getLostPetDetails: getLostPetDetailsProcedure,
+    getAdoptionBreedingPetDetails: getAdoptionBreedingPetDetailsProcedure,
     // Pet approval system
     createApprovalRequest: createPetApprovalProcedure,
     getUserApprovals: getUserPetApprovalsProcedure,
@@ -338,6 +348,8 @@ export const appRouter = createTRPCRouter({
     create: createStoreProcedure,
     list: listStoresProcedure,
     getById: getStoreByIdProcedure,
+    update: updateStoreProcedure,
+    delete: deleteStoreProcedure,
     products: createTRPCRouter({
       create: createProductProcedure,
       list: listProductsProcedure,
@@ -433,6 +445,7 @@ export const appRouter = createTRPCRouter({
       // Magazines
       createMagazine: createVetMagazineProcedure,
       updateMagazine: updateVetMagazineProcedure,
+      deleteMagazine: deleteVetMagazineProcedure,
 
       // Tips
       createTip: createTipProcedure,
@@ -601,6 +614,8 @@ export const appRouter = createTRPCRouter({
     getUnreadCount: getUnreadUserNotificationsCountProcedure,
     create: createUserNotificationProcedure,
   }),
+
+  union: unionRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -60,6 +60,13 @@ export async function cleanDatabase(db: NodePgDatabase<any>) {
     "user_roles",
     "admin_permissions",
     "role_permissions",
+    // Add union tables
+    "union_main",
+    "union_branches",
+    "union_announcements",
+    "union_followers",
+    "union_settings",
+    "union_users",
   ];
 
   try {
