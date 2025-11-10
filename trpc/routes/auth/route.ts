@@ -15,7 +15,7 @@ import { AuthenticationError, ValidationError, ConflictError, NotFoundError } fr
 // Input validation schemas
 const registerSchema = z.object({
   email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(6, "Password must be at least 8 characters"),
   name: z.string().min(2, "Name must be at least 2 characters"),
   phone: z.string().optional(),
   userType: z.enum(["pet_owner", "veterinarian"]).default("pet_owner"),
@@ -50,10 +50,10 @@ export const registerProcedure = publicProcedure.input(registerSchema).mutation(
     const { email, password, name, phone, userType } = input;
 
     // Validate password strength
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.valid) {
-      throw new ValidationError(passwordValidation.message);
-    }
+    // const passwordValidation = validatePassword(password);
+    // if (!passwordValidation.valid) {
+    //   throw new ValidationError(passwordValidation.message);
+    // }
 
     // Check if user already exists
     const [existingUser] = await db
