@@ -55,6 +55,133 @@ export const pets = pgTable("pets", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Medical records table
+export const medicalRecords = pgTable("medical_records", {
+  id: serial("id").primaryKey(),
+  petId: integer("pet_id")
+    .notNull()
+    .references(() => pets.id),
+  clinicId: integer("clinic_id").references(() => clinics.id),
+  veterinarianId: integer("veterinarian_id").references(() => veterinarians.id),
+  diagnosis: text("diagnosis").notNull(),
+  treatment: text("treatment").notNull(),
+  notes: text("notes"),
+  prescriptionImage: text("prescription_image"),
+  date: timestamp("date", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Vaccinations table (structured)
+export const vaccinations = pgTable("vaccinations", {
+  id: serial("id").primaryKey(),
+  petId: integer("pet_id")
+    .notNull()
+    .references(() => pets.id),
+  clinicId: integer("clinic_id").references(() => clinics.id),
+  name: text("name").notNull(),
+  date: timestamp("date", { withTimezone: true }).notNull().defaultNow(),
+  nextDate: timestamp("next_date", { withTimezone: true }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Pet reminders table
+export const petReminders = pgTable("pet_reminders", {
+  id: serial("id").primaryKey(),
+  petId: integer("pet_id")
+    .notNull()
+    .references(() => pets.id),
+  clinicId: integer("clinic_id").references(() => clinics.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  reminderDate: timestamp("reminder_date", { withTimezone: true }).notNull(),
+  reminderType: text("reminder_type").notNull().default("checkup"), // 'vaccination', 'medication', 'checkup', 'other'
+  isCompleted: boolean("is_completed").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Treatment cards table
+export const treatmentCards = pgTable("treatment_cards", {
+  id: serial("id").primaryKey(),
+  petId: integer("pet_id")
+    .notNull()
+    .references(() => pets.id),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id),
+  medications: jsonb("medications").notNull(),
+  instructions: text("instructions"),
+  followUpDate: timestamp("follow_up_date", { withTimezone: true }),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Follow-up requests table
+export const followUpRequests = pgTable("follow_up_requests", {
+  id: serial("id").primaryKey(),
+  petId: integer("pet_id")
+    .notNull()
+    .references(() => pets.id),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id),
+  reason: text("reason").notNull(),
+  notes: text("notes"),
+  urgency: text("urgency").notNull().default("normal"), // 'low', 'normal', 'high'
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Single access request table - replaces the need for multiple request types
+export const clinicAccessRequests = pgTable("clinic_access_requests", {
+  id: serial("id").primaryKey(),
+  petId: integer("pet_id")
+    .notNull()
+    .references(() => pets.id),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id),
+  veterinarianId: integer("veterinarian_id").references(() => veterinarians.id),
+
+  // Simple request
+  reason: text("reason").notNull(),
+
+  // Status and tracking
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  expiresAt: timestamp("expires_at", { withTimezone: true }), // When access will expire
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Simple approved access table
+export const approvedClinicAccess = pgTable("approved_clinic_access", {
+  id: serial("id").primaryKey(),
+  petId: integer("pet_id")
+    .notNull()
+    .references(() => pets.id),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id),
+  requestId: integer("request_id").references(() => clinicAccessRequests.id),
+  grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }), // Access expiration (e.g., 1 year)
+  isActive: boolean("is_active").notNull().default(true),
+  grantedBy: integer("granted_by") // pet owner who granted access
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Veterinarians table
 export const veterinarians = pgTable("veterinarians", {
   id: serial("id").primaryKey(),

@@ -29,7 +29,7 @@ import {
 
 // Admin pet management
 import {
-  getPetProfileProcedure,
+  // getPetProfileProcedure,
   updatePetProfileProcedure,
   deletePetProcedure,
   searchPetsProcedure,
@@ -49,6 +49,29 @@ import {
   getAllPetsProcedure,
   getLostPetDetailsProcedure,
 } from "./routes/pets/get/route";
+
+import {
+  addMedicalRecordProcedure,
+  addReminderProcedure,
+  addVaccinationProcedure,
+  createFollowUpRequestProcedure,
+  createTreatmentCardProcedure,
+  deleteMedicalRecordProcedure,
+  deleteReminderProcedure,
+  deleteVaccinationProcedure,
+  updatePetProcedure,
+  getPetProfileProcedure,
+} from "./routes/pets/medical-records/route";
+
+import {
+  approveClinicAccessProcedure,
+  checkClinicAccessProcedure,
+  getPendingAccessRequestsProcedure,
+  rejectClinicAccessProcedure,
+  requestClinicAccessProcedure,
+  getMyAccessRequestsProcedure,
+} from "./routes/pets/clinic-access/route";
+
 import { createAppointmentProcedure } from "./routes/appointments/create/route";
 import { listAppointmentsProcedure } from "./routes/appointments/list/route";
 import { createInquiryProcedure } from "./routes/inquiries/create/route";
@@ -97,6 +120,7 @@ import { getActiveClinicsListProcedure } from "./routes/clinics/public/route";
 import { getClinicDashboardDataProcedure } from "./routes/clinics/dashboard/route";
 import { getTodayCasesProcedure } from "./routes/clinics/cases/route";
 import { getClinicAnimalsProcedure } from "./routes/clinics/animals/route";
+import { getClinicLatestPetsProcedure } from "./routes/clinics/pets/route";
 
 // Warehouse routes
 import {
@@ -298,15 +322,39 @@ export const appRouter = createTRPCRouter({
   }),
   pets: createTRPCRouter({
     create: createPetProcedure,
+    getProfile: getPetProfileProcedure,
     getUserPets: getUserPetsProcedure,
     getAllForAdmin: getAllPetsForAdminProcedure,
     getLostPetDetails: getLostPetDetailsProcedure,
     getAdoptionBreedingPetDetails: getAdoptionBreedingPetDetailsProcedure,
+
     // Pet approval system
     createApprovalRequest: createPetApprovalProcedure,
     getUserApprovals: getUserPetApprovalsProcedure,
     getApproved: getApprovedPetsProcedure,
     getAllPets: getAllPetsProcedure,
+
+    // getProfile: getPetProfileProcedure,
+    // update: updatePetProcedure,
+
+    // Medical records and vaccinations
+    addMedicalRecord: addMedicalRecordProcedure,
+    addVaccination: addVaccinationProcedure,
+    addReminder: addReminderProcedure,
+    createTreatmentCard: createTreatmentCardProcedure,
+    createFollowUpRequest: createFollowUpRequestProcedure,
+    deleteMedicalRecord: deleteMedicalRecordProcedure,
+    deleteVaccination: deleteVaccinationProcedure,
+    deleteReminder: deleteReminderProcedure,
+
+    getMyAccessRequests: getMyAccessRequestsProcedure,
+
+    // Clinic access
+    requestClinicAccess: requestClinicAccessProcedure,
+    getPendingAccessRequests: getPendingAccessRequestsProcedure,
+    approveClinicAccess: approveClinicAccessProcedure,
+    rejectClinicAccess: rejectClinicAccessProcedure,
+    checkClinicAccess: checkClinicAccessProcedure,
   }),
   poultryFarms: createTRPCRouter({
     getUserFarms: getUserFarmsAssignmentProcedure,
@@ -389,6 +437,7 @@ export const appRouter = createTRPCRouter({
     getDashboardData: getClinicDashboardDataProcedure,
     getTodayCases: getTodayCasesProcedure,
     getClinicAnimals: getClinicAnimalsProcedure,
+    getLatestPets: getClinicLatestPetsProcedure,
     public: createTRPCRouter({
       getPublicClinics: getActiveClinicsListProcedure,
     }),
@@ -508,7 +557,6 @@ export const appRouter = createTRPCRouter({
 
     // Pet management
     pets: createTRPCRouter({
-      getProfile: getPetProfileProcedure,
       updateProfile: updatePetProfileProcedure,
       delete: deletePetProcedure,
       search: searchPetsProcedure,

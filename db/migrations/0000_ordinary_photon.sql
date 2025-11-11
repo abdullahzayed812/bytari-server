@@ -1109,6 +1109,102 @@ CREATE TABLE reminders (
 
 
 
+	-- Medical records table
+CREATE TABLE "medical_records" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pet_id" integer NOT NULL,
+	"clinic_id" integer,
+	"veterinarian_id" integer,
+	"diagnosis" text NOT NULL,
+	"treatment" text NOT NULL,
+	"notes" text,
+	"prescription_image" text,
+	"date" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+-- Vaccinations table
+CREATE TABLE "vaccinations" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pet_id" integer NOT NULL,
+	"clinic_id" integer,
+	"name" text NOT NULL,
+	"date" timestamp with time zone DEFAULT now() NOT NULL,
+	"next_date" timestamp with time zone,
+	"notes" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+-- Pet reminders table
+CREATE TABLE "pet_reminders" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pet_id" integer NOT NULL,
+	"clinic_id" integer,
+	"title" text NOT NULL,
+	"description" text,
+	"reminder_date" timestamp with time zone NOT NULL,
+	"reminder_type" text DEFAULT 'checkup' NOT NULL,
+	"is_completed" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+-- Treatment cards table
+CREATE TABLE "treatment_cards" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pet_id" integer NOT NULL,
+	"clinic_id" integer NOT NULL,
+	"medications" jsonb NOT NULL,
+	"instructions" text,
+	"follow_up_date" timestamp with time zone,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+-- Follow-up requests table
+CREATE TABLE "follow_up_requests" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pet_id" integer NOT NULL,
+	"clinic_id" integer NOT NULL,
+	"reason" text NOT NULL,
+	"notes" text,
+	"urgency" text DEFAULT 'normal' NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Clinic access requests table
+CREATE TABLE "clinic_access_requests" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pet_id" integer NOT NULL,
+	"clinic_id" integer NOT NULL,
+	"veterinarian_id" integer,
+	"reason" text NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"expires_at" timestamp with time zone,
+	"approved_at" timestamp with time zone,
+	"rejected_at" timestamp with time zone,
+	"rejection_reason" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Approved clinic access table
+CREATE TABLE "approved_clinic_access" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pet_id" integer NOT NULL,
+	"clinic_id" integer NOT NULL,
+	"request_id" integer,
+	"granted_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"expires_at" timestamp with time zone,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"granted_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+
 --> statement-breakpoint
 ALTER TABLE "admin_activity_logs" ADD CONSTRAINT "admin_activity_logs_admin_id_users_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "admin_content" ADD CONSTRAINT "admin_content_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -1310,3 +1406,51 @@ ALTER TABLE "union_users" ADD CONSTRAINT "union_users_user_id_fkey"
 
 ALTER TABLE "union_users" ADD CONSTRAINT "union_users_branch_id_fkey" 
 	FOREIGN KEY ("branch_id") REFERENCES "union_branches"("id") ON DELETE CASCADE;
+
+
+
+
+
+
+
+
+
+
+
+
+
+ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_veterinarian_id_veterinarians_id_fk" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE no action ON UPDATE no action;
+
+
+
+ALTER TABLE "vaccinations" ADD CONSTRAINT "vaccinations_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "vaccinations" ADD CONSTRAINT "vaccinations_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
+
+
+
+ALTER TABLE "pet_reminders" ADD CONSTRAINT "pet_reminders_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "pet_reminders" ADD CONSTRAINT "pet_reminders_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
+
+
+
+ALTER TABLE "treatment_cards" ADD CONSTRAINT "treatment_cards_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "treatment_cards" ADD CONSTRAINT "treatment_cards_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
+
+
+
+ALTER TABLE "follow_up_requests" ADD CONSTRAINT "follow_up_requests_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "follow_up_requests" ADD CONSTRAINT "follow_up_requests_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
+
+
+-- Clinic access requests table foreign keys
+ALTER TABLE "clinic_access_requests" ADD CONSTRAINT "clinic_access_requests_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE;
+ALTER TABLE "clinic_access_requests" ADD CONSTRAINT "clinic_access_requests_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE;
+ALTER TABLE "clinic_access_requests" ADD CONSTRAINT "clinic_access_requests_veterinarian_id_veterinarians_id_fk" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE SET NULL;
+
+-- Approved clinic access table foreign keys
+ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE;
+ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE;
+ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_request_id_clinic_access_requests_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."clinic_access_requests"("id") ON DELETE SET NULL;
+ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_granted_by_users_id_fk" FOREIGN KEY ("granted_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
