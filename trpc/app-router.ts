@@ -65,9 +65,19 @@ import { getConsultationDetailsProcedure, getConsultationsListProcedure } from "
 
 // Store routes
 import { createStoreProcedure } from "./routes/stores/create/route";
-import { listStoresProcedure } from "./routes/stores/list/route";
-import { createProductProcedure } from "./routes/stores/products/create/route";
+import {
+  getStoreProcedure,
+  getUserApprovedStoresProcedure,
+  getUserStoresProcedure,
+  listActiveStoresProcedure,
+  listStoresProcedure,
+} from "./routes/stores/list/route";
+import { addStoreProductProcedure } from "./routes/stores/products/create/route";
 import { listProductsProcedure } from "./routes/stores/products/list/route";
+import { updateStoreProductProcedure } from "./routes/stores/products/update/route";
+import { deleteStoreProductProcedure } from "./routes/stores/products/delete/route";
+import { toggleStoreProductVisibilityProcedure } from "./routes/stores/products/toggle/route";
+import { getStoreProductProcedure } from "./routes/stores/products/get/route";
 import { getStoreByIdProcedure } from "./routes/stores/getById/route";
 import { updateStoreProcedure } from "./routes/stores/update/route";
 import { deleteStoreProcedure } from "./routes/stores/delete/route";
@@ -347,13 +357,24 @@ export const appRouter = createTRPCRouter({
   stores: createTRPCRouter({
     create: createStoreProcedure,
     list: listStoresProcedure,
+    listActive: listActiveStoresProcedure,
     getById: getStoreByIdProcedure,
+    getUserApprovedStores: getUserApprovedStoresProcedure,
     update: updateStoreProcedure,
     delete: deleteStoreProcedure,
+
     products: createTRPCRouter({
-      create: createProductProcedure,
+      get: getStoreProductProcedure,
       list: listProductsProcedure,
+      create: addStoreProductProcedure,
+      update: updateStoreProductProcedure,
+      delete: deleteStoreProductProcedure,
+      toggle: toggleStoreProductVisibilityProcedure,
     }),
+
+    getUserStores: getUserStoresProcedure,
+    getStoreDetails: getStoreProcedure,
+    updateWarehouse: updateStoreProcedure,
   }),
 
   // Clinic routes

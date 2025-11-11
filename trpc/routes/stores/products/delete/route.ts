@@ -1,24 +1,24 @@
-import { z } from 'zod';
-import { publicProcedure } from '../../../../../trpc/create-context';
-import { db, storeProducts } from '../../../../../db';
-import { eq } from 'drizzle-orm';
+import { z } from "zod";
+import { publicProcedure } from "../../../../../trpc/create-context";
+import { db, products } from "../../../../../db";
+import { eq } from "drizzle-orm";
 
-export const deleteProductProcedure = publicProcedure
-  .input(z.object({
-    id: z.number()
-  }))
-  .mutation(async ({ input }: { input: { id: number } }) => {
+export const deleteStoreProductProcedure = publicProcedure
+  .input(
+    z.object({
+      productId: z.number(),
+    })
+  )
+  .mutation(async ({ input }) => {
     try {
-      await db
-        .delete(storeProducts)
-        .where(eq(storeProducts.id, input.id));
+      await db.delete(products).where(eq(products.id, input.productId));
 
       return {
         success: true,
-        message: 'تم حذف المنتج بنجاح'
+        message: "تم حذف المنتج بنجاح",
       };
     } catch (error) {
-      console.error('Error deleting product:', error);
-      throw new Error('حدث خطأ أثناء حذف المنتج');
+      console.error("Error deleting product:", error);
+      throw new Error("حدث خطأ أثناء حذف المنتج");
     }
   });

@@ -1,29 +1,30 @@
-import { z } from 'zod';
-import { publicProcedure } from '../../../../create-context';
-import { db, storeProducts } from '../../../../../db';
-import { eq } from 'drizzle-orm';
+import { z } from "zod";
+import { publicProcedure } from "../../../../create-context";
+import { db, products } from "../../../../../db";
+import { eq } from "drizzle-orm";
 
 export const listProductsProcedure = publicProcedure
-  .input(z.object({
-    storeId: z.number()
-  }))
-  .query(async ({ input }: { input: { storeId: number } }) => {
+  .input(
+    z.object({
+      storeId: z.number().optional(),
+    })
+  )
+  .query(async ({ input }: { input: { storeId?: number } }) => {
     try {
-      const products = await db
-        .select()
-        .from(storeProducts)
-        .where(eq(storeProducts.storeId, input.storeId));
+      let query = db.select().from(products);
+
+      if (input.storeId !== undefined) {
+        query = query.where(eq(products.storeId, input.storeId));
+      }
+
+      const allProducts = await query;
 
       return {
         success: true,
-        products: products.map((product: any) => ({
-          ...product,
-          images: product.images ? JSON.parse(product.images) : [],
-          expiryDate: product.expiryDate ? new Date(product.expiryDate as number * 1000) : null,
-        }))
+        products: allProducts,
       };
     } catch (error) {
-      console.error('Error fetching products:', error);
-      throw new Error('حدث خطأ أثناء جلب المنتجات');
+      console.error("Error fetching products:", error);
+      throw new Error("حدث خطأ أثناء جلب المنتجات");
     }
   });

@@ -606,6 +606,7 @@ CREATE TABLE "poultry_batches" (
 --> statement-breakpoint
 CREATE TABLE "products" (
 	"id" serial PRIMARY KEY NOT NULL,
+	"store_id" integer NOT NULL,
 	"name" text NOT NULL,
 	"description" text,
 	"price" real NOT NULL,
@@ -631,13 +632,20 @@ CREATE TABLE "role_permissions" (
 );
 --> statement-breakpoint
 CREATE TABLE "store_products" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"store_id" integer NOT NULL,
-	"product_id" integer NOT NULL,
-	"store_price" real NOT NULL,
-	"store_stock" integer DEFAULT 0,
-	"is_available" boolean DEFAULT true NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "store_id" integer NOT NULL,
+    "name" text NOT NULL,
+    "description" text,
+    "category" text NOT NULL,
+    "store_price" real NOT NULL,
+    "store_stock" integer DEFAULT 0,
+		"in_stock" boolean,
+    "image" text,
+    "is_available" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+
 --> statement-breakpoint
 CREATE TABLE "stores" (
 	"id" serial PRIMARY KEY NOT NULL,
@@ -1255,7 +1263,10 @@ ALTER TABLE "poultry_batches"
 ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_role_id_admin_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."admin_roles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_permission_id_admin_permissions_id_fk" FOREIGN KEY ("permission_id") REFERENCES "public"."admin_permissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "store_products" ADD CONSTRAINT "store_products_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "store_products" ADD CONSTRAINT "store_products_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+
+ALTER TABLE "products" ADD CONSTRAINT "products_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+
+
 ALTER TABLE "stores" ADD CONSTRAINT "stores_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vet_stores"
   ADD CONSTRAINT "vet_stores_owner_id_users_id_fk"

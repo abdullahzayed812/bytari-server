@@ -27,11 +27,7 @@ export const createClinicProcedure = protectedProcedure
       const userId = ctx.user.id;
 
       // 🧩 Ensure user exists
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
       if (!user) throw new Error("المستخدم غير موجود");
 
@@ -45,9 +41,7 @@ export const createClinicProcedure = protectedProcedure
           email: input.email,
           latitude: input.latitude,
           longitude: input.longitude,
-          workingHours: input.workingHours
-            ? JSON.stringify(input.workingHours)
-            : null,
+          workingHours: input.workingHours ? JSON.stringify(input.workingHours) : null,
           services: input.services ? JSON.stringify(input.services) : null,
           images: input.images ? JSON.stringify(input.images) : null,
           description: input.description,
@@ -67,9 +61,7 @@ export const createClinicProcedure = protectedProcedure
           documents: JSON.stringify(["clinic_registration_form.pdf"]), // optional static or dynamic
           licenseImages: JSON.stringify(input.licenseImages),
           identityImages: JSON.stringify(input.identityImages),
-          officialDocuments: input.officialDocuments
-            ? JSON.stringify(input.officialDocuments)
-            : null,
+          officialDocuments: input.officialDocuments ? JSON.stringify(input.officialDocuments) : null,
 
           paymentStatus: "not_required", // default for now
           paymentAmount: null,
@@ -87,16 +79,13 @@ export const createClinicProcedure = protectedProcedure
 
       return {
         success: true,
-        message:
-          "تم إرسال طلب تسجيل العيادة بنجاح. سيتم مراجعته من قبل الإدارة.",
+        message: "تم إرسال طلب تسجيل العيادة بنجاح. سيتم مراجعته من قبل الإدارة.",
         clinicId: clinic.id,
         requestId: approvalRequest.id,
       };
     } catch (error) {
       console.error("❌ Error creating clinic registration:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "حدث خطأ أثناء تسجيل العيادة"
-      );
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء تسجيل العيادة");
     }
   });
 

@@ -1,54 +1,46 @@
-import { z } from 'zod';
-import { publicProcedure } from '../../../../../trpc/create-context';
-import { db, storeProducts } from '../../../../../db';
+import { z } from "zod";
+import { publicProcedure } from "../../../../../trpc/create-context";
+import { db, products } from "../../../../../db";
 
-const createProductSchema = z.object({
-  storeId: z.number(),
-  name: z.string().min(1, 'اسم المنتج مطلوب'),
-  description: z.string().optional(),
-  category: z.enum(['medicine', 'equipment', 'supplements', 'tools', 'surgical', 'diagnostic', 'vaccines', 'poultry', 'food', 'accessories', 'toys', 'grooming']),
-  price: z.number().min(0, 'السعر يجب أن يكون أكبر من صفر'),
-  discountPrice: z.number().optional(),
-  images: z.array(z.string()).optional(),
-  stock: z.number().min(0, 'الكمية يجب أن تكون أكبر من صفر'),
-  brand: z.string().optional(),
-  expiryDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
-  batchNumber: z.string().optional(),
-  isFeatured: z.boolean().optional(),
-});
-
-export const createProductProcedure = publicProcedure
-  .input(createProductSchema)
-  .mutation(async ({ input }: { input: z.infer<typeof createProductSchema> }) => {
+export const addStoreProductProcedure = publicProcedure
+  .input(
+    z.object({
+      storeId: z.number(),
+      name: z.string().min(1),
+      description: z.string().optional(),
+      price: z.number().positive(),
+      quantity: z.number().int().min(0),
+      category: z.string(),
+      brand: z.string().optional(),
+      images: z.array(z.string().url()).optional(),
+      inStock: z.boolean().default(true),
+    })
+  )
+  .mutation(async ({ input }) => {
     try {
-      const productData: any = {
-        storeId: input.storeId,
-        name: input.name,
-        description: input.description,
-        category: input.category,
-        price: input.price,
-        discountPrice: input.discountPrice,
-        images: input.images ? JSON.stringify(input.images) : null,
-        stock: input.stock,
-        brand: input.brand,
-        batchNumber: input.batchNumber,
-        isFeatured: input.isFeatured || false,
-        isActive: true,
-      };
-      
-      if (input.expiryDate) {
-        productData.expiryDate = Math.floor(input.expiryDate.getTime() / 1000);
-      }
-      
-      const [product] = await db.insert(storeProducts).values(productData).returning();
+      const [newProduct] = await db
+        .insert(products)
+        .values({
+          storeId: input.storeId,
+          name: input.name,
+          description: input.description || null,
+          price: input.price,
+          category: input.category,
+          brand: input.brand || null,
+          images: input.images || [],
+          stockQuantity: input.quantity,
+          inStock: input.quantity > 0,
+          isActive: input.inStock,
+          updatedAt: new Date(),
+        })
+        .returning();
 
       return {
         success: true,
-        product,
-        message: 'تم إضافة المنتج بنجاح'
+        product: newProduct,
       };
     } catch (error) {
-      console.error('Error creating product:', error);
-      throw new Error('حدث خطأ أثناء إضافة المنتج');
+      console.error("Error adding product:", error);
+      throw new Error("حدث خطأ أثناء إضافة المنتج");
     }
   });

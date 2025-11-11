@@ -6,12 +6,12 @@ import {
   pets,
   inquiries,
   consultations,
-  vetStores,
-  storeProducts,
   approvalRequests,
   petApprovalRequests,
   veterinarians,
   assignmentRequests,
+  products,
+  stores,
 } from "../../../../db";
 import { count, eq } from "drizzle-orm";
 
@@ -28,8 +28,8 @@ export const getSystemStatsProcedure = publicProcedure
       const [petsCount] = await db.select({ count: count() }).from(pets);
       const [inquiriesCount] = await db.select({ count: count() }).from(inquiries);
       const [consultationsCount] = await db.select({ count: count() }).from(consultations);
-      const [storesCount] = await db.select({ count: count() }).from(vetStores);
-      const [productsCount] = await db.select({ count: count() }).from(storeProducts);
+      const [storesCount] = await db.select({ count: count() }).from(stores);
+      const [productsCount] = await db.select({ count: count() }).from(products);
 
       // Get pending approval counts
       const [pendingApprovalsCount] = await db
@@ -191,7 +191,7 @@ export const getDetailedStatsProcedure = publicProcedure
             };
 
           case "stores":
-            const allStores = await db.select().from(vetStores).limit(100);
+            const allStores = await db.select().from(stores).limit(100);
             return {
               data: allStores,
               total: allStores.length,

@@ -3,47 +3,42 @@ import { publicProcedure } from "../../../create-context";
 import { db, stores, vetStores } from "../../../../db";
 import { eq } from "drizzle-orm";
 
-const updateStoreSchema = z.object({
-  id: z.number(),
-  name: z.string().min(1, "اسم المتجر مطلوب").optional(),
-  description: z.string().optional(),
-  address: z.string().min(1, "العنوان مطلوب").optional(),
-  phone: z.string().optional(),
-  email: z.string().email("البريد الإلكتروني غير صحيح").optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  workingHours: z.string().optional(),
-  images: z.array(z.string()).optional(),
-  licenseImage: z.string().optional(),
-  licenseNumber: z.string().optional(),
-  isActive: z.boolean().optional(),
-});
-
+// Update store details
 export const updateStoreProcedure = publicProcedure
-  .input(updateStoreSchema)
-  .mutation(async ({ input }: { input: z.infer<typeof updateStoreSchema> }) => {
+  .input(
+    z.object({
+      storeId: z.number(),
+      name: z.string().min(1).optional(),
+      description: z.string().optional(),
+      address: z.string().optional(),
+      phone: z.string().optional(),
+      email: z.string().email().optional(),
+      images: z.array(z.string()).optional(),
+      workingHours: z.any().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
     try {
-      const { id, ...updateData } = input;
+      const { storeId, images, workingHours, ...updateData } = input;
 
-      const storeData: any = {
-        ...updateData,
-        workingHours: updateData.workingHours,
-        images: updateData.images ? JSON.stringify(updateData.images) : undefined,
-      };
-
-      // Remove undefined values
-      Object.keys(storeData).forEach((key) => {
-        if (storeData[key] === undefined) {
-          delete storeData[key];
-        }
-      });
-
-      const [updatedStore] = await db.update(stores).set(storeData).where(eq(stores.id, id)).returning();
+      const [updatedStore] = await db
+        .update(stores)
+        .set({
+          ...updateData,
+          ...(images && { images: JSON.stringify(images) }),
+          ...(workingHours && { workingHours: JSON.stringify(workingHours) }),
+          updatedAt: Math.floor(Date.now() / 1000),
+        })
+        .where(eq(stores.id, storeId))
+        .returning();
 
       return {
         success: true,
-        store: updatedStore,
-        message: "تم تحديث المتجر بنجاح",
+        store: {
+          ...updatedStore,
+          images: updatedStore.images ? JSON.parse(updatedStore.images) : [],
+          workingHours: updatedStore.workingHours ? JSON.parse(updatedStore.workingHours) : null,
+        },
       };
     } catch (error) {
       console.error("Error updating store:", error);

@@ -8,7 +8,7 @@ import {
   users,
   veterinarians,
   clinics,
-  vetStores,
+  stores,
 } from "../../../../db";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -18,14 +18,7 @@ export const getPendingApprovalsProcedure = publicProcedure
     z.object({
       adminId: z.number(),
       type: z
-        .enum([
-          "all",
-          "vet_registration",
-          "clinic_activation",
-          "store_activation",
-          "clinic_renewal",
-          "store_renewal",
-        ])
+        .enum(["all", "vet_registration", "clinic_activation", "store_activation", "clinic_renewal", "store_renewal"])
         .optional(),
     })
   )
@@ -61,11 +54,7 @@ export const getPendingApprovalsProcedure = publicProcedure
         .where(eq(approvalRequests.status, "pending"))
         .orderBy(desc(approvalRequests.createdAt));
 
-      if (
-        input.type &&
-        input.type !== "all" &&
-        !input.type.includes("renewal")
-      ) {
+      if (input.type && input.type !== "all" && !input.type.includes("renewal")) {
         const requests = await db
           .select({
             id: approvalRequests.id,
@@ -92,12 +81,7 @@ export const getPendingApprovalsProcedure = publicProcedure
           })
           .from(approvalRequests)
           .innerJoin(users, eq(approvalRequests.requesterId, users.id))
-          .where(
-            and(
-              eq(approvalRequests.status, "pending"),
-              eq(approvalRequests.requestType, input.type)
-            )
-          )
+          .where(and(eq(approvalRequests.status, "pending"), eq(approvalRequests.requestType, input.type)))
           .orderBy(desc(approvalRequests.createdAt));
 
         return { success: true, approvals: requests };
@@ -131,21 +115,13 @@ export const getPendingApprovalsProcedure = publicProcedure
       let allRequests: ApprovalRequest[] = [];
 
       // Get regular approval requests
-      if (
-        !input.type ||
-        input.type === "all" ||
-        !input.type.includes("renewal")
-      ) {
+      if (!input.type || input.type === "all" || !input.type.includes("renewal")) {
         const regularRequests = await approvalQuery;
         allRequests = [...allRequests, ...regularRequests];
       }
 
       // Get clinics that need renewal
-      if (
-        !input.type ||
-        input.type === "all" ||
-        input.type === "clinic_renewal"
-      ) {
+      if (!input.type || input.type === "all" || input.type === "clinic_renewal") {
         const expiredClinics = await db
           .select({
             id: clinics.id,
@@ -157,9 +133,7 @@ export const getPendingApprovalsProcedure = publicProcedure
           })
           .from(clinics)
           .innerJoin(users, eq(clinics.id, users.id)) // Assuming clinic owner relationship
-          .where(
-            and(eq(clinics.needsRenewal, true), eq(clinics.isActive, false))
-          );
+          .where(and(eq(clinics.needsRenewal, true), eq(clinics.isActive, false)));
 
         const renewalRequests = expiredClinics.map((clinic) => ({
           id: clinic.id + 10000, // Offset to avoid ID conflicts
@@ -168,9 +142,7 @@ export const getPendingApprovalsProcedure = publicProcedure
           resourceId: clinic.id,
           title: `طلب تجديد اشتراك عيادة ${clinic.name}`,
           description: `انتهت صلاحية تفعيل العيادة في ${
-            clinic.activationEndDate
-              ? new Date(clinic.activationEndDate).toLocaleDateString("ar-SA")
-              : "غير محدد"
+            clinic.activationEndDate ? new Date(clinic.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
           }`,
           documents: null,
           licenseImages: null,
@@ -193,25 +165,19 @@ export const getPendingApprovalsProcedure = publicProcedure
       }
 
       // Get stores that need renewal
-      if (
-        !input.type ||
-        input.type === "all" ||
-        input.type === "store_renewal"
-      ) {
+      if (!input.type || input.type === "all" || input.type === "store_renewal") {
         const expiredStores = await db
           .select({
-            id: vetStores.id,
-            name: vetStores.name,
-            activationEndDate: vetStores.activationEndDate,
-            ownerId: vetStores.ownerId,
+            id: stores.id,
+            name: stores.name,
+            activationEndDate: stores.activationEndDate,
+            ownerId: stores.ownerId,
             ownerName: users.name,
             ownerEmail: users.email,
           })
-          .from(vetStores)
-          .innerJoin(users, eq(vetStores.ownerId, users.id))
-          .where(
-            and(eq(vetStores.needsRenewal, true), eq(vetStores.isActive, false))
-          );
+          .from(stores)
+          .innerJoin(users, eq(stores.ownerId, users.id))
+          .where(and(eq(stores.needsRenewal, true), eq(stores.isActive, false)));
 
         const renewalRequests = expiredStores.map((store) => ({
           id: store.id + 20000, // Offset to avoid ID conflicts
@@ -220,9 +186,7 @@ export const getPendingApprovalsProcedure = publicProcedure
           resourceId: store.id,
           title: `طلب تجديد اشتراك مخزن ${store.name}`,
           description: `انتهت صلاحية تفعيل المخزن في ${
-            store.activationEndDate
-              ? new Date(store.activationEndDate).toLocaleDateString("ar-SA")
-              : "غير محدد"
+            store.activationEndDate ? new Date(store.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
           }`,
           documents: null,
           licenseImages: null,
@@ -245,10 +209,7 @@ export const getPendingApprovalsProcedure = publicProcedure
       }
 
       // Sort by creation date (most recent first)
-      allRequests.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      allRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       return { success: true, approvals: allRequests };
     } catch (error) {
@@ -304,25 +265,13 @@ export const getApprovalDetailsProcedure = publicProcedure
       // Get additional resource details based on type
       let resourceDetails = null;
       if (request.requestType === "vet_registration") {
-        const [vet] = await db
-          .select()
-          .from(veterinarians)
-          .where(eq(veterinarians.id, request.resourceId))
-          .limit(1);
+        const [vet] = await db.select().from(veterinarians).where(eq(veterinarians.id, request.resourceId)).limit(1);
         resourceDetails = vet;
       } else if (request.requestType === "clinic_activation") {
-        const [clinic] = await db
-          .select()
-          .from(clinics)
-          .where(eq(clinics.id, request.resourceId))
-          .limit(1);
+        const [clinic] = await db.select().from(clinics).where(eq(clinics.id, request.resourceId)).limit(1);
         resourceDetails = clinic;
       } else if (request.requestType === "store_activation") {
-        const [store] = await db
-          .select()
-          .from(vetStores)
-          .where(eq(vetStores.id, request.resourceId))
-          .limit(1);
+        const [store] = await db.select().from(stores).where(eq(stores.id, request.resourceId)).limit(1);
         resourceDetails = store;
       }
 
@@ -356,45 +305,6 @@ export const approveRequestProcedure = publicProcedure
       let requesterId = 0;
       let title = "";
 
-      // if (isRenewalRequest) {
-      //   // Handle renewal requests
-      //   if (input.requestId > 20000) {
-      //     // Store renewal
-      //     resourceId = input.requestId - 20000;
-      //     const [store] = await db
-      //       .select({
-      //         id: vetStores.id,
-      //         name: vetStores.name,
-      //         ownerId: vetStores.ownerId,
-      //       })
-      //       .from(vetStores)
-      //       .where(eq(vetStores.id, resourceId))
-      //       .limit(1);
-
-      //     if (!store) throw new Error("Store not found");
-
-      //     requestType = "store_renewal";
-      //     requesterId = store.ownerId;
-      //     title = `طلب تجديد اشتراك مخزن ${store.name}`;
-      //   } else {
-      //     // Clinic renewal
-      //     resourceId = input.requestId - 10000;
-      //     const [clinic] = await db
-      //       .select({
-      //         id: clinics.id,
-      //         name: clinics.name,
-      //       })
-      //       .from(clinics)
-      //       .where(eq(clinics.id, resourceId))
-      //       .limit(1);
-
-      //     if (!clinic) throw new Error("Clinic not found");
-
-      //     requestType = "clinic_renewal";
-      //     requesterId = 1; // Assuming clinic owner relationship
-      //     title = `طلب تجديد اشتراك عيادة ${clinic.name}`;
-      //   }
-      // } else {
       // Handle regular approval requests
       const [regularRequest] = await db
         .select()
@@ -428,25 +338,14 @@ export const approveRequestProcedure = publicProcedure
       // Calculate activation dates
 
       const startDate = input.activationStartDate || new Date();
-      const endDate =
-        input.activationEndDate ||
-        new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year from now
+      const endDate = input.activationEndDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year from now
 
       // Activate the resource based on type
       if (requestType === "vet_registration") {
-        await db
-          .update(veterinarians)
-          .set({ isVerified: true })
-          .where(eq(veterinarians.id, resourceId));
+        await db.update(veterinarians).set({ isVerified: true }).where(eq(veterinarians.id, resourceId));
 
-        await db
-          .update(users)
-          .set({ isActive: true })
-          .where(eq(users.id, requesterId));
-      } else if (
-        requestType === "clinic_activation" ||
-        requestType === "clinic_renewal"
-      ) {
+        await db.update(users).set({ isActive: true }).where(eq(users.id, requesterId));
+      } else if (requestType === "clinic_activation" || requestType === "clinic_renewal") {
         await db
           .update(clinics)
           .set({
@@ -456,12 +355,9 @@ export const approveRequestProcedure = publicProcedure
             needsRenewal: false,
           })
           .where(eq(clinics.id, resourceId));
-      } else if (
-        requestType === "store_activation" ||
-        requestType === "store_renewal"
-      ) {
+      } else if (requestType === "store_activation" || requestType === "store_renewal") {
         await db
-          .update(vetStores)
+          .update(stores)
           .set({
             isVerified: true,
             isActive: true,
@@ -470,7 +366,7 @@ export const approveRequestProcedure = publicProcedure
             activationEndDate: endDate,
             needsRenewal: false,
           })
-          .where(eq(vetStores.id, resourceId));
+          .where(eq(stores.id, resourceId));
       }
 
       // Send notification to the requester
@@ -478,9 +374,7 @@ export const approveRequestProcedure = publicProcedure
         recipientId: requesterId,
         type: "approval_request",
         title: isRenewalRequest ? "تم تجديد اشتراكك" : "تم قبول طلبك",
-        content: `تم ${
-          isRenewalRequest ? "تجديد" : "قبول"
-        } ${title} بنجاح. صالح من ${startDate.toLocaleDateString(
+        content: `تم ${isRenewalRequest ? "تجديد" : "قبول"} ${title} بنجاح. صالح من ${startDate.toLocaleDateString(
           "ar-SA"
         )} إلى ${endDate.toLocaleDateString("ar-SA")}.`,
         relatedResourceType: "approval_request",
@@ -488,14 +382,13 @@ export const approveRequestProcedure = publicProcedure
         priority: "normal",
       });
 
-      return { success: true };
+      return { success: true, requestType };
     } catch (error) {
       console.error("Error approving request:", error);
       throw new Error("Failed to approve request");
     }
   });
 
-// Reject request
 // Reject request
 export const rejectRequestProcedure = publicProcedure
   .input(
@@ -509,113 +402,30 @@ export const rejectRequestProcedure = publicProcedure
   .mutation(async ({ input }) => {
     try {
       const isRenewalRequest = input.requestId > 10000;
+      let request: any = null;
+      let requestType = "";
+      let resourceId = 0;
+      let requesterId = 0;
+      let title = "";
 
-      if (isRenewalRequest) {
-        // Handle renewal requests rejection
-        let resourceId = 0;
-        let resourceName = "";
-        let ownerId = 0;
-        let requestType = "";
-
-        if (input.requestId > 20000) {
-          // Store renewal rejection
-          resourceId = input.requestId - 20000;
-          const [store] = await db
-            .select({
-              id: vetStores.id,
-              name: vetStores.name,
-              ownerId: vetStores.ownerId,
-            })
-            .from(vetStores)
-            .where(eq(vetStores.id, resourceId))
-            .limit(1);
-
-          if (!store) throw new Error("Store not found");
-
-          resourceName = store.name;
-          ownerId = store.ownerId;
-          requestType = "store_renewal";
-
-          // Mark as no longer needing renewal (admin rejected it)
-          await db
-            .update(vetStores)
-            .set({
-              needsRenewal: false,
-              updatedAt: new Date(),
-            })
-            .where(eq(vetStores.id, resourceId));
-        } else {
-          // Clinic renewal rejection
-          resourceId = input.requestId - 10000;
-          const [clinic] = await db
-            .select({
-              id: clinics.id,
-              name: clinics.name,
-            })
-            .from(clinics)
-            .where(eq(clinics.id, resourceId))
-            .limit(1);
-
-          if (!clinic) throw new Error("Clinic not found");
-
-          resourceName = clinic.name;
-          // Get clinic owner - you need to fix this relationship
-          // For now, using a placeholder
-          const [clinicOwner] = await db
-            .select({ ownerId: users.id })
-            .from(users)
-            .limit(1); // TODO: Fix this to get actual clinic owner
-
-          ownerId = clinicOwner?.ownerId || 1;
-          requestType = "clinic_renewal";
-
-          // Mark as no longer needing renewal (admin rejected it)
-          await db
-            .update(clinics)
-            .set({
-              needsRenewal: false,
-              updatedAt: new Date(),
-            })
-            .where(eq(clinics.id, resourceId));
-        }
-
-        // Send notification to owner
-        await db.insert(adminNotifications).values({
-          recipientId: ownerId,
-          type: "approval_request",
-          title: "تم رفض طلب التجديد",
-          content: `تم رفض طلب تجديد ${
-            requestType === "store_renewal" ? "المتجر" : "العيادة"
-          } ${resourceName}. السبب: ${input.rejectionReason}`,
-          relatedResourceType:
-            requestType === "store_renewal" ? "store" : "clinic",
-          relatedResourceId: resourceId,
-          priority: "high",
-        });
-
-        return { success: true };
-      }
-
-      // Handle regular approval requests rejection
-      const [request] = await db
-        .select({
-          id: approvalRequests.id,
-          requestType: approvalRequests.requestType,
-          requesterId: approvalRequests.requesterId,
-          title: approvalRequests.title,
-          requesterName: users.name,
-          requesterEmail: users.email,
-        })
+      // Fetch the request (same as approve)
+      const [regularRequest] = await db
+        .select()
         .from(approvalRequests)
-        .leftJoin(users, eq(approvalRequests.requesterId, users.id))
         .where(eq(approvalRequests.id, input.requestId))
         .limit(1);
 
-      if (!request) {
+      if (!regularRequest) {
         throw new Error("Approval request not found");
       }
 
-      // Update the request status
+      request = regularRequest;
+      requestType = request.requestType;
+      resourceId = request.resourceId;
+      requesterId = request.requesterId;
+      title = request.title;
+
+      // Update the request status to rejected
       await db
         .update(approvalRequests)
         .set({
@@ -628,43 +438,67 @@ export const rejectRequestProcedure = publicProcedure
         })
         .where(eq(approvalRequests.id, input.requestId));
 
-      if (
-        request.requesterId &&
-        request.requesterName &&
-        request.requesterEmail
-      ) {
-        // Send in-app notification for stores and clinics
-        if (
-          request.requestType === "store_activation" ||
-          request.requestType === "clinic_activation"
-        ) {
-          await db.insert(adminNotifications).values({
-            recipientId: request.requesterId,
-            type: "approval_request",
-            title: "تم رفض طلبك",
-            content: `تم رفض طلب ${request.title}. السبب: ${input.rejectionReason}`,
-            relatedResourceType: "approval_request",
-            relatedResourceId: request.id,
-            priority: "high",
-          });
-        }
+      // Handle resource-specific rejection logic
+      if (requestType === "vet_registration") {
+        // Make sure the vet stays unverified and user inactive
+        await db.update(veterinarians).set({ isVerified: false }).where(eq(veterinarians.id, resourceId));
+        await db.update(users).set({ isActive: false }).where(eq(users.id, requesterId));
+      } else if (requestType === "clinic_activation" || requestType === "clinic_renewal") {
+        await db
+          .update(clinics)
+          .set({
+            isActive: false,
+            needsRenewal: false,
+            updatedAt: Math.floor(Date.now() / 1000),
+          })
+          .where(eq(clinics.id, resourceId));
+      } else if (requestType === "store_activation" || requestType === "store_renewal") {
+        await db
+          .update(stores)
+          .set({
+            isActive: false,
+            isVerified: false,
+            subscriptionStatus: "rejected",
+            needsRenewal: false,
+            updatedAt: Math.floor(Date.now() / 1000),
+          })
+          .where(eq(stores.id, resourceId));
+      }
 
-        // Send email notification for vet registration
-        if (request.requestType === "vet_registration") {
+      // Notify the requester about the rejection
+      await db.insert(adminNotifications).values({
+        recipientId: requesterId,
+        type: "approval_request",
+        title: isRenewalRequest ? "تم رفض طلب التجديد" : "تم رفض طلبك",
+        content: `تم ${isRenewalRequest ? "رفض طلب تجديد" : "رفض"} ${title}. السبب: ${input.rejectionReason}`,
+        relatedResourceType: "approval_request",
+        relatedResourceId: input.requestId,
+        priority: "high",
+      });
+
+      // For vet registration, also send email notification
+      if (requestType === "vet_registration") {
+        const [user] = await db
+          .select({ name: users.name, email: users.email })
+          .from(users)
+          .where(eq(users.id, requesterId))
+          .limit(1);
+
+        if (user) {
           await db.insert(emailNotifications).values({
-            recipientEmail: request.requesterEmail,
-            recipientName: request.requesterName,
+            recipientEmail: user.email,
+            recipientName: user.name,
             subject: "تم رفض طلب التسجيل كطبيب بيطري",
-            content: `عزيزي ${request.requesterName},\n\nنأسف لإبلاغك بأنه تم رفض طلب التسجيل كطبيب بيطري.\n\nسبب الرفض: ${input.rejectionReason}\n\nيمكنك إعادة التقديم بعد تصحيح المشاكل المذكورة.\n\nشكراً لك`,
+            content: `عزيزي ${user.name},\n\nنأسف لإبلاغك بأنه تم رفض طلب التسجيل كطبيب بيطري.\n\nسبب الرفض: ${input.rejectionReason}\n\nيمكنك إعادة التقديم بعد تصحيح المشاكل المذكورة.\n\nشكراً لك.`,
             type: "approval_rejection",
             relatedResourceType: "approval_request",
-            relatedResourceId: request.id,
+            relatedResourceId: input.requestId,
             status: "pending",
           });
         }
       }
 
-      return { success: true };
+      return { success: true, requestType };
     } catch (error) {
       console.error("Error rejecting request:", error);
       throw new Error("Failed to reject request");
@@ -675,11 +509,7 @@ export const rejectRequestProcedure = publicProcedure
 export const createApprovalRequestProcedure = publicProcedure
   .input(
     z.object({
-      requestType: z.enum([
-        "vet_registration",
-        "clinic_activation",
-        "store_activation",
-      ]),
+      requestType: z.enum(["vet_registration", "clinic_activation", "store_activation"]),
       requesterId: z.number(),
       resourceId: z.number(),
       title: z.string(),
@@ -706,15 +536,9 @@ export const createApprovalRequestProcedure = publicProcedure
           title: input.title,
           description: input.description,
           documents: input.documents ? JSON.stringify(input.documents) : null,
-          licenseImages: input.licenseImages
-            ? JSON.stringify(input.licenseImages)
-            : null,
-          identityImages: input.identityImages
-            ? JSON.stringify(input.identityImages)
-            : null,
-          officialDocuments: input.officialDocuments
-            ? JSON.stringify(input.officialDocuments)
-            : null,
+          licenseImages: input.licenseImages ? JSON.stringify(input.licenseImages) : null,
+          identityImages: input.identityImages ? JSON.stringify(input.identityImages) : null,
+          officialDocuments: input.officialDocuments ? JSON.stringify(input.officialDocuments) : null,
           paymentAmount: input.paymentAmount,
           paymentMethod: input.paymentMethod,
           paymentTransactionId: input.paymentTransactionId,
@@ -726,10 +550,7 @@ export const createApprovalRequestProcedure = publicProcedure
         .returning();
 
       // Notify admins with appropriate permissions
-      const adminUsers = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.userType, "admin"));
+      const adminUsers = await db.select({ id: users.id }).from(users).where(eq(users.userType, "admin"));
 
       for (const admin of adminUsers) {
         await db.insert(adminNotifications).values({
@@ -770,16 +591,11 @@ export const checkExpiredSubscriptionsProcedure = publicProcedure
           activationEndDate: clinics.activationEndDate,
         })
         .from(clinics)
-        .where(
-          and(eq(clinics.isActive, true), eq(clinics.needsRenewal, false))
-        );
+        .where(and(eq(clinics.isActive, true), eq(clinics.needsRenewal, false)));
 
       // Mark clinics as needing renewal if expired
       for (const clinic of expiredClinics) {
-        if (
-          clinic.activationEndDate &&
-          new Date(clinic.activationEndDate) <= now
-        ) {
+        if (clinic.activationEndDate && new Date(clinic.activationEndDate) <= now) {
           await db
             .update(clinics)
             .set({
@@ -794,31 +610,26 @@ export const checkExpiredSubscriptionsProcedure = publicProcedure
       // Check expired stores
       const expiredStores = await db
         .select({
-          id: vetStores.id,
-          name: vetStores.name,
-          activationEndDate: vetStores.activationEndDate,
-          ownerId: vetStores.ownerId,
+          id: stores.id,
+          name: stores.name,
+          activationEndDate: stores.activationEndDate,
+          ownerId: stores.ownerId,
         })
-        .from(vetStores)
-        .where(
-          and(eq(vetStores.isActive, true), eq(vetStores.needsRenewal, false))
-        );
+        .from(stores)
+        .where(and(eq(stores.isActive, true), eq(stores.needsRenewal, false)));
 
       // Mark stores as needing renewal if expired
       for (const store of expiredStores) {
-        if (
-          store.activationEndDate &&
-          new Date(store.activationEndDate) <= now
-        ) {
+        if (store.activationEndDate && new Date(store.activationEndDate) <= now) {
           await db
-            .update(vetStores)
+            .update(stores)
             .set({
               isActive: false,
               needsRenewal: true,
               subscriptionStatus: "expired",
               updatedAt: now,
             })
-            .where(eq(vetStores.id, store.id));
+            .where(eq(stores.id, store.id));
 
           // Send notification to store owner
           await db.insert(adminNotifications).values({
@@ -835,12 +646,9 @@ export const checkExpiredSubscriptionsProcedure = publicProcedure
 
       return {
         success: true,
-        expiredClinics: expiredClinics.filter(
-          (c) => c.activationEndDate && new Date(c.activationEndDate) <= now
-        ).length,
-        expiredStores: expiredStores.filter(
-          (s) => s.activationEndDate && new Date(s.activationEndDate) <= now
-        ).length,
+        expiredClinics: expiredClinics.filter((c) => c.activationEndDate && new Date(c.activationEndDate) <= now)
+          .length,
+        expiredStores: expiredStores.filter((s) => s.activationEndDate && new Date(s.activationEndDate) <= now).length,
       };
     } catch (error) {
       console.error("Error checking expired subscriptions:", error);

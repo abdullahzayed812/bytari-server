@@ -243,6 +243,9 @@ export const lostPets = pgTable("lost_pets", {
 // Products table
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
+  storeId: integer("store_id")
+    .notNull()
+    .references(() => stores.id),
   name: text("name").notNull(),
   description: text("description"),
   price: real("price").notNull(),
@@ -438,15 +441,26 @@ export const vetStores = pgTable("vet_stores", {
 // Store products table
 export const storeProducts = pgTable("store_products", {
   id: serial("id").primaryKey(),
+
   storeId: integer("store_id")
     .notNull()
     .references(() => stores.id),
-  productId: integer("product_id")
-    .notNull()
-    .references(() => products.id),
+
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull(),
+
   storePrice: real("store_price").notNull(),
   storeStock: integer("store_stock").default(0),
+  inStock: boolean("in_stock"),
+
+  image: text("image"), // رابط الصورة الرئيسية للمنتج
+
   isAvailable: boolean("is_available").notNull().default(true),
+
+  // Timestamps
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Warehouses table

@@ -16,7 +16,6 @@ const createStoreSchema = z.object({
   licenseNumber: z.string().min(1, "رقم الترخيص مطلوب"),
   licenseImage: z.string().min(1, "صورة الترخيص مطلوبة"),
   images: z.array(z.string()).optional(),
-  adminId: z.number().optional(),
 });
 
 export const createStoreProcedure = protectedProcedure.input(createStoreSchema).mutation(async ({ input, ctx }) => {
@@ -46,52 +45,44 @@ export const createStoreProcedure = protectedProcedure.input(createStoreSchema).
         licenseNumber: input.licenseNumber,
         images: input.images ? JSON.stringify(input.images) : null,
         subscriptionStatus: "pending",
-        isActive: input.adminId ? true : false,
-        isVerified: input.adminId ? true : false,
+        isActive: false,
+        isVerified: false,
       })
       .returning();
 
-    if (!input.adminId) {
-      // 2️⃣ Create approval request
-      const [approvalRequest] = await db
-        .insert(approvalRequests)
-        .values({
-          requestType: "store_activation",
-          requesterId: userId,
-          resourceId: store.id,
-          title: `طلب تفعيل مذخر ${input.name}`,
-          description: `طلب تفعيل مذخر ${input.name} في ${input.address}`,
-          documents: JSON.stringify(["store_registration_form.pdf"]),
-          licenseImages: JSON.stringify([input.licenseImage]),
-          identityImages: null,
-          officialDocuments: null,
+    // 2️⃣ Create approval request
+    const [approvalRequest] = await db
+      .insert(approvalRequests)
+      .values({
+        requestType: "store_activation",
+        requesterId: userId,
+        resourceId: store.id,
+        title: `طلب تفعيل مذخر ${input.name}`,
+        description: `طلب تفعيل مذخر ${input.name} في ${input.address}`,
+        documents: JSON.stringify(["store_registration_form.pdf"]),
+        licenseImages: JSON.stringify([input.licenseImage]),
+        identityImages: null,
+        officialDocuments: null,
 
-          paymentStatus: "pending", // Store requires payment
-          paymentAmount: 25, // $25 monthly subscription
-          paymentMethod: null,
-          paymentTransactionId: null,
-          paymentCompletedAt: null,
-          paymentReceipt: null,
+        paymentStatus: "pending", // Store requires payment
+        paymentAmount: 25, // $25 monthly subscription
+        paymentMethod: null,
+        paymentTransactionId: null,
+        paymentCompletedAt: null,
+        paymentReceipt: null,
 
-          status: "pending",
-          priority: "normal",
-          createdAt: Math.floor(Date.now() / 1000),
-          updatedAt: Math.floor(Date.now() / 1000),
-        })
-        .returning();
-
-      return {
-        success: true,
-        message: "تم إرسال طلب تسجيل المذخر بنجاح. سيتم مراجعته من قبل الإدارة ويتطلب دفع اشتراك شهري 25 دولار.",
-        storeId: store.id,
-        requestId: approvalRequest.id,
-      };
-    }
+        status: "pending",
+        priority: "normal",
+        createdAt: Math.floor(Date.now() / 1000),
+        updatedAt: Math.floor(Date.now() / 1000),
+      })
+      .returning();
 
     return {
       success: true,
       message: "تم إرسال طلب تسجيل المذخر بنجاح. سيتم مراجعته من قبل الإدارة ويتطلب دفع اشتراك شهري 25 دولار.",
       storeId: store.id,
+      requestId: approvalRequest.id,
     };
   } catch (error) {
     console.error("❌ Error creating store registration:", error);
