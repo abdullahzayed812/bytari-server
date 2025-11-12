@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, and, or, gt, isNull } from "drizzle-orm";
+import { eq, desc, and, or, gt, isNull, sql } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
 import { db, pets, users, clinics, clinicAccessRequests, approvedClinicAccess, veterinarians } from "../../../../db";
 
@@ -339,5 +339,119 @@ export const getMyAccessRequestsProcedure = protectedProcedure
     } catch (error) {
       console.error("Error fetching my access requests:", error);
       throw new Error("فشل في جلب طلبات الصلاحية");
+    }
+  });
+
+// Get clinic follow-ups for a pet (using approved access records)
+export const getClinicFollowUpsProcedure = protectedProcedure
+  .input(
+    z.object({
+      petId: z.number(),
+    })
+  )
+  .query(async ({ input, ctx }) => {
+    try {
+      const { user } = ctx;
+
+      // Verify the user has access to this pet
+      const [pet] = await db
+        .select()
+        .from(pets)
+        .where(and(eq(pets.id, input.petId), eq(pets.ownerId, user.id)));
+
+      if (!pet) {
+        throw new Error("Pet not found or access denied");
+      }
+
+      // Get approved clinic access with clinic information and activity counts
+      const followUps = await db
+        .select({
+          clinicId: approvedClinicAccess.clinicId,
+          clinicName: clinics.name,
+        })
+        .from(approvedClinicAccess)
+        .leftJoin(clinics, eq(clinics.id, approvedClinicAccess.clinicId))
+        .leftJoin(clinicAccessRequests, eq(clinicAccessRequests.id, approvedClinicAccess.requestId))
+        .where(
+          and(
+            eq(approvedClinicAccess.petId, input.petId),
+            eq(approvedClinicAccess.isActive, true),
+            or(isNull(approvedClinicAccess.expiresAt), gt(approvedClinicAccess.expiresAt, new Date()))
+          )
+        )
+        .orderBy(desc(approvedClinicAccess.createdAt));
+
+      return {
+        success: true,
+        followUps,
+      };
+    } catch (error) {
+      console.error("Error fetching clinic follow-ups:", error);
+      throw new Error("Failed to fetch clinic follow-ups");
+    }
+  });
+
+// Cancel follow-ups for a specific clinic (revoke access)
+export const cancelClinicFollowUpsProcedure = protectedProcedure
+  .input(
+    z.object({
+      petId: z.number(),
+      clinicId: z.number(),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    try {
+      const { user } = ctx;
+
+      // Verify the user has access to this pet
+      const [pet] = await db
+        .select()
+        .from(pets)
+        .where(and(eq(pets.id, input.petId), eq(pets.ownerId, user.id)));
+
+      if (!pet) {
+        throw new Error("Pet not found or access denied");
+      }
+
+      // Revoke clinic access
+      const result = await db
+        .update(approvedClinicAccess)
+        .set({
+          isActive: false,
+          revokedAt: new Date(),
+          revokedBy: user.id,
+        })
+        .where(
+          and(
+            eq(approvedClinicAccess.petId, input.petId),
+            eq(approvedClinicAccess.clinicId, input.clinicId),
+            eq(approvedClinicAccess.isActive, true)
+          )
+        );
+
+      // Also reject any pending follow-up requests from this clinic
+      await db
+        .update(clinicAccessRequests)
+        .set({
+          status: "rejected",
+          rejectionReason: "تم إلغاء المتابعة من قبل المالك",
+          rejectedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(clinicAccessRequests.petId, input.petId),
+            eq(clinicAccessRequests.clinicId, input.clinicId),
+            eq(clinicAccessRequests.status, "pending")
+          )
+        );
+
+      return {
+        success: true,
+        message: "تم إلغاء المتابعة مع العيادة بنجاح",
+        cancelledCount: result.rowCount,
+      };
+    } catch (error) {
+      console.error("Error cancelling clinic follow-ups:", error);
+      throw new Error("Failed to cancel clinic follow-ups");
     }
   });

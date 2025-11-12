@@ -51,15 +51,18 @@ import {
 } from "./routes/pets/get/route";
 
 import {
-  addMedicalRecordProcedure,
-  addReminderProcedure,
-  addVaccinationProcedure,
+  // addMedicalRecordProcedure,
+  // addReminderProcedure,
+  // addVaccinationProcedure,
   createFollowUpRequestProcedure,
   createTreatmentCardProcedure,
   deleteMedicalRecordProcedure,
   deleteReminderProcedure,
   deleteVaccinationProcedure,
-  updatePetProcedure,
+  // deleteMedicalRecordProcedure,
+  // deleteReminderProcedure,
+  // deleteVaccinationProcedure,
+  // updatePetProcedure,
   getPetProfileProcedure,
 } from "./routes/pets/medical-records/route";
 
@@ -70,7 +73,19 @@ import {
   rejectClinicAccessProcedure,
   requestClinicAccessProcedure,
   getMyAccessRequestsProcedure,
+  getClinicFollowUpsProcedure,
+  cancelClinicFollowUpsProcedure,
 } from "./routes/pets/clinic-access/route";
+
+import {
+  approveMedicalActionProcedure,
+  getMyMedicalRequestsProcedure,
+  getPendingMedicalActionsProcedure,
+  rejectMedicalActionProcedure,
+  requestAddMedicalRecordProcedure,
+  requestAddReminderProcedure,
+  requestAddVaccinationProcedure,
+} from "./routes/pets/pet-notes-permissions/route";
 
 import { createAppointmentProcedure } from "./routes/appointments/create/route";
 import { listAppointmentsProcedure } from "./routes/appointments/list/route";
@@ -334,15 +349,10 @@ export const appRouter = createTRPCRouter({
     getApproved: getApprovedPetsProcedure,
     getAllPets: getAllPetsProcedure,
 
-    // getProfile: getPetProfileProcedure,
-    // update: updatePetProcedure,
-
     // Medical records and vaccinations
-    addMedicalRecord: addMedicalRecordProcedure,
-    addVaccination: addVaccinationProcedure,
-    addReminder: addReminderProcedure,
     createTreatmentCard: createTreatmentCardProcedure,
     createFollowUpRequest: createFollowUpRequestProcedure,
+
     deleteMedicalRecord: deleteMedicalRecordProcedure,
     deleteVaccination: deleteVaccinationProcedure,
     deleteReminder: deleteReminderProcedure,
@@ -355,6 +365,23 @@ export const appRouter = createTRPCRouter({
     approveClinicAccess: approveClinicAccessProcedure,
     rejectClinicAccess: rejectClinicAccessProcedure,
     checkClinicAccess: checkClinicAccessProcedure,
+
+    // NEW: Request-based medical actions (replaces direct add)
+    requestAddMedicalRecord: requestAddMedicalRecordProcedure,
+    requestAddVaccination: requestAddVaccinationProcedure,
+    requestAddReminder: requestAddReminderProcedure,
+
+    // Owner approval system
+    getPendingMedicalActions: getPendingMedicalActionsProcedure,
+    approveMedicalAction: approveMedicalActionProcedure,
+    rejectMedicalAction: rejectMedicalActionProcedure,
+
+    // Vet request tracking
+    getMyMedicalRequests: getMyMedicalRequestsProcedure,
+
+    // Follow ups
+    getClinicFollowUps: getClinicFollowUpsProcedure,
+    cancelFollowUps: cancelClinicFollowUpsProcedure,
   }),
   poultryFarms: createTRPCRouter({
     getUserFarms: getUserFarmsAssignmentProcedure,

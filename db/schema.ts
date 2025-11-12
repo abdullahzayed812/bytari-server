@@ -182,6 +182,37 @@ export const approvedClinicAccess = pgTable("approved_clinic_access", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Pending medical actions - awaiting owner approval
+export const pendingMedicalActions = pgTable("pending_medical_actions", {
+  id: serial("id").primaryKey(),
+  petId: integer("pet_id")
+    .notNull()
+    .references(() => pets.id),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id),
+  veterinarianId: integer("veterinarian_id").references(() => veterinarians.id),
+
+  // Action type
+  actionType: text("action_type").notNull(), // 'medical_record', 'vaccination', 'reminder'
+
+  // Action data stored as JSON
+  actionData: jsonb("action_data").notNull(),
+
+  // Request details
+  reason: text("reason"), // Why this action is needed
+  notes: text("notes"), // Additional notes from vet
+
+  // Status tracking
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Veterinarians table
 export const veterinarians = pgTable("veterinarians", {
   id: serial("id").primaryKey(),

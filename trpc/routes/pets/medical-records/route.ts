@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
 import {
   db,
@@ -110,118 +110,6 @@ export const getPetProfileProcedure = protectedProcedure
     } catch (error) {
       console.error("Error fetching pet profile:", error);
       throw new Error("Failed to fetch pet profile");
-    }
-  });
-
-// Add medical record
-export const addMedicalRecordProcedure = protectedProcedure
-  .input(
-    z.object({
-      petId: z.number(),
-      clinicId: z.number(),
-      diagnosis: z.string().min(1),
-      treatment: z.string().min(1),
-      notes: z.string().optional(),
-      prescriptionImage: z.string().optional(),
-    })
-  )
-  .mutation(async ({ input, ctx }) => {
-    try {
-      const [newRecord] = await db
-        .insert(medicalRecords)
-        .values({
-          petId: input.petId,
-          clinicId: input.clinicId,
-          diagnosis: input.diagnosis,
-          treatment: input.treatment,
-          notes: input.notes,
-          prescriptionImage: input.prescriptionImage,
-          date: new Date(),
-        })
-        .returning();
-
-      return {
-        success: true,
-        record: newRecord,
-        message: "Medical record added successfully",
-      };
-    } catch (error) {
-      console.error("Error adding medical record:", error);
-      throw new Error("Failed to add medical record");
-    }
-  });
-
-// Add vaccination
-export const addVaccinationProcedure = protectedProcedure
-  .input(
-    z.object({
-      petId: z.number(),
-      clinicId: z.number(),
-      name: z.string().min(1),
-      nextDate: z.string().optional(), // ISO string
-      notes: z.string().optional(),
-    })
-  )
-  .mutation(async ({ input }) => {
-    try {
-      const [newVaccination] = await db
-        .insert(vaccinations)
-        .values({
-          petId: input.petId,
-          clinicId: input.clinicId,
-          name: input.name,
-          date: new Date(),
-          nextDate: input.nextDate ? new Date(input.nextDate) : undefined,
-          notes: input.notes,
-        })
-        .returning();
-
-      return {
-        success: true,
-        vaccination: newVaccination,
-        message: "Vaccination added successfully",
-      };
-    } catch (error) {
-      console.error("Error adding vaccination:", error);
-      throw new Error("Failed to add vaccination");
-    }
-  });
-
-// Add reminder
-export const addReminderProcedure = protectedProcedure
-  .input(
-    z.object({
-      petId: z.number(),
-      clinicId: z.number(),
-      title: z.string().min(1),
-      description: z.string().optional(),
-      reminderDate: z.string(), // ISO string
-      reminderType: z.enum(["vaccination", "medication", "checkup", "other"]).default("checkup"),
-    })
-  )
-  .mutation(async ({ input }) => {
-    try {
-      const [newReminder] = await db
-        .insert(petReminders)
-        .values({
-          petId: input.petId,
-          clinicId: input.clinicId,
-          title: input.title,
-          description: input.description,
-          reminderDate: new Date(input.reminderDate),
-          reminderType: input.reminderType,
-          isCompleted: false,
-        })
-        .returning();
-
-      return {
-        success: true,
-        reminder: newReminder,
-        message: "Reminder added successfully",
-      };
-    } catch (error) {
-      console.error("Error adding reminder:", error);
-      throw new Error("Failed to add reminder");
     }
   });
 

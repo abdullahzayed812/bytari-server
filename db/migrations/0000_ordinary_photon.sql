@@ -1203,6 +1203,33 @@ CREATE TABLE "approved_clinic_access" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
+-- Pending medical actions - awaiting owner approval
+CREATE TABLE "pending_medical_actions" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "pet_id" integer NOT NULL,
+  "clinic_id" integer NOT NULL,
+  "veterinarian_id" integer,
+  
+  -- Action type
+  "action_type" text NOT NULL, -- 'medical_record', 'vaccination', 'reminder'
+  
+  -- Action data stored as JSON
+  "action_data" jsonb NOT NULL,
+  
+  -- Request details
+  "reason" text,               -- Why this action is needed
+  "notes" text,                -- Additional notes from vet
+  
+  -- Status tracking
+  "status" text NOT NULL DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+  "approved_at" timestamp with time zone,
+  "rejected_at" timestamp with time zone,
+  "rejection_reason" text,
+  
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
 
 
 --> statement-breakpoint
@@ -1454,3 +1481,21 @@ ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_pet_
 ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE;
 ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_request_id_clinic_access_requests_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."clinic_access_requests"("id") ON DELETE SET NULL;
 ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_granted_by_users_id_fk" FOREIGN KEY ("granted_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+-- Foreign key constraints
+ALTER TABLE "pending_medical_actions"
+  ADD CONSTRAINT "pending_medical_actions_pet_id_fkey"
+  FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id")
+  ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE "pending_medical_actions"
+  ADD CONSTRAINT "pending_medical_actions_clinic_id_fkey"
+  FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id")
+  ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE "pending_medical_actions"
+  ADD CONSTRAINT "pending_medical_actions_veterinarian_id_fkey"
+  FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id")
+  ON DELETE NO ACTION ON UPDATE NO ACTION;
