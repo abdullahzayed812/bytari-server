@@ -82,6 +82,7 @@ export const vaccinations = pgTable("vaccinations", {
   name: text("name").notNull(),
   date: timestamp("date", { withTimezone: true }).notNull().defaultNow(),
   nextDate: timestamp("next_date", { withTimezone: true }),
+  status: text("status").notNull().default("scheduled"), // Added status field
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

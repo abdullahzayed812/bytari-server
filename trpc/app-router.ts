@@ -57,7 +57,6 @@ import {
   createFollowUpRequestProcedure,
   createTreatmentCardProcedure,
   deleteMedicalRecordProcedure,
-  deleteReminderProcedure,
   deleteVaccinationProcedure,
   // deleteMedicalRecordProcedure,
   // deleteReminderProcedure,
@@ -136,6 +135,17 @@ import { getClinicDashboardDataProcedure } from "./routes/clinics/dashboard/rout
 import { getTodayCasesProcedure } from "./routes/clinics/cases/route";
 import { getClinicAnimalsProcedure } from "./routes/clinics/animals/route";
 import { getClinicLatestPetsProcedure } from "./routes/clinics/pets/route";
+
+import {
+  getClinicRemindersProcedure,
+  updateReminderStatusProcedure,
+  deleteReminderProcedure,
+} from "./routes/clinics/reminders/route";
+import {
+  getClinicVaccinationsProcedure,
+  rescheduleVaccinationProcedure,
+  updateVaccinationStatusProcedure,
+} from "./routes/clinics/vaccinations/route";
 
 // Warehouse routes
 import {
@@ -467,6 +477,17 @@ export const appRouter = createTRPCRouter({
     getLatestPets: getClinicLatestPetsProcedure,
     public: createTRPCRouter({
       getPublicClinics: getActiveClinicsListProcedure,
+    }),
+
+    reminders: createTRPCRouter({
+      getClinicReminders: getClinicRemindersProcedure,
+      updateReminderStatus: updateReminderStatusProcedure,
+      deleteReminder: deleteReminderProcedure,
+    }),
+    vaccinations: createTRPCRouter({
+      getClinicVaccinations: getClinicVaccinationsProcedure,
+      updateVaccinationStatus: updateVaccinationStatusProcedure,
+      rescheduleVaccination: rescheduleVaccinationProcedure,
     }),
   }),
 

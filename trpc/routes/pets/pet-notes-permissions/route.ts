@@ -149,40 +149,48 @@ export const requestAddReminderProcedure = protectedProcedure
 // ============================================
 // OWNER: Get pending medical action requests
 // ============================================
-export const getPendingMedicalActionsProcedure = protectedProcedure.query(async ({ ctx }) => {
-  try {
-    const requests = await db
-      .select({
-        id: pendingMedicalActions.id,
-        petId: pendingMedicalActions.petId,
-        petName: pets.name,
-        petType: pets.type,
-        clinicId: pendingMedicalActions.clinicId,
-        clinicName: clinics.name,
-        veterinarianName: users.name,
-        actionType: pendingMedicalActions.actionType,
-        actionData: pendingMedicalActions.actionData,
-        reason: pendingMedicalActions.reason,
-        notes: pendingMedicalActions.notes,
-        createdAt: pendingMedicalActions.createdAt,
-      })
-      .from(pendingMedicalActions)
-      .leftJoin(pets, eq(pets.id, pendingMedicalActions.petId))
-      .leftJoin(clinics, eq(clinics.id, pendingMedicalActions.clinicId))
-      .leftJoin(veterinarians, eq(veterinarians.id, pendingMedicalActions.veterinarianId))
-      .leftJoin(users, eq(users.id, veterinarians.userId))
-      .where(and(eq(pendingMedicalActions.status, "pending"), eq(pets.ownerId, ctx.user.id)))
-      .orderBy(desc(pendingMedicalActions.createdAt));
+export const getPendingMedicalActionsProcedure = protectedProcedure
+  .input(z.object({ petId: z.number() }))
+  .query(async ({ input, ctx }) => {
+    try {
+      const requests = await db
+        .select({
+          id: pendingMedicalActions.id,
+          petId: pendingMedicalActions.petId,
+          petName: pets.name,
+          petType: pets.type,
+          clinicId: pendingMedicalActions.clinicId,
+          clinicName: clinics.name,
+          veterinarianName: users.name,
+          actionType: pendingMedicalActions.actionType,
+          actionData: pendingMedicalActions.actionData,
+          reason: pendingMedicalActions.reason,
+          notes: pendingMedicalActions.notes,
+          createdAt: pendingMedicalActions.createdAt,
+        })
+        .from(pendingMedicalActions)
+        .leftJoin(pets, eq(pets.id, pendingMedicalActions.petId))
+        .leftJoin(clinics, eq(clinics.id, pendingMedicalActions.clinicId))
+        .leftJoin(veterinarians, eq(veterinarians.id, pendingMedicalActions.veterinarianId))
+        .leftJoin(users, eq(users.id, veterinarians.userId))
+        .where(
+          and(
+            eq(pendingMedicalActions.status, "pending"),
+            eq(pendingMedicalActions.petId, input.petId),
+            eq(pets.ownerId, ctx.user.id)
+          )
+        )
+        .orderBy(desc(pendingMedicalActions.createdAt));
 
-    return {
-      success: true,
-      requests,
-    };
-  } catch (error) {
-    console.error("Error fetching pending medical actions:", error);
-    throw new Error("فشل في جلب الطلبات المعلقة");
-  }
-});
+      return {
+        success: true,
+        requests,
+      };
+    } catch (error) {
+      console.error("Error fetching pending medical actions:", error);
+      throw new Error("فشل في جلب الطلبات المعلقة");
+    }
+  });
 
 // ============================================
 // OWNER: Approve medical action

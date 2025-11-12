@@ -1119,7 +1119,7 @@ CREATE TABLE "medical_records" (
 	"treatment" text NOT NULL,
 	"notes" text,
 	"prescription_image" text,
-	"date" timestamp with time zone DEFAULT now() NOT NULL,
+	"date" timestamp with time zone DEFAULT now() NOT NULL,			
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -1132,6 +1132,7 @@ CREATE TABLE "vaccinations" (
 	"date" timestamp with time zone DEFAULT now() NOT NULL,
 	"next_date" timestamp with time zone,
 	"notes" text,
+	"status" text NOT NULL DEFAULT 'scheduled',
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );

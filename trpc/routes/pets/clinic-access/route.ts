@@ -99,44 +99,47 @@ export const requestClinicAccessProcedure = protectedProcedure
   });
 
 // Owner gets pending access requests
-export const getPendingAccessRequestsProcedure = protectedProcedure.query(async ({ ctx }) => {
-  try {
-    // Get requests for pets owned by the current user
-    const requests = await db
-      .select({
-        id: clinicAccessRequests.id,
-        petId: clinicAccessRequests.petId,
-        petName: pets.name,
-        petType: pets.type,
-        clinicId: clinicAccessRequests.clinicId,
-        clinicName: clinics.name,
-        veterinarianName: users.name,
-        reason: clinicAccessRequests.reason,
-        createdAt: clinicAccessRequests.createdAt,
-        expiresAt: clinicAccessRequests.expiresAt,
-      })
-      .from(clinicAccessRequests)
-      .leftJoin(pets, eq(pets.id, clinicAccessRequests.petId))
-      .leftJoin(clinics, eq(clinics.id, clinicAccessRequests.clinicId))
-      .leftJoin(veterinarians, eq(veterinarians.id, clinicAccessRequests.veterinarianId))
-      .leftJoin(users, eq(users.id, veterinarians.userId))
-      .where(
-        and(
-          eq(clinicAccessRequests.status, "pending"),
-          eq(pets.ownerId, ctx.user.id) // Only show requests for current user's pets
+export const getPendingAccessRequestsProcedure = protectedProcedure
+  .input(z.object({ petId: z.number() }))
+  .query(async ({ input, ctx }) => {
+    try {
+      // Get requests for pets owned by the current user
+      const requests = await db
+        .select({
+          id: clinicAccessRequests.id,
+          petId: clinicAccessRequests.petId,
+          petName: pets.name,
+          petType: pets.type,
+          clinicId: clinicAccessRequests.clinicId,
+          clinicName: clinics.name,
+          veterinarianName: users.name,
+          reason: clinicAccessRequests.reason,
+          createdAt: clinicAccessRequests.createdAt,
+          expiresAt: clinicAccessRequests.expiresAt,
+        })
+        .from(clinicAccessRequests)
+        .leftJoin(pets, eq(pets.id, clinicAccessRequests.petId))
+        .leftJoin(clinics, eq(clinics.id, clinicAccessRequests.clinicId))
+        .leftJoin(veterinarians, eq(veterinarians.id, clinicAccessRequests.veterinarianId))
+        .leftJoin(users, eq(users.id, veterinarians.userId))
+        .where(
+          and(
+            eq(clinicAccessRequests.status, "pending"),
+            eq(clinicAccessRequests.petId, input.petId),
+            eq(pets.ownerId, ctx.user.id)
+          )
         )
-      )
-      .orderBy(desc(clinicAccessRequests.createdAt));
+        .orderBy(desc(clinicAccessRequests.createdAt));
 
-    return {
-      success: true,
-      requests,
-    };
-  } catch (error) {
-    console.error("Error fetching pending access requests:", error);
-    throw new Error("فشل في جلب طلبات الصلاحية المعلقة");
-  }
-});
+      return {
+        success: true,
+        requests,
+      };
+    } catch (error) {
+      console.error("Error fetching pending access requests:", error);
+      throw new Error("فشل في جلب طلبات الصلاحية المعلقة");
+    }
+  });
 
 // Owner approves access
 export const approveClinicAccessProcedure = protectedProcedure
@@ -297,7 +300,8 @@ export const checkClinicAccessProcedure = protectedProcedure
 export const getMyAccessRequestsProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number().optional(), // Optional: filter by specific pet
+      petId: z.number().optional(),
+      clinicId: z.number().optional(),
     })
   )
   .query(async ({ input, ctx }) => {
@@ -308,6 +312,10 @@ export const getMyAccessRequestsProcedure = protectedProcedure
 
       if (input.petId) {
         whereConditions.push(eq(clinicAccessRequests.petId, input.petId));
+      }
+
+      if (input.clinicId) {
+        whereConditions.push(eq(clinicAccessRequests.clinicId, input.clinicId));
       }
 
       const requests = await db
