@@ -66,17 +66,6 @@ import {
 } from "./routes/pets/medical-records/route";
 
 import {
-  approveClinicAccessProcedure,
-  checkClinicAccessProcedure,
-  getPendingAccessRequestsProcedure,
-  rejectClinicAccessProcedure,
-  requestClinicAccessProcedure,
-  getMyAccessRequestsProcedure,
-  getClinicFollowUpsProcedure,
-  cancelClinicFollowUpsProcedure,
-} from "./routes/pets/clinic-access/route";
-
-import {
   approveMedicalActionProcedure,
   getMyMedicalRequestsProcedure,
   getPendingMedicalActionsProcedure,
@@ -121,6 +110,16 @@ import { deleteStoreProcedure } from "./routes/stores/delete/route";
 
 // Clinic routes
 import {
+  approveClinicAccessProcedure,
+  checkClinicAccessProcedure,
+  getPendingAccessRequestsProcedure,
+  rejectClinicAccessProcedure,
+  requestClinicAccessProcedure,
+  getMyAccessRequestsProcedure,
+  getClinicFollowUpsProcedure,
+  cancelClinicFollowUpsProcedure,
+} from "./routes/pets/clinic-access/route";
+import {
   createClinicProcedure,
   updateClinicActivationProcedure,
   renewClinicActivationProcedure,
@@ -146,6 +145,15 @@ import {
   rescheduleVaccinationProcedure,
   updateVaccinationStatusProcedure,
 } from "./routes/clinics/vaccinations/route";
+
+import {
+  deleteFollowupProcedure,
+  getClinicFollowupsProcedure,
+  getFollowupStatsProcedure,
+  requestFollowupProcedure,
+  rescheduleFollowupProcedure,
+  updateFollowupStatusProcedure,
+} from "./routes/clinics/followups/route";
 
 // Warehouse routes
 import {
@@ -341,10 +349,12 @@ export const appRouter = createTRPCRouter({
     hi: hiRoute,
     test: testQuery,
   }),
+
   users: createTRPCRouter({
     create: createUserProcedure,
     list: getUsersProcedure,
   }),
+
   pets: createTRPCRouter({
     create: createPetProcedure,
     getProfile: getPetProfileProcedure,
@@ -393,6 +403,7 @@ export const appRouter = createTRPCRouter({
     getClinicFollowUps: getClinicFollowUpsProcedure,
     cancelFollowUps: cancelClinicFollowUpsProcedure,
   }),
+
   poultryFarms: createTRPCRouter({
     getUserFarms: getUserFarmsAssignmentProcedure,
     getAllForAdmin: getAllFieldsForAdminAssignmentProcedure,
@@ -421,6 +432,7 @@ export const appRouter = createTRPCRouter({
     create: createAppointmentProcedure,
     list: listAppointmentsProcedure,
   }),
+
   inquiries: createTRPCRouter({
     create: createInquiryProcedure,
     reply: replyInquiryProcedure, // للمشرفين
@@ -429,6 +441,7 @@ export const appRouter = createTRPCRouter({
     getList: getInquiriesListProcedure,
     getDetails: getInquiryDetailsProcedure,
   }),
+
   consultations: createTRPCRouter({
     create: createConsultationProcedure,
     reply: replyConsultationProcedure, // للمشرفين
@@ -488,6 +501,12 @@ export const appRouter = createTRPCRouter({
       getClinicVaccinations: getClinicVaccinationsProcedure,
       updateVaccinationStatus: updateVaccinationStatusProcedure,
       rescheduleVaccination: rescheduleVaccinationProcedure,
+    }),
+    followups: createTRPCRouter({
+      getClinicFollowups: getClinicFollowupsProcedure,
+      updateFollowupStatus: updateFollowupStatusProcedure,
+      rescheduleFollowup: rescheduleFollowupProcedure,
+      deleteFollowup: deleteFollowupProcedure,
     }),
   }),
 
