@@ -128,6 +128,8 @@ import {
   getUserClinicsProcedure,
   getClinicDetailsProcedure,
   getUserApprovedClinicsProcedure,
+  getUserVetClinicsProcedure,
+  getUserClinicsWithRolesProcedure,
 } from "./routes/clinics/list/route";
 import { getActiveClinicsListProcedure } from "./routes/clinics/public/route";
 import { getClinicDashboardDataProcedure } from "./routes/clinics/dashboard/route";
@@ -154,6 +156,24 @@ import {
   rescheduleFollowupProcedure,
   updateFollowupStatusProcedure,
 } from "./routes/clinics/followups/route";
+
+import {
+  getClinicSettingsProcedure,
+  updateClinicBasicInfoProcedure,
+  updateClinicContactInfoProcedure,
+  updateClinicWorkingHoursProcedure,
+  getClinicStaffProcedure,
+  addClinicStaffProcedure,
+  removeClinicStaffProcedure,
+  updateClinicServicesProcedure,
+  updateClinicImagesProcedure,
+  getClinicSubscriptionProcedure,
+} from "./routes/clinics/settings/route";
+
+import {
+  getClinicStaffWithPermissionsProcedure,
+  updateStaffPermissionsProcedure,
+} from "./routes/clinics/vet-permissions/route";
 
 // Warehouse routes
 import {
@@ -488,6 +508,10 @@ export const appRouter = createTRPCRouter({
     getTodayCases: getTodayCasesProcedure,
     getClinicAnimals: getClinicAnimalsProcedure,
     getLatestPets: getClinicLatestPetsProcedure,
+
+    // getUserVetClinics: getUserVetClinicsProcedure, // New: only vet clinics
+    // getUserClinicsWithRoles: getUserClinicsWithRolesProcedure, // New: detailed role info
+
     public: createTRPCRouter({
       getPublicClinics: getActiveClinicsListProcedure,
     }),
@@ -507,6 +531,24 @@ export const appRouter = createTRPCRouter({
       updateFollowupStatus: updateFollowupStatusProcedure,
       rescheduleFollowup: rescheduleFollowupProcedure,
       deleteFollowup: deleteFollowupProcedure,
+    }),
+
+    settings: createTRPCRouter({
+      getSettings: getClinicSettingsProcedure,
+      getSubscription: getClinicSubscriptionProcedure,
+
+      updateBasicInfo: updateClinicBasicInfoProcedure,
+      updateContactInfo: updateClinicContactInfoProcedure,
+      updateWorkingHours: updateClinicWorkingHoursProcedure,
+      updateServices: updateClinicServicesProcedure,
+      updateImages: updateClinicImagesProcedure,
+
+      staff: createTRPCRouter({
+        getStaff: getClinicStaffWithPermissionsProcedure,
+        addStaff: addClinicStaffProcedure,
+        removeStaff: removeClinicStaffProcedure,
+        updatePermissions: updateStaffPermissionsProcedure,
+      }),
     }),
   }),
 

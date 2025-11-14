@@ -238,6 +238,7 @@ export const clinics = pgTable("clinics", {
   address: text("address").notNull(),
   phone: text("phone"),
   email: text("email"),
+  description: text("description"),
   latitude: real("latitude"),
   longitude: real("longitude"),
   workingHours: jsonb("working_hours"), // JSON data
@@ -250,6 +251,35 @@ export const clinics = pgTable("clinics", {
   }),
   activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
   needsRenewal: boolean("needs_renewal").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const vetPermissions = pgTable("vet_permissions", {
+  id: serial("id").primaryKey(),
+  veterinarianId: integer("veterinarian_id")
+    .notNull()
+    .references(() => veterinarians.id, { onDelete: "cascade" }),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id, { onDelete: "cascade" }),
+
+  // Permission role
+  role: text("role").notNull().default("view_edit_pets"), // 'all', 'view_edit_pets', 'view_only', 'appointments_only'
+
+  // Granular permissions
+  canViewPets: boolean("can_view_pets").default(true),
+  canEditPets: boolean("can_edit_pets").default(true),
+  canAddMedicalRecords: boolean("can_add_medical_records").default(true),
+  canAddVaccinations: boolean("can_add_vaccinations").default(true),
+  canManageAppointments: boolean("can_manage_appointments").default(true),
+  canViewReports: boolean("can_view_reports").default(false),
+  canManageStaff: boolean("can_manage_staff").default(false),
+  canManageSettings: boolean("can_manage_settings").default(false),
+
+  // Additional settings
+  isActive: boolean("is_active").default(true),
+
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

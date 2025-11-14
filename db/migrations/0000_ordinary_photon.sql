@@ -166,6 +166,7 @@ CREATE TABLE "clinics" (
 	"address" text NOT NULL,
 	"phone" text,
 	"email" text,
+	"description" text,
 	"latitude" real,
 	"longitude" real,
 	"working_hours" jsonb,
@@ -1233,6 +1234,32 @@ CREATE TABLE "pending_medical_actions" (
 
 
 
+CREATE TABLE "vet_permissions" (
+    "id" SERIAL PRIMARY KEY,
+
+    "veterinarian_id" INTEGER NOT NULL,
+    "clinic_id"       INTEGER NOT NULL,
+
+    "role" TEXT NOT NULL DEFAULT 'view_edit_pets',
+
+    "can_view_pets"              BOOLEAN DEFAULT TRUE,
+    "can_edit_pets"             BOOLEAN DEFAULT TRUE,
+    "can_add_medical_records"    BOOLEAN DEFAULT TRUE,
+    "can_add_vaccinations"       BOOLEAN DEFAULT TRUE,
+    "can_manage_appointments"    BOOLEAN DEFAULT TRUE,
+    "can_view_reports"           BOOLEAN DEFAULT FALSE,
+    "can_manage_staff"           BOOLEAN DEFAULT FALSE,
+    "can_manage_settings"        BOOLEAN DEFAULT FALSE,
+
+    "is_active" BOOLEAN DEFAULT TRUE,
+
+    "created_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    "updated_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+
+    UNIQUE (veterinarian_id, clinic_id)
+);
+
+
 --> statement-breakpoint
 ALTER TABLE "admin_activity_logs" ADD CONSTRAINT "admin_activity_logs_admin_id_users_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "admin_content" ADD CONSTRAINT "admin_content_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -1500,3 +1527,18 @@ ALTER TABLE "pending_medical_actions"
   ADD CONSTRAINT "pending_medical_actions_veterinarian_id_fkey"
   FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id")
   ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+
+-- Foreign key: veterinarian_id → veterinarians(id)
+ALTER TABLE "vet_permissions"
+ADD CONSTRAINT "vet_permissions_veterinarian_id_fkey"
+FOREIGN KEY ("veterinarian_id")
+REFERENCES "public"."veterinarians"("id")
+ON DELETE CASCADE ON UPDATE NO ACTION;
+
+-- Foreign key: clinic_id → clinics(id)
+ALTER TABLE "vet_permissions"
+ADD CONSTRAINT "vet_permissions_clinic_id_fkey"
+FOREIGN KEY ("clinic_id")
+REFERENCES "public"."clinics"("id")
+ON DELETE CASCADE ON UPDATE NO ACTION;

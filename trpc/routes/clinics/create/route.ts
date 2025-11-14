@@ -13,7 +13,7 @@ export const createClinicProcedure = protectedProcedure
       latitude: z.number().optional(),
       longitude: z.number().optional(),
       workingHours: z.string().optional(),
-      services: z.array(z.string()).optional(),
+      services: z.string().optional(),
       images: z.array(z.string()).optional(),
       licenseNumber: z.string().min(1, "رقم الترخيص مطلوب"),
       licenseImages: z.array(z.string()).min(1, "صور الترخيص مطلوبة"),

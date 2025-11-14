@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { db, clinics, approvalRequests } from "../../../../db";
+import { db, clinics, approvalRequests, users, veterinarians } from "../../../../db";
 import { eq, and, inArray } from "drizzle-orm";
 
 export const getUserClinicsProcedure = publicProcedure
@@ -69,9 +69,7 @@ export const getClinicDetailsProcedure = publicProcedure
   )
   .query(async ({ input }) => {
     try {
-      // Mock user ID for development - in production, get from authentication
       const userId = input.userId;
-      console.log("Getting clinic details for clinic:", input.clinicId);
 
       // Get clinic details
       const [clinic] = await db.select().from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
@@ -80,7 +78,7 @@ export const getClinicDetailsProcedure = publicProcedure
         throw new Error("العيادة غير موجودة");
       }
 
-      // Check if user owns this clinic
+      // Check ownership
       const [request] = await db
         .select()
         .from(approvalRequests)
@@ -95,15 +93,28 @@ export const getClinicDetailsProcedure = publicProcedure
 
       const isOwner = !!request;
 
+      // ---------------------------------------------
+      // ✅ Get doctors (name + specialization only)
+      // ---------------------------------------------
+      const doctors = await db
+        .select({
+          name: users.name,
+          specialization: veterinarians.specialization,
+        })
+        .from(veterinarians)
+        .innerJoin(users, eq(veterinarians.userId, users.id))
+        .where(eq(veterinarians.clinicId, input.clinicId));
+
+      // ---------------------------------------------
+      // RETURN: clinic + doctors INSIDE the clinic key
+      // ---------------------------------------------
       return {
         success: true,
+        isOwner,
         clinic: {
           ...clinic,
-          // workingHours: clinic.workingHours ? JSON.parse(clinic.workingHours) : null,
-          // services: clinic.services ? JSON.parse(clinic.services) : [],
-          // images: clinic.images ? JSON.parse(clinic.images) : [],
+          doctors, // ⬅️ nested inside clinic
         },
-        isOwner,
       };
     } catch (error) {
       console.error("Error getting clinic details:", error);
@@ -152,14 +163,7 @@ export const getUserApprovedClinicsProcedure = publicProcedure
 
       return {
         success: true,
-        clinics: userClinics.map((clinic: any) => ({
-          ...clinic,
-          // workingHours: clinic.workingHours
-          //   ? JSON.parse(clinic.workingHours)
-          //   : null,
-          // services: clinic.services ? JSON.parse(clinic?.services) : [],
-          // images: clinic.images ? JSON.parse(clinic?.images) : [],
-        })),
+        clinics: userClinics,
       };
     } catch (error) {
       console.error("Error getting user approved clinics:", error);
