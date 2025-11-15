@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, clinics, veterinarians, users, vetPermissions } from "../../../../db";
+import { db, clinics, veterinarians, users, vetPermissions, notifications, clinicStaff } from "../../../../db";
 
 // ============== GET CLINIC SETTINGS ==============
 export const getClinicSettingsProcedure = protectedProcedure
@@ -20,19 +20,6 @@ export const getClinicSettingsProcedure = protectedProcedure
       if (!clinic) {
         throw new Error("العيادة غير موجودة");
       }
-
-      // // Parse JSON fields
-      // const workingHours = clinic.workingHours
-      //   ? typeof clinic.workingHours === "string"
-      //     ? JSON.parse(clinic.workingHours)
-      //     : clinic.workingHours
-      //   : null;
-
-      // const services = clinic.services
-      //   ? typeof clinic.services === "string"
-      //     ? JSON.parse(clinic.services)
-      //     : clinic.services
-      //   : [];
 
       const images = clinic.images
         ? typeof clinic.images === "string"
@@ -181,7 +168,7 @@ export const updateClinicWorkingHoursProcedure = protectedProcedure
     }
   });
 
-// ============== GET CLINIC STAFF ==============
+// ============== GET CLINIC STAFF (UPDATED) ==============
 export const getClinicStaffProcedure = protectedProcedure
   .input(
     z.object({
@@ -190,9 +177,10 @@ export const getClinicStaffProcedure = protectedProcedure
   )
   .query(async ({ input, ctx }) => {
     try {
-      // Get all veterinarians associated with this clinic
+      // Get all active staff using clinic_staff table
       const staff = await db
         .select({
+          staffId: clinicStaff.id,
           id: veterinarians.id,
           userId: veterinarians.userId,
           licenseNumber: veterinarians.licenseNumber,
@@ -205,15 +193,21 @@ export const getClinicStaffProcedure = protectedProcedure
           userEmail: users.email,
           userPhone: users.phone,
           userAvatar: users.avatar,
+          // Staff assignment info
+          assignedAt: clinicStaff.assignedAt,
+          role: clinicStaff.role,
+          status: clinicStaff.status,
+          notes: clinicStaff.notes,
         })
-        .from(veterinarians)
+        .from(clinicStaff)
+        .innerJoin(veterinarians, eq(clinicStaff.veterinarianId, veterinarians.id))
         .innerJoin(users, eq(veterinarians.userId, users.id))
-        .leftJoin(vetPermissions, eq(veterinarians.clinicId, vetPermissions.veterinarianId))
-        .where(eq(veterinarians.clinicId, input.clinicId));
+        .where(and(eq(clinicStaff.clinicId, input.clinicId), eq(clinicStaff.isActive, true)));
 
       return {
         success: true,
         staff: staff.map((s) => ({
+          staffId: s.staffId,
           id: s.id,
           userId: s.userId,
           name: s.userName,
@@ -226,6 +220,10 @@ export const getClinicStaffProcedure = protectedProcedure
           isVerified: s.isVerified,
           rating: s.rating,
           consultationFee: s.consultationFee,
+          assignedAt: s.assignedAt,
+          role: s.role,
+          status: s.status,
+          notes: s.notes,
         })),
       };
     } catch (error) {
@@ -234,20 +232,24 @@ export const getClinicStaffProcedure = protectedProcedure
     }
   });
 
-// ============== ADD STAFF MEMBER ==============
+// ============== ADD STAFF MEMBER (UPDATED) ==============
 export const addClinicStaffProcedure = protectedProcedure
   .input(
     z.object({
       clinicId: z.number(),
       email: z.string().email("البريد الإلكتروني غير صحيح"),
-      licenseNumber: z.string().min(1, "رقم الترخيص مطلوب"),
+      licenseNumber: z.string().optional(),
       specialization: z.string().optional(),
       experience: z.number().optional(),
       consultationFee: z.number().optional(),
+      role: z.enum(["all", "view_edit_pets", "view_only", "appointments_only"]).default("view_edit_pets"),
+      notes: z.string().optional(),
     })
   )
   .mutation(async ({ input, ctx }) => {
     try {
+      const userId = ctx.user.id;
+
       // Find user by email
       const [user] = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
 
@@ -255,35 +257,95 @@ export const addClinicStaffProcedure = protectedProcedure
         throw new Error("المستخدم غير موجود");
       }
 
-      // Check if already a veterinarian at this clinic
+      // Check if user already has a veterinarian record
+      let [existingVet] = await db.select().from(veterinarians).where(eq(veterinarians.userId, user.id)).limit(1);
+
+      let veterinarianId: number;
+
+      // If vet doesn't exist, create one
+      if (!existingVet) {
+        const [newVet] = await db
+          .insert(veterinarians)
+          .values({
+            userId: user.id,
+            licenseNumber: input.licenseNumber,
+            specialization: input.specialization,
+            experience: input.experience,
+            consultationFee: input.consultationFee,
+            isVerified: false,
+          })
+          .returning();
+        veterinarianId = newVet.id;
+      } else {
+        veterinarianId = existingVet.id;
+
+        // Update vet info if provided
+        if (input.licenseNumber || input.specialization || input.experience || input.consultationFee) {
+          await db
+            .update(veterinarians)
+            .set({
+              licenseNumber: input.licenseNumber || existingVet.licenseNumber,
+              specialization: input.specialization || existingVet.specialization,
+              experience: input.experience || existingVet.experience,
+              consultationFee: input.consultationFee || existingVet.consultationFee,
+              updatedAt: new Date(),
+            })
+            .where(eq(veterinarians.id, veterinarianId));
+        }
+      }
+
+      // Check if already assigned to this clinic
       const [existing] = await db
         .select()
-        .from(veterinarians)
-        .where(and(eq(veterinarians.userId, user.id), eq(veterinarians.clinicId, input.clinicId)))
+        .from(clinicStaff)
+        .where(
+          and(
+            eq(clinicStaff.clinicId, input.clinicId),
+            eq(clinicStaff.veterinarianId, veterinarianId),
+            eq(clinicStaff.isActive, true)
+          )
+        )
         .limit(1);
 
       if (existing) {
         throw new Error("هذا الطبيب موجود بالفعل في العيادة");
       }
 
-      // Add veterinarian
-      const [newVet] = await db
-        .insert(veterinarians)
+      // Add to clinic staff
+      const [staffAssignment] = await db
+        .insert(clinicStaff)
         .values({
-          userId: user.id,
           clinicId: input.clinicId,
-          licenseNumber: input.licenseNumber,
-          specialization: input.specialization,
-          experience: input.experience,
-          consultationFee: input.consultationFee,
-          isVerified: false,
+          veterinarianId: veterinarianId,
+          userId: user.id,
+          addedBy: userId,
+          role: input.role,
+          notes: input.notes,
+          status: "active",
+          isActive: true,
         })
         .returning();
+
+      // Get clinic name for notification
+      const [clinic] = await db.select().from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
+
+      // Send notification
+      await db.insert(notifications).values({
+        userId: user.id,
+        title: "تمت إضافتك كطبيب في عيادة",
+        message: `تمت إضافتك إلى عيادة ${clinic?.name || "عيادة جديدة"} كعضو في الفريق الطبي.`,
+        type: "vet_added",
+        data: {
+          clinicId: input.clinicId,
+          veterinarianId: veterinarianId,
+          staffId: staffAssignment.id,
+        },
+      });
 
       return {
         success: true,
         message: "تم إضافة الطبيب بنجاح",
-        veterinarian: newVet,
+        staffAssignment,
       };
     } catch (error) {
       console.error("❌ Error adding staff:", error);
@@ -291,7 +353,7 @@ export const addClinicStaffProcedure = protectedProcedure
     }
   });
 
-// ============== REMOVE STAFF MEMBER ==============
+// ============== REMOVE STAFF MEMBER (UPDATED) ==============
 export const removeClinicStaffProcedure = protectedProcedure
   .input(
     z.object({
@@ -301,19 +363,58 @@ export const removeClinicStaffProcedure = protectedProcedure
   )
   .mutation(async ({ input, ctx }) => {
     try {
-      // Verify veterinarian belongs to this clinic
-      const [vet] = await db
+      const now = new Date();
+
+      // Verify staff assignment exists
+      const [staffAssignment] = await db
         .select()
-        .from(veterinarians)
-        .where(and(eq(veterinarians.id, input.veterinarianId), eq(veterinarians.clinicId, input.clinicId)))
+        .from(clinicStaff)
+        .where(
+          and(
+            eq(clinicStaff.clinicId, input.clinicId),
+            eq(clinicStaff.veterinarianId, input.veterinarianId),
+            eq(clinicStaff.isActive, true)
+          )
+        )
         .limit(1);
 
-      if (!vet) {
+      if (!staffAssignment) {
         throw new Error("الطبيب غير موجود في هذه العيادة");
       }
 
-      // Remove veterinarian (set clinicId to null instead of deleting)
-      await db.update(veterinarians).set({ clinicId: null }).where(eq(veterinarians.id, input.veterinarianId));
+      // Mark as inactive in clinic staff
+      await db
+        .update(clinicStaff)
+        .set({
+          isActive: false,
+          status: "removed",
+          removedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(clinicStaff.id, staffAssignment.id));
+
+      // Deactivate permissions
+      await db
+        .update(vetPermissions)
+        .set({
+          isActive: false,
+          updatedAt: now,
+        })
+        .where(
+          and(eq(vetPermissions.clinicId, input.clinicId), eq(vetPermissions.veterinarianId, input.veterinarianId))
+        );
+
+      // Send notification
+      await db.insert(notifications).values({
+        userId: staffAssignment.userId,
+        title: "تم إزالتك من عيادة",
+        message: "تم إزالتك من الفريق الطبي للعيادة.",
+        type: "vet_removed",
+        data: {
+          clinicId: input.clinicId,
+          veterinarianId: input.veterinarianId,
+        },
+      });
 
       return {
         success: true,

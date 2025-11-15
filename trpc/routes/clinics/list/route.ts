@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { publicProcedure } from "../../../create-context";
-import { db, clinics, approvalRequests, users, veterinarians } from "../../../../db";
+import { protectedProcedure, publicProcedure } from "../../../create-context";
+import { db, clinics, approvalRequests, users, veterinarians, vetPermissions, clinicStaff } from "../../../../db";
 import { eq, and, inArray } from "drizzle-orm";
 
+// ============== GET USER CLINICS (UPDATED) ==============
 export const getUserClinicsProcedure = publicProcedure
   .input(
     z.object({
@@ -29,15 +30,31 @@ export const getUserClinicsProcedure = publicProcedure
         .from(approvalRequests)
         .where(and(eq(approvalRequests.requesterId, userId), eq(approvalRequests.requestType, "clinic_activation")));
 
-      // Get clinic details for approved requests
-      const clinicIds = requests.filter((req) => req.status === "approved").map((req) => req.resourceId);
+      // Get clinic IDs for approved requests (owned clinics)
+      const ownedClinicIds = requests.filter((req) => req.status === "approved").map((req) => req.resourceId);
+
+      // Get veterinarian record for this user
+      const [vet] = await db.select().from(veterinarians).where(eq(veterinarians.userId, userId)).limit(1);
+
+      // Get assigned clinic IDs
+      let assignedClinicIds: number[] = [];
+      if (vet) {
+        const assignments = await db
+          .select({ clinicId: clinicStaff.clinicId })
+          .from(clinicStaff)
+          .where(and(eq(clinicStaff.veterinarianId, vet.id), eq(clinicStaff.isActive, true)));
+        assignedClinicIds = assignments.map((a) => a.clinicId);
+      }
+
+      // Combine all clinic IDs
+      const allClinicIds = [...new Set([...ownedClinicIds, ...assignedClinicIds])];
 
       let userClinics: any[] = [];
-      if (clinicIds.length > 0) {
+      if (allClinicIds.length > 0) {
         userClinics = await db
           .select()
           .from(clinics)
-          .where(and(eq(clinics.isActive, true), inArray(clinics.id, clinicIds)));
+          .where(and(eq(clinics.isActive, true), inArray(clinics.id, allClinicIds)));
       }
 
       return {
@@ -47,6 +64,8 @@ export const getUserClinicsProcedure = publicProcedure
           workingHours: clinic.workingHours ? JSON.parse(clinic.workingHours) : null,
           services: clinic.services ? JSON.parse(clinic.services) : [],
           images: clinic.images ? JSON.parse(clinic.images) : [],
+          isOwned: ownedClinicIds.includes(clinic.id),
+          isAssigned: assignedClinicIds.includes(clinic.id),
         })),
         requests: requests.map((req: any) => ({
           ...req,
@@ -60,6 +79,7 @@ export const getUserClinicsProcedure = publicProcedure
     }
   });
 
+// ============== GET CLINIC DETAILS (UPDATED) ==============
 export const getClinicDetailsProcedure = publicProcedure
   .input(
     z.object({
@@ -93,27 +113,45 @@ export const getClinicDetailsProcedure = publicProcedure
 
       const isOwner = !!request;
 
-      // ---------------------------------------------
-      // ✅ Get doctors (name + specialization only)
-      // ---------------------------------------------
+      // Check if user is assigned as staff
+      let isStaff = false;
+      const [vet] = await db.select().from(veterinarians).where(eq(veterinarians.userId, userId)).limit(1);
+
+      if (vet) {
+        const [staffRecord] = await db
+          .select()
+          .from(clinicStaff)
+          .where(
+            and(
+              eq(clinicStaff.clinicId, input.clinicId),
+              eq(clinicStaff.veterinarianId, vet.id),
+              eq(clinicStaff.isActive, true)
+            )
+          )
+          .limit(1);
+        isStaff = !!staffRecord;
+      }
+
+      // Get doctors using clinic_staff table
       const doctors = await db
         .select({
           name: users.name,
           specialization: veterinarians.specialization,
+          experience: veterinarians.experience,
+          rating: veterinarians.rating,
         })
-        .from(veterinarians)
+        .from(clinicStaff)
+        .innerJoin(veterinarians, eq(clinicStaff.veterinarianId, veterinarians.id))
         .innerJoin(users, eq(veterinarians.userId, users.id))
-        .where(eq(veterinarians.clinicId, input.clinicId));
+        .where(and(eq(clinicStaff.clinicId, input.clinicId), eq(clinicStaff.isActive, true)));
 
-      // ---------------------------------------------
-      // RETURN: clinic + doctors INSIDE the clinic key
-      // ---------------------------------------------
       return {
         success: true,
         isOwner,
+        isStaff,
         clinic: {
           ...clinic,
-          doctors, // ⬅️ nested inside clinic
+          doctors,
         },
       };
     } catch (error) {
@@ -122,7 +160,7 @@ export const getClinicDetailsProcedure = publicProcedure
     }
   });
 
-// Get user's approved clinics
+// ============== GET USER APPROVED CLINICS (UPDATED) ==============
 export const getUserApprovedClinicsProcedure = publicProcedure
   .input(
     z.object({
@@ -146,9 +184,25 @@ export const getUserApprovedClinicsProcedure = publicProcedure
           )
         );
 
-      const clinicIds = approvedRequests.map((req) => req.resourceId);
+      const ownedClinicIds = approvedRequests.map((req) => req.resourceId);
 
-      if (clinicIds.length === 0) {
+      // Get veterinarian record
+      const [vet] = await db.select().from(veterinarians).where(eq(veterinarians.userId, userId)).limit(1);
+
+      // Get assigned clinics
+      let assignedClinicIds: number[] = [];
+      if (vet) {
+        const assignments = await db
+          .select({ clinicId: clinicStaff.clinicId })
+          .from(clinicStaff)
+          .where(and(eq(clinicStaff.veterinarianId, vet.id), eq(clinicStaff.isActive, true)));
+        assignedClinicIds = assignments.map((a) => a.clinicId);
+      }
+
+      // Combine all clinic IDs
+      const allClinicIds = [...new Set([...ownedClinicIds, ...assignedClinicIds])];
+
+      if (allClinicIds.length === 0) {
         return {
           success: true,
           clinics: [],
@@ -159,11 +213,15 @@ export const getUserApprovedClinicsProcedure = publicProcedure
       const userClinics = await db
         .select()
         .from(clinics)
-        .where(and(eq(clinics.isActive, true), inArray(clinics.id, clinicIds)));
+        .where(and(eq(clinics.isActive, true), inArray(clinics.id, allClinicIds)));
 
       return {
         success: true,
-        clinics: userClinics,
+        clinics: userClinics.map((clinic) => ({
+          ...clinic,
+          isOwned: ownedClinicIds.includes(clinic.id),
+          isAssigned: assignedClinicIds.includes(clinic.id),
+        })),
       };
     } catch (error) {
       console.error("Error getting user approved clinics:", error);

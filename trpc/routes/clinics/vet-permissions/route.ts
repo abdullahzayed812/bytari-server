@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, users, veterinarians, vetPermissions } from "../../../../db";
+import { db, users, veterinarians, clinicStaff, vetPermissions } from "../../../../db";
 
+// ============== UPDATE STAFF PERMISSIONS (UPDATED) ==============
 export const updateStaffPermissionsProcedure = protectedProcedure
   .input(
     z.object({
@@ -18,16 +19,31 @@ export const updateStaffPermissionsProcedure = protectedProcedure
   .mutation(async ({ input, ctx }) => {
     try {
       const updatePromises = input.permissions.map(async ({ veterinarianId, permission }) => {
-        // Verify veterinarian belongs to this clinic
-        const [vet] = await db
+        // Verify veterinarian is assigned to this clinic using clinic_staff
+        const [staffRecord] = await db
           .select()
-          .from(veterinarians)
-          .where(and(eq(veterinarians.id, veterinarianId), eq(veterinarians.clinicId, input.clinicId)))
+          .from(clinicStaff)
+          .where(
+            and(
+              eq(clinicStaff.veterinarianId, veterinarianId),
+              eq(clinicStaff.clinicId, input.clinicId),
+              eq(clinicStaff.isActive, true)
+            )
+          )
           .limit(1);
 
-        if (!vet) {
+        if (!staffRecord) {
           throw new Error(`الطبيب ذو المعرف ${veterinarianId} غير موجود في هذه العيادة`);
         }
+
+        // Update role in clinic_staff table
+        await db
+          .update(clinicStaff)
+          .set({
+            role: permission,
+            updatedAt: new Date(),
+          })
+          .where(eq(clinicStaff.id, staffRecord.id));
 
         // Map permission to granular permissions
         const permissionMap = {
@@ -116,7 +132,7 @@ export const updateStaffPermissionsProcedure = protectedProcedure
     }
   });
 
-// Get staff with permissions procedure
+// ============== GET STAFF WITH PERMISSIONS (UPDATED) ==============
 export const getClinicStaffWithPermissionsProcedure = protectedProcedure
   .input(
     z.object({
@@ -125,9 +141,10 @@ export const getClinicStaffWithPermissionsProcedure = protectedProcedure
   )
   .query(async ({ input, ctx }) => {
     try {
-      // Get all veterinarians with their permissions
+      // Get all active staff with their permissions using clinic_staff table
       const staff = await db
         .select({
+          staffId: clinicStaff.id,
           id: veterinarians.id,
           userId: veterinarians.userId,
           licenseNumber: veterinarians.licenseNumber,
@@ -140,6 +157,10 @@ export const getClinicStaffWithPermissionsProcedure = protectedProcedure
           userEmail: users.email,
           userPhone: users.phone,
           userAvatar: users.avatar,
+          // Staff assignment info
+          assignedAt: clinicStaff.assignedAt,
+          staffRole: clinicStaff.role,
+          staffStatus: clinicStaff.status,
           // Permission details
           permissionRole: vetPermissions.role,
           canViewPets: vetPermissions.canViewPets,
@@ -151,17 +172,19 @@ export const getClinicStaffWithPermissionsProcedure = protectedProcedure
           canManageStaff: vetPermissions.canManageStaff,
           canManageSettings: vetPermissions.canManageSettings,
         })
-        .from(veterinarians)
+        .from(clinicStaff)
+        .innerJoin(veterinarians, eq(clinicStaff.veterinarianId, veterinarians.id))
         .innerJoin(users, eq(veterinarians.userId, users.id))
         .leftJoin(
           vetPermissions,
           and(eq(vetPermissions.veterinarianId, veterinarians.id), eq(vetPermissions.clinicId, input.clinicId))
         )
-        .where(eq(veterinarians.clinicId, input.clinicId));
+        .where(and(eq(clinicStaff.clinicId, input.clinicId), eq(clinicStaff.isActive, true)));
 
       return {
         success: true,
         staff: staff.map((s) => ({
+          staffId: s.staffId,
           id: s.id,
           userId: s.userId,
           name: s.userName,
@@ -174,8 +197,10 @@ export const getClinicStaffWithPermissionsProcedure = protectedProcedure
           isVerified: s.isVerified,
           rating: s.rating,
           consultationFee: s.consultationFee,
+          assignedAt: s.assignedAt,
+          status: s.staffStatus,
           permissions: {
-            role: s.permissionRole || "view_edit_pets",
+            role: s.permissionRole || s.staffRole || "view_edit_pets",
             canViewPets: s.canViewPets ?? true,
             canEditPets: s.canEditPets ?? true,
             canAddMedicalRecords: s.canAddMedicalRecords ?? true,

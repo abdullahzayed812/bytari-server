@@ -220,10 +220,10 @@ export const veterinarians = pgTable("veterinarians", {
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
-  licenseNumber: text("license_number").notNull().unique(),
+  licenseNumber: text("license_number"),
   specialization: text("specialization"),
   experience: integer("experience"), // years
-  clinicId: integer("clinic_id").references(() => clinics.id),
+  // clinicId: integer("clinic_id").references(() => clinics.id),
   isVerified: boolean("is_verified").notNull().default(false),
   rating: real("rating").default(0),
   consultationFee: real("consultation_fee"),
@@ -251,6 +251,44 @@ export const clinics = pgTable("clinics", {
   }),
   activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
   needsRenewal: boolean("needs_renewal").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============== CLINIC STAFF TABLE ==============
+// This table tracks all staff assignments to clinics
+export const clinicStaff = pgTable("clinic_staff", {
+  id: serial("id").primaryKey(),
+
+  // References
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id, { onDelete: "cascade" }),
+  veterinarianId: integer("veterinarian_id")
+    .notNull()
+    .references(() => veterinarians.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+
+  // Assignment details
+  addedBy: integer("added_by")
+    .notNull()
+    .references(() => users.id), // Clinic owner who added this vet
+
+  // Status
+  status: text("status").notNull().default("active"), // 'active', 'inactive', 'removed'
+  isActive: boolean("is_active").notNull().default(true),
+
+  // Role and permissions (can reference vetPermissions or store directly)
+  role: text("role").default("view_edit_pets"), // 'all', 'view_edit_pets', 'view_only', 'appointments_only'
+
+  // Notes
+  notes: text("notes"), // Optional notes about this assignment
+
+  // Timestamps
+  assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

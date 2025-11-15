@@ -816,10 +816,10 @@ CREATE TABLE "vet_magazines" (
 CREATE TABLE "veterinarians" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
-	"license_number" text NOT NULL,
+	"license_number" text,
 	"specialization" text,
 	"experience" integer,
-	"clinic_id" integer,
+	-- "clinic_id" integer,
 	"is_verified" boolean DEFAULT false NOT NULL,
 	"rating" real DEFAULT 0,
 	"consultation_fee" real,
@@ -1260,6 +1260,35 @@ CREATE TABLE "vet_permissions" (
 );
 
 
+
+CREATE TABLE IF NOT EXISTS clinic_staff (
+  id SERIAL PRIMARY KEY,
+
+  clinic_id INTEGER NOT NULL,
+  veterinarian_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  added_by INTEGER NOT NULL,
+
+  -- Status
+  status TEXT NOT NULL DEFAULT 'active',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+  -- Role
+  role TEXT DEFAULT 'view_edit_pets',
+
+  -- Notes
+  notes TEXT,
+
+  -- Timestamps
+  assigned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  removed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+
+
+
 --> statement-breakpoint
 ALTER TABLE "admin_activity_logs" ADD CONSTRAINT "admin_activity_logs_admin_id_users_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "admin_content" ADD CONSTRAINT "admin_content_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -1435,7 +1464,7 @@ ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_assigned_by_users_id_fk" FOR
 ALTER TABLE "vet_books" ADD CONSTRAINT "vet_books_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vet_magazines" ADD CONSTRAINT "vet_magazines_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "veterinarians" ADD CONSTRAINT "veterinarians_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "veterinarians" ADD CONSTRAINT "veterinarians_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "veterinarians" ADD CONSTRAINT "veterinarians_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "warehouse_products" ADD CONSTRAINT "warehouse_products_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "warehouses" ADD CONSTRAINT "warehouses_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 
@@ -1542,3 +1571,30 @@ ADD CONSTRAINT "vet_permissions_clinic_id_fkey"
 FOREIGN KEY ("clinic_id")
 REFERENCES "public"."clinics"("id")
 ON DELETE CASCADE ON UPDATE NO ACTION;
+
+
+
+-- Clinic reference
+ALTER TABLE "clinic_staff" 
+ADD CONSTRAINT "clinic_staff_clinic_id_clinics_id_fk"
+FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id")
+ON DELETE CASCADE ON UPDATE NO ACTION;
+
+-- Veterinarian reference
+ALTER TABLE "clinic_staff" 
+ADD CONSTRAINT "clinic_staff_veterinarian_id_veterinarians_id_fk"
+FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id")
+ON DELETE CASCADE ON UPDATE NO ACTION;
+
+-- User assigned reference
+ALTER TABLE "clinic_staff" 
+ADD CONSTRAINT "clinic_staff_user_id_users_id_fk"
+FOREIGN KEY ("user_id") REFERENCES "public"."users"("id")
+ON DELETE CASCADE ON UPDATE NO ACTION;
+
+-- Added_by reference
+ALTER TABLE "clinic_staff" 
+ADD CONSTRAINT "clinic_staff_added_by_users_id_fk"
+FOREIGN KEY ("added_by") REFERENCES "public"."users"("id")
+ON DELETE NO ACTION ON UPDATE NO ACTION;
+

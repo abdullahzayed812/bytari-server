@@ -128,8 +128,7 @@ import {
   getUserClinicsProcedure,
   getClinicDetailsProcedure,
   getUserApprovedClinicsProcedure,
-  getUserVetClinicsProcedure,
-  getUserClinicsWithRolesProcedure,
+  // getVetClinicsProcedure,
 } from "./routes/clinics/list/route";
 import { getActiveClinicsListProcedure } from "./routes/clinics/public/route";
 import { getClinicDashboardDataProcedure } from "./routes/clinics/dashboard/route";
@@ -509,8 +508,7 @@ export const appRouter = createTRPCRouter({
     getClinicAnimals: getClinicAnimalsProcedure,
     getLatestPets: getClinicLatestPetsProcedure,
 
-    // getUserVetClinics: getUserVetClinicsProcedure, // New: only vet clinics
-    // getUserClinicsWithRoles: getUserClinicsWithRolesProcedure, // New: detailed role info
+    // getVetClinics: getVetClinicsProcedure,
 
     public: createTRPCRouter({
       getPublicClinics: getActiveClinicsListProcedure,
