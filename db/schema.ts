@@ -244,6 +244,11 @@ export const clinics = pgTable("clinics", {
   workingHours: jsonb("working_hours"), // JSON data
   services: jsonb("services"), // JSON data
   images: jsonb("images"), // JSON data
+  doctors: text("doctors"),
+  facebook: text("facebook"),
+  instagram: text("instagram"),
+  whatsapp: text("whatsapp"),
+  website: text("website"),
   rating: real("rating").default(0),
   isActive: boolean("is_active").notNull().default(true),
   activationStartDate: timestamp("activation_start_date", {

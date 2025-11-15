@@ -17,9 +17,13 @@ export const createClinicProcedure = protectedProcedure
       images: z.array(z.string()).optional(),
       licenseNumber: z.string().min(1, "رقم الترخيص مطلوب"),
       licenseImages: z.array(z.string()).min(1, "صور الترخيص مطلوبة"),
-      identityImages: z.array(z.string()).min(1, "صور الهوية مطلوبة"),
       officialDocuments: z.array(z.string()).optional(),
       description: z.string().optional(),
+      doctors: z.string().optional(),
+      facebook: z.string().optional(),
+      instagram: z.string().optional(),
+      whatsapp: z.string().optional(),
+      website: z.string().optional(),
     })
   )
   .mutation(async ({ input, ctx }) => {
@@ -41,6 +45,11 @@ export const createClinicProcedure = protectedProcedure
           email: input.email,
           latitude: input.latitude,
           longitude: input.longitude,
+          doctors: input.doctors,
+          facebook: input.facebook,
+          instagram: input.instagram,
+          whatsapp: input.whatsapp,
+          website: input.website,
           workingHours: input.workingHours ? JSON.stringify(input.workingHours) : null,
           services: input.services ? JSON.stringify(input.services) : null,
           images: input.images ? JSON.stringify(input.images) : null,
@@ -60,7 +69,6 @@ export const createClinicProcedure = protectedProcedure
           description: `طلب تفعيل عيادة ${input.name} في ${input.address}`,
           documents: JSON.stringify(["clinic_registration_form.pdf"]), // optional static or dynamic
           licenseImages: JSON.stringify(input.licenseImages),
-          identityImages: JSON.stringify(input.identityImages),
           officialDocuments: input.officialDocuments ? JSON.stringify(input.officialDocuments) : null,
 
           paymentStatus: "not_required", // default for now

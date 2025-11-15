@@ -132,27 +132,11 @@ export const getClinicDetailsProcedure = publicProcedure
         isStaff = !!staffRecord;
       }
 
-      // Get doctors using clinic_staff table
-      const doctors = await db
-        .select({
-          name: users.name,
-          specialization: veterinarians.specialization,
-          experience: veterinarians.experience,
-          rating: veterinarians.rating,
-        })
-        .from(clinicStaff)
-        .innerJoin(veterinarians, eq(clinicStaff.veterinarianId, veterinarians.id))
-        .innerJoin(users, eq(veterinarians.userId, users.id))
-        .where(and(eq(clinicStaff.clinicId, input.clinicId), eq(clinicStaff.isActive, true)));
-
       return {
         success: true,
         isOwner,
         isStaff,
-        clinic: {
-          ...clinic,
-          doctors,
-        },
+        clinic,
       };
     } catch (error) {
       console.error("Error getting clinic details:", error);
