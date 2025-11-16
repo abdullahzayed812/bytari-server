@@ -1,7 +1,17 @@
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, clinics, veterinarians, users, vetPermissions, notifications, clinicStaff } from "../../../../db";
+import {
+  db,
+  clinics,
+  veterinarians,
+  users,
+  vetPermissions,
+  notifications,
+  clinicStaff,
+  approvalRequests,
+  adminNotifications,
+} from "../../../../db";
 
 // ============== GET CLINIC SETTINGS ==============
 export const getClinicSettingsProcedure = protectedProcedure
@@ -539,5 +549,103 @@ export const getClinicSubscriptionProcedure = protectedProcedure
     } catch (error) {
       console.error("❌ Error getting subscription:", error);
       throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب حالة الاشتراك");
+    }
+  });
+
+// ============== REQUEST CLINIC RENEWAL ==============
+export const requestClinicRenewalProcedure = protectedProcedure
+  .input(
+    z.object({
+      clinicId: z.number(),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    try {
+      const userId = ctx.user.id;
+
+      // Get clinic details
+      const [clinic] = await db.select().from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
+
+      if (!clinic) {
+        throw new Error("العيادة غير موجودة");
+      }
+
+      // Check if user owns this clinic (through approval requests)
+      const [ownerRequest] = await db
+        .select()
+        .from(approvalRequests)
+        .where(
+          and(
+            eq(approvalRequests.requesterId, userId),
+            eq(approvalRequests.resourceId, input.clinicId),
+            eq(approvalRequests.requestType, "clinic_activation"),
+            eq(approvalRequests.status, "approved")
+          )
+        )
+        .limit(1);
+
+      if (!ownerRequest) {
+        throw new Error("ليس لديك صلاحية لتجديد هذه العيادة");
+      }
+
+      // Check if there's already a pending renewal request
+      const [existingRequest] = await db
+        .select()
+        .from(approvalRequests)
+        .where(
+          and(
+            eq(approvalRequests.requesterId, userId),
+            eq(approvalRequests.resourceId, input.clinicId),
+            eq(approvalRequests.requestType, "clinic_renewal"),
+            eq(approvalRequests.status, "pending")
+          )
+        )
+        .limit(1);
+
+      if (existingRequest) {
+        throw new Error("يوجد طلب تجديد قيد المراجعة بالفعل");
+      }
+
+      const renewalAmount = 1200; // Renewal fee for clinic
+
+      // Create renewal approval request
+      const [renewalRequest] = await db
+        .insert(approvalRequests)
+        .values({
+          requestType: "clinic_renewal",
+          requesterId: userId,
+          resourceId: input.clinicId,
+          title: `طلب تجديد اشتراك عيادة ${clinic.name}`,
+          description: `طلب تجديد اشتراك العيادة لمدة سنة إضافية`,
+          paymentAmount: renewalAmount,
+          paymentStatus: "not_required",
+          priority: "high",
+          status: "pending",
+        })
+        .returning();
+
+      // Notify all admins
+      const adminUsers = await db.select({ id: users.id }).from(users).where(eq(users.userType, "admin"));
+
+      for (const admin of adminUsers) {
+        await db.insert(adminNotifications).values({
+          recipientId: admin.id,
+          type: "approval_request",
+          title: "طلب تجديد اشتراك عيادة جديد",
+          content: `طلب تجديد اشتراك من ${clinic.name}`,
+          relatedResourceType: "approval_request",
+          relatedResourceId: renewalRequest.id,
+          priority: "high",
+        });
+      }
+
+      return {
+        success: true,
+        message: "تم إرسال طلب التجديد بنجاح",
+        requestId: renewalRequest.id,
+      };
+    } catch (error) {
+      console.error("❌ Error requesting clinic renewal:", error);
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء طلب تجديد الاشتراك");
     }
   });

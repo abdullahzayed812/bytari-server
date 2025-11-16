@@ -113,6 +113,7 @@ import {
   getStoreStaffProcedure,
   getStoreSubscriptionProcedure,
   removeStoreStaffProcedure,
+  requestStoreRenewalProcedure,
   updateStoreBasicInfoProcedure,
   updateStoreContactInfoProcedure,
   updateStoreImagesProcedure,
@@ -179,6 +180,7 @@ import {
   updateClinicServicesProcedure,
   updateClinicImagesProcedure,
   getClinicSubscriptionProcedure,
+  requestClinicRenewalProcedure,
 } from "./routes/clinics/settings/route";
 
 import {
@@ -512,6 +514,8 @@ export const appRouter = createTRPCRouter({
       getSettings: getStoreSettingsProcedure,
       getSubscription: getStoreSubscriptionProcedure,
 
+      requestRenewal: requestStoreRenewalProcedure,
+
       staff: {
         addStaff: addStoreStaffProcedure,
         removeStaff: removeStoreStaffProcedure,
@@ -567,6 +571,8 @@ export const appRouter = createTRPCRouter({
       updateWorkingHours: updateClinicWorkingHoursProcedure,
       updateServices: updateClinicServicesProcedure,
       updateImages: updateClinicImagesProcedure,
+
+      requestRenewal: requestClinicRenewalProcedure,
 
       staff: createTRPCRouter({
         getStaff: getClinicStaffWithPermissionsProcedure,

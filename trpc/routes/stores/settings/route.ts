@@ -1,7 +1,17 @@
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, stores, veterinarians, users, storePermissions, notifications, storeStaff } from "../../../../db";
+import {
+  db,
+  stores,
+  veterinarians,
+  users,
+  storePermissions,
+  notifications,
+  storeStaff,
+  approvalRequests,
+  adminNotifications,
+} from "../../../../db";
 
 // ============== GET STORE SETTINGS ==============
 export const getStoreSettingsProcedure = protectedProcedure
@@ -578,5 +588,90 @@ export const updateStorePermissionsProcedure = protectedProcedure
     } catch (error) {
       console.error("❌ Error updating store permissions:", error);
       throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء تحديث الصلاحيات");
+    }
+  });
+
+// ============== REQUEST STORE RENEWAL ==============
+export const requestStoreRenewalProcedure = protectedProcedure
+  .input(
+    z.object({
+      storeId: z.number(),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    try {
+      const userId = ctx.user.id;
+
+      // Get store details
+      const [store] = await db.select().from(stores).where(eq(stores.id, input.storeId)).limit(1);
+
+      if (!store) {
+        throw new Error("المذخر غير موجود");
+      }
+
+      // Check if user owns this store
+      if (store.ownerId !== userId) {
+        throw new Error("ليس لديك صلاحية لتجديد هذا المذخر");
+      }
+
+      // Check if there's already a pending renewal request
+      const [existingRequest] = await db
+        .select()
+        .from(approvalRequests)
+        .where(
+          and(
+            eq(approvalRequests.requesterId, userId),
+            eq(approvalRequests.resourceId, input.storeId),
+            eq(approvalRequests.requestType, "store_renewal"),
+            eq(approvalRequests.status, "pending")
+          )
+        )
+        .limit(1);
+
+      if (existingRequest) {
+        throw new Error("يوجد طلب تجديد قيد المراجعة بالفعل");
+      }
+
+      const renewalAmount = 800; // Renewal fee for store
+
+      // Create renewal approval request
+      const [renewalRequest] = await db
+        .insert(approvalRequests)
+        .values({
+          requestType: "store_renewal",
+          requesterId: userId,
+          resourceId: input.storeId,
+          title: `طلب تجديد اشتراك مذخر ${store.name}`,
+          description: `طلب تجديد اشتراك المذخر لمدة سنة إضافية`,
+          paymentAmount: renewalAmount,
+          paymentStatus: "not_required",
+          priority: "normal",
+          status: "pending",
+        })
+        .returning();
+
+      // Notify all admins
+      const adminUsers = await db.select({ id: users.id }).from(users).where(eq(users.userType, "admin"));
+
+      for (const admin of adminUsers) {
+        await db.insert(adminNotifications).values({
+          recipientId: admin.id,
+          type: "approval_request",
+          title: "طلب تجديد اشتراك مذخر جديد",
+          content: `طلب تجديد اشتراك من ${store.name}`,
+          relatedResourceType: "approval_request",
+          relatedResourceId: renewalRequest.id,
+          priority: "normal",
+        });
+      }
+
+      return {
+        success: true,
+        message: "تم إرسال طلب التجديد بنجاح",
+        requestId: renewalRequest.id,
+      };
+    } catch (error) {
+      console.error("❌ Error requesting store renewal:", error);
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء طلب تجديد الاشتراك");
     }
   });

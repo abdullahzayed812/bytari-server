@@ -632,6 +632,7 @@ export const stores = pgTable("stores", {
   totalSales: real("total_sales").default(0),
 
   // Subscription management
+  activationStartDate: timestamp("activation_start_date", { withTimezone: true }),
   activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
   needsRenewal: boolean("needs_renewal").notNull().default(false),
   subscriptionStatus: text("subscription_status").default("pending"), // 'active', 'expired', 'pending'

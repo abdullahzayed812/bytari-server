@@ -675,6 +675,7 @@ CREATE TABLE "stores" (
 	"show_on_vet_home" boolean DEFAULT false NOT NULL,
 	"rating" real DEFAULT 0,
 	"total_sales" real DEFAULT 0,
+	"activation_start_date" timestamp with time zone,
 	"activation_end_date" timestamp with time zone,
 	"needs_renewal" boolean DEFAULT false NOT NULL,
 	"subscription_status" text DEFAULT 'pending',
