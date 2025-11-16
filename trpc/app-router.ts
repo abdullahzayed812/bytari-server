@@ -107,6 +107,18 @@ import { getStoreProductProcedure } from "./routes/stores/products/get/route";
 import { getStoreByIdProcedure } from "./routes/stores/getById/route";
 import { updateStoreProcedure } from "./routes/stores/update/route";
 import { deleteStoreProcedure } from "./routes/stores/delete/route";
+import {
+  addStoreStaffProcedure,
+  getStoreSettingsProcedure,
+  getStoreStaffProcedure,
+  getStoreSubscriptionProcedure,
+  removeStoreStaffProcedure,
+  updateStoreBasicInfoProcedure,
+  updateStoreContactInfoProcedure,
+  updateStoreImagesProcedure,
+  updateStorePermissionsProcedure,
+  updateStoreWorkingHoursProcedure,
+} from "./routes/stores/settings/route";
 
 // Clinic routes
 import {
@@ -492,6 +504,21 @@ export const appRouter = createTRPCRouter({
     getUserStores: getUserStoresProcedure,
     getStoreDetails: getStoreProcedure,
     updateWarehouse: updateStoreProcedure,
+
+    settings: {
+      updateBasicInfo: updateStoreBasicInfoProcedure,
+      updateContactInfo: updateStoreContactInfoProcedure,
+      updateWorkingHours: updateStoreWorkingHoursProcedure,
+      getSettings: getStoreSettingsProcedure,
+      getSubscription: getStoreSubscriptionProcedure,
+
+      staff: {
+        addStaff: addStoreStaffProcedure,
+        removeStaff: removeStoreStaffProcedure,
+        updatePermissions: updateStorePermissionsProcedure,
+        getStaff: getStoreStaffProcedure,
+      },
+    },
   }),
 
   // Clinic routes

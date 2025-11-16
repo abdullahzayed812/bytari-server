@@ -1294,6 +1294,69 @@ CREATE TABLE IF NOT EXISTS clinic_staff (
 
 
 
+CREATE TABLE "store_staff" (
+    "id" serial PRIMARY KEY NOT NULL,
+    
+    -- References
+    "store_id" integer NOT NULL,
+    "veterinarian_id" integer NOT NULL,
+    "user_id" integer NOT NULL,
+    "added_by" integer NOT NULL,
+
+    -- Status
+    "status" text DEFAULT 'active' NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+
+    -- Role & permissions
+    "role" text DEFAULT 'view_only',
+
+    -- Notes
+    "notes" text,
+
+    -- Timestamps
+    "assigned_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "removed_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+
+
+
+CREATE TABLE "store_permissions" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "veterinarian_id" integer NOT NULL,
+    "store_id" integer NOT NULL,
+
+    -- Permission role
+    "role" text DEFAULT 'view_only' NOT NULL,
+
+    -- Granular permissions
+    "can_view_products" boolean DEFAULT true,
+    "can_edit_products" boolean DEFAULT true,
+    "can_add_products" boolean DEFAULT true,
+    "can_delete_products" boolean DEFAULT false,
+    "can_manage_orders" boolean DEFAULT true,
+    "can_view_reports" boolean DEFAULT false,
+    "can_manage_staff" boolean DEFAULT false,
+    "can_manage_settings" boolean DEFAULT false,
+    "can_manage_inventory" boolean DEFAULT true,
+    "can_process_payments" boolean DEFAULT false,
+
+    -- Additional
+    "is_active" boolean DEFAULT true,
+
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+
+
+
+
+
 --> statement-breakpoint
 ALTER TABLE "admin_activity_logs" ADD CONSTRAINT "admin_activity_logs_admin_id_users_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "admin_content" ADD CONSTRAINT "admin_content_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -1602,4 +1665,32 @@ ALTER TABLE "clinic_staff"
 ADD CONSTRAINT "clinic_staff_added_by_users_id_fk"
 FOREIGN KEY ("added_by") REFERENCES "public"."users"("id")
 ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+
+
+
+
+ALTER TABLE "store_staff"
+    ADD CONSTRAINT "store_staff_store_id_stores_id_fk"
+    FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+
+ALTER TABLE "store_staff"
+    ADD CONSTRAINT "store_staff_veterinarian_id_veterinarians_id_fk"
+    FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+
+ALTER TABLE "store_staff"
+    ADD CONSTRAINT "store_staff_user_id_users_id_fk"
+    FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+
+ALTER TABLE "store_staff"
+    ADD CONSTRAINT "store_staff_added_by_users_id_fk"
+    FOREIGN KEY ("added_by") REFERENCES "public"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE "store_permissions"
+    ADD CONSTRAINT "store_permissions_veterinarian_id_veterinarians_id_fk"
+    FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+
+ALTER TABLE "store_permissions"
+    ADD CONSTRAINT "store_permissions_store_id_stores_id_fk"
+    FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
 

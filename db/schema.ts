@@ -644,6 +644,75 @@ export const stores = pgTable("stores", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Store Staff Table - Similar to clinic_staff
+export const storeStaff = pgTable("store_staff", {
+  id: serial("id").primaryKey(),
+
+  // References
+  storeId: integer("store_id")
+    .notNull()
+    .references(() => stores.id, { onDelete: "cascade" }),
+  veterinarianId: integer("veterinarian_id")
+    .notNull()
+    .references(() => veterinarians.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+
+  // Assignment details
+  addedBy: integer("added_by")
+    .notNull()
+    .references(() => users.id), // Store owner who added this employee
+
+  // Status
+  status: text("status").notNull().default("active"), // 'active', 'inactive', 'removed'
+  isActive: boolean("is_active").notNull().default(true),
+
+  // Role and permissions
+  role: text("role").default("view_only"), // 'all', 'view_edit_inventory', 'view_only', 'orders_only'
+
+  // Notes
+  notes: text("notes"),
+
+  // Timestamps
+  assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Store Permissions Table - Similar to vet_permissions
+export const storePermissions = pgTable("store_permissions", {
+  id: serial("id").primaryKey(),
+  veterinarianId: integer("veterinarian_id")
+    .notNull()
+    .references(() => veterinarians.id, { onDelete: "cascade" }),
+  storeId: integer("store_id")
+    .notNull()
+    .references(() => stores.id, { onDelete: "cascade" }),
+
+  // Permission role
+  role: text("role").notNull().default("view_only"), // 'all', 'view_edit_inventory', 'view_only', 'orders_only'
+
+  // Granular permissions
+  canViewProducts: boolean("can_view_products").default(true),
+  canEditProducts: boolean("can_edit_products").default(true),
+  canAddProducts: boolean("can_add_products").default(true),
+  canDeleteProducts: boolean("can_delete_products").default(false),
+  canManageOrders: boolean("can_manage_orders").default(true),
+  canViewReports: boolean("can_view_reports").default(false),
+  canManageStaff: boolean("can_manage_staff").default(false),
+  canManageSettings: boolean("can_manage_settings").default(false),
+  canManageInventory: boolean("can_manage_inventory").default(true),
+  canProcessPayments: boolean("can_process_payments").default(false),
+
+  // Additional settings
+  isActive: boolean("is_active").default(true),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const vetStores = pgTable("vet_stores", {
   id: serial("id").primaryKey(),
   ownerId: integer("owner_id")

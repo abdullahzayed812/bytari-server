@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { approvalRequests, db, products, stores } from "../../../../db";
+import { approvalRequests, db, products, stores, storeStaff, veterinarians } from "../../../../db";
 import { eq, and, desc, inArray } from "drizzle-orm";
 
 export const listStoresProcedure = publicProcedure
@@ -62,6 +62,7 @@ export const listActiveStoresProcedure = publicProcedure
     }
   });
 
+// ============== GET USER APPROVED STORES (UPDATED WITH OWNED/ASSIGNED) ==============
 export const getUserApprovedStoresProcedure = publicProcedure
   .input(
     z.object({
@@ -73,7 +74,7 @@ export const getUserApprovedStoresProcedure = publicProcedure
       const userId = input.userId;
       console.log("Getting user approved stores for user:", userId);
 
-      // Get approved store activation requests for this user
+      // Get approved store activation requests for this user (OWNED STORES)
       const approvedRequests = await db
         .select()
         .from(approvalRequests)
@@ -85,9 +86,44 @@ export const getUserApprovedStoresProcedure = publicProcedure
           )
         );
 
-      const storeIds = approvedRequests.map((req) => req.resourceId);
+      const ownedStoreIds = approvedRequests.map((req) => req.resourceId);
 
-      if (storeIds.length === 0) {
+      // Get veterinarian record
+      const [vet] = await db.select().from(veterinarians).where(eq(veterinarians.userId, userId)).limit(1);
+
+      // Get assigned stores (stores where user is staff)
+      let assignedStoreIds: number[] = [];
+      let assignmentDetails: Map<number, any> = new Map();
+
+      if (vet) {
+        const assignments = await db
+          .select({
+            storeId: storeStaff.storeId,
+            role: storeStaff.role,
+            assignedAt: storeStaff.assignedAt,
+            status: storeStaff.status,
+            notes: storeStaff.notes,
+          })
+          .from(storeStaff)
+          .where(and(eq(storeStaff.veterinarianId, vet.id), eq(storeStaff.isActive, true)));
+
+        assignedStoreIds = assignments.map((a) => a.storeId);
+
+        // Store assignment details for later use
+        assignments.forEach((a) => {
+          assignmentDetails.set(a.storeId, {
+            role: a.role,
+            assignedAt: a.assignedAt,
+            status: a.status,
+            notes: a.notes,
+          });
+        });
+      }
+
+      // Combine all store IDs
+      const allStoreIds = [...new Set([...ownedStoreIds, ...assignedStoreIds])];
+
+      if (allStoreIds.length === 0) {
         return {
           success: true,
           stores: [],
@@ -98,15 +134,31 @@ export const getUserApprovedStoresProcedure = publicProcedure
       const userStores = await db
         .select()
         .from(stores)
-        .where(and(eq(stores.isActive, true), inArray(stores.id, storeIds)));
+        .where(and(eq(stores.isActive, true), inArray(stores.id, allStoreIds)));
 
       return {
         success: true,
-        stores: userStores.map((store: any) => ({
-          ...store,
-          images: store.images ? JSON.parse(store.images) : [],
-          stores: store.workingHours,
-        })),
+        stores: userStores.map((store: any) => {
+          const isOwned = ownedStoreIds.includes(store.id);
+          const isAssigned = assignedStoreIds.includes(store.id);
+          const assignment = assignmentDetails.get(store.id);
+
+          return {
+            ...store,
+            images: store.images ? (typeof store.images === "string" ? JSON.parse(store.images) : store.images) : [],
+            isOwned,
+            isAssigned,
+            // Include assignment details if it's an assigned store
+            ...(isAssigned && assignment
+              ? {
+                  role: assignment.role,
+                  assignedAt: assignment.assignedAt,
+                  staffStatus: assignment.status,
+                  staffNotes: assignment.notes,
+                }
+              : {}),
+          };
+        }),
       };
     } catch (error) {
       console.error("Error getting user approved stores:", error);
@@ -126,7 +178,7 @@ export const getUserStoresProcedure = publicProcedure
       const userId = input.userId;
       console.log("Getting user stores for user:", userId);
 
-      // Get approved store activation requests for this user
+      // 1️⃣ Get OWNED Stores (approved activation requests)
       const approvedRequests = await db
         .select()
         .from(approvalRequests)
@@ -138,19 +190,56 @@ export const getUserStoresProcedure = publicProcedure
           )
         );
 
-      const storeIds = approvedRequests.map((req) => req.resourceId);
+      const ownedStoreIds = approvedRequests.map((req) => req.resourceId);
 
-      if (storeIds.length === 0) {
-        return [];
+      // 2️⃣ Get Veterinarian record for assignment lookup
+      const [vet] = await db.select().from(veterinarians).where(eq(veterinarians.userId, userId)).limit(1);
+
+      let assignedStoreIds: number[] = [];
+      let assignmentDetails: Map<number, any> = new Map();
+
+      // 3️⃣ Get ASSIGNED Stores (store_staff)
+      if (vet) {
+        const assignments = await db
+          .select({
+            storeId: storeStaff.storeId,
+            role: storeStaff.role,
+            assignedAt: storeStaff.assignedAt,
+            status: storeStaff.status,
+            notes: storeStaff.notes,
+          })
+          .from(storeStaff)
+          .where(and(eq(storeStaff.veterinarianId, vet.id), eq(storeStaff.isActive, true)));
+
+        assignedStoreIds = assignments.map((a) => a.storeId);
+
+        assignments.forEach((a) => {
+          assignmentDetails.set(a.storeId, {
+            role: a.role,
+            assignedAt: a.assignedAt,
+            status: a.status,
+            notes: a.notes,
+          });
+        });
       }
 
-      // Fetch stores details with products
+      // 4️⃣ Combine all store IDs
+      const allStoreIds = [...new Set([...ownedStoreIds, ...assignedStoreIds])];
+
+      if (allStoreIds.length === 0) {
+        return {
+          success: true,
+          stores: [],
+        };
+      }
+
+      // 5️⃣ Fetch store info
       const userStores = await db
         .select()
         .from(stores)
-        .where(and(eq(stores.isActive, true), inArray(stores.id, storeIds)));
+        .where(and(eq(stores.isActive, true), inArray(stores.id, allStoreIds)));
 
-      // Get products for each store
+      // 6️⃣ Fetch each store's products
       const storesWithProducts = await Promise.all(
         userStores.map(async (store: any) => {
           const rawProducts = await db
@@ -159,16 +248,36 @@ export const getUserStoresProcedure = publicProcedure
             .where(eq(products.storeId, store.id))
             .orderBy(desc(products.updatedAt));
 
+          const isOwned = ownedStoreIds.includes(store.id);
+          const isAssigned = assignedStoreIds.includes(store.id);
+          const assignment = assignmentDetails.get(store.id);
+
           return {
             ...store,
             images: store.images ? JSON.parse(store.images) : [],
-            // workingHours: store.workingHours ? JSON.parse(store.workingHours) : null,
             products: rawProducts,
+
+            // extra flags
+            isOwned,
+            isAssigned,
+
+            // assignment details (if employee)
+            ...(isAssigned && assignment
+              ? {
+                  role: assignment.role,
+                  assignedAt: assignment.assignedAt,
+                  staffStatus: assignment.status,
+                  staffNotes: assignment.notes,
+                }
+              : {}),
           };
         })
       );
 
-      return storesWithProducts;
+      return {
+        success: true,
+        stores: storesWithProducts,
+      };
     } catch (error) {
       console.error("Error getting user stores:", error);
       throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب المذاخر");
