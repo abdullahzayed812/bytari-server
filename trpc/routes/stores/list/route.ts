@@ -43,7 +43,7 @@ export const listActiveStoresProcedure = publicProcedure
 
       // Build where conditions based on the request
       const whereConditions = forVetHome
-        ? and(eq(stores.isActive, true), eq(stores.isVerified, true), eq(stores.showOnVetHome, true))
+        ? and(eq(stores.isActive, true), eq(stores.isVerified, true))
         : eq(stores.isActive, true);
 
       const rawStores = await db.select().from(stores).where(whereConditions);
@@ -143,8 +143,15 @@ export const getUserApprovedStoresProcedure = publicProcedure
           const isAssigned = assignedStoreIds.includes(store.id);
           const assignment = assignmentDetails.get(store.id);
 
+          // Calculate subscription status
+          const now = new Date();
+          const endDate = store.activationEndDate ? new Date(store.activationEndDate) : null;
+          const daysRemaining = endDate ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+          const needsRenewal = daysRemaining && daysRemaining < 1;
+
           return {
             ...store,
+            ...(isOwned && { needsRenewal, daysRemaining }),
             images: store.images ? (typeof store.images === "string" ? JSON.parse(store.images) : store.images) : [],
             isOwned,
             isAssigned,

@@ -255,6 +255,7 @@ export const clinics = pgTable("clinics", {
     withTimezone: true,
   }),
   activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
+  reviewingRenewalRequest: boolean("reviewing_renewal_request").notNull().default(false),
   needsRenewal: boolean("needs_renewal").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -618,6 +619,7 @@ export const stores = pgTable("stores", {
   // License information
   licenseNumber: text("license_number"),
   licenseImage: text("license_image"),
+  identityImage: text("identity_image"),
 
   // Working hours
   workingHours: text("working_hours"),
@@ -634,6 +636,7 @@ export const stores = pgTable("stores", {
   // Subscription management
   activationStartDate: timestamp("activation_start_date", { withTimezone: true }),
   activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
+  reviewingRenewalRequest: boolean("reviewing_renewal_request").notNull().default(false),
   needsRenewal: boolean("needs_renewal").notNull().default(false),
   subscriptionStatus: text("subscription_status").default("pending"), // 'active', 'expired', 'pending'
 

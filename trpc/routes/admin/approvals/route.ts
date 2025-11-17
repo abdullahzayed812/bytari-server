@@ -352,6 +352,7 @@ export const approveRequestProcedure = publicProcedure
             isActive: true,
             activationStartDate: startDate,
             activationEndDate: endDate,
+            reviewingRenewalRequest: false,
             needsRenewal: false,
           })
           .where(eq(clinics.id, resourceId));
@@ -364,6 +365,7 @@ export const approveRequestProcedure = publicProcedure
             subscriptionStatus: "active",
             activationStartDate: startDate,
             activationEndDate: endDate,
+            reviewingRenewalRequest: false,
             needsRenewal: false,
           })
           .where(eq(stores.id, resourceId));
@@ -449,6 +451,7 @@ export const rejectRequestProcedure = publicProcedure
           .set({
             isActive: false,
             needsRenewal: false,
+            reviewingRenewalRequest: true,
             updatedAt: Math.floor(Date.now() / 1000),
           })
           .where(eq(clinics.id, resourceId));
@@ -460,6 +463,7 @@ export const rejectRequestProcedure = publicProcedure
             isVerified: false,
             subscriptionStatus: "rejected",
             needsRenewal: false,
+            reviewingRenewalRequest: true,
             updatedAt: Math.floor(Date.now() / 1000),
           })
           .where(eq(stores.id, resourceId));

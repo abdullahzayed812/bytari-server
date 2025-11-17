@@ -427,6 +427,7 @@ export const getStoreSubscriptionProcedure = protectedProcedure
           id: stores.id,
           name: stores.name,
           isActive: stores.isActive,
+          activationStartDate: stores.activationStartDate,
           activationEndDate: stores.activationEndDate,
           needsRenewal: stores.needsRenewal,
           subscriptionStatus: stores.subscriptionStatus,
@@ -448,8 +449,9 @@ export const getStoreSubscriptionProcedure = protectedProcedure
         success: true,
         subscription: {
           isActive: store.isActive,
+          startDate: store.activationStartDate,
           endDate: store.activationEndDate,
-          needsRenewal: store.needsRenewal,
+          needsRenewal: daysRemaining && daysRemaining < 1,
           daysRemaining,
           status: store.isActive ? (daysRemaining && daysRemaining < 30 ? "expiring_soon" : "active") : "inactive",
         },
@@ -649,6 +651,14 @@ export const requestStoreRenewalProcedure = protectedProcedure
           status: "pending",
         })
         .returning();
+
+      // Update store review renewal
+      await db
+        .update(stores)
+        .set({
+          reviewingRenewalRequest: true,
+        })
+        .where(eq(stores.id, input.storeId));
 
       // Notify all admins
       const adminUsers = await db.select({ id: users.id }).from(users).where(eq(users.userType, "admin"));

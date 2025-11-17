@@ -142,12 +142,19 @@ import {
   getClinicDetailsProcedure,
   getUserApprovedClinicsProcedure,
   // getVetClinicsProcedure,
+  getAllClinicsForAdmin,
+  getClinicByIdProcedure,
 } from "./routes/clinics/list/route";
 import { getActiveClinicsListProcedure } from "./routes/clinics/public/route";
 import { getClinicDashboardDataProcedure } from "./routes/clinics/dashboard/route";
 import { getTodayCasesProcedure } from "./routes/clinics/cases/route";
 import { getClinicAnimalsProcedure } from "./routes/clinics/animals/route";
 import { getClinicLatestPetsProcedure } from "./routes/clinics/pets/route";
+import {
+  deleteClinicProcedure,
+  toggleClinicVisibilityProcedure,
+  updateClinicProcedure,
+} from "./routes/clinics/update-delete-visible/route";
 
 import {
   getClinicRemindersProcedure,
@@ -533,11 +540,17 @@ export const appRouter = createTRPCRouter({
     getUserClinics: getUserClinicsProcedure,
     getUserApprovedClinics: getUserApprovedClinicsProcedure,
     getDetails: getClinicDetailsProcedure,
+    getById: getClinicByIdProcedure,
     getActiveList: getActiveClinicsListProcedure,
     getDashboardData: getClinicDashboardDataProcedure,
     getTodayCases: getTodayCasesProcedure,
     getClinicAnimals: getClinicAnimalsProcedure,
     getLatestPets: getClinicLatestPetsProcedure,
+    getAllClinics: getAllClinicsForAdmin,
+
+    toggleClinicVisibility: toggleClinicVisibilityProcedure,
+    deleteClinic: deleteClinicProcedure,
+    updateClinic: updateClinicProcedure,
 
     // getVetClinics: getVetClinicsProcedure,
 

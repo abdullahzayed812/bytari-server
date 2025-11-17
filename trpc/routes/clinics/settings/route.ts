@@ -541,7 +541,7 @@ export const getClinicSubscriptionProcedure = protectedProcedure
           isActive: clinic.isActive,
           startDate: clinic.activationStartDate,
           endDate: clinic.activationEndDate,
-          needsRenewal: clinic.needsRenewal,
+          needsRenewal: daysRemaining && daysRemaining < 1,
           daysRemaining,
           status: clinic.isActive ? (daysRemaining && daysRemaining < 30 ? "expiring_soon" : "active") : "inactive",
         },
@@ -623,6 +623,14 @@ export const requestClinicRenewalProcedure = protectedProcedure
           status: "pending",
         })
         .returning();
+
+      // Update clinic review renewal
+      await db
+        .update(clinics)
+        .set({
+          reviewingRenewalRequest: true,
+        })
+        .where(eq(clinics.id, input.clinicId));
 
       // Notify all admins
       const adminUsers = await db.select({ id: users.id }).from(users).where(eq(users.userType, "admin"));

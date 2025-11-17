@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, publicProcedure } from "../../../create-context";
+import { adminProcedure, protectedProcedure, publicProcedure } from "../../../create-context";
 import { db, clinics, approvalRequests, users, veterinarians, vetPermissions, clinicStaff } from "../../../../db";
 import { eq, and, inArray } from "drizzle-orm";
 
@@ -201,14 +201,113 @@ export const getUserApprovedClinicsProcedure = publicProcedure
 
       return {
         success: true,
-        clinics: userClinics.map((clinic) => ({
-          ...clinic,
-          isOwned: ownedClinicIds.includes(clinic.id),
-          isAssigned: assignedClinicIds.includes(clinic.id),
-        })),
+        clinics: userClinics.map((clinic: any) => {
+          const isOwned = ownedClinicIds.includes(clinic.id);
+          const isAssigned = assignedClinicIds.includes(clinic.id);
+
+          // Calculate subscription status
+          const now = new Date();
+          const endDate = clinic.activationEndDate ? new Date(clinic.activationEndDate) : null;
+          const daysRemaining = endDate ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+          const needsRenewal = daysRemaining && daysRemaining < 1;
+
+          return {
+            ...clinic,
+            ...clinic,
+            ...(isOwned && { needsRenewal, daysRemaining }),
+            isOwned,
+            isAssigned,
+          };
+        }),
       };
     } catch (error) {
       console.error("Error getting user approved clinics:", error);
       throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب العيادات الموافق عليها");
+    }
+  });
+
+// ============== ADMIN: GET ALL CLINICS ==============
+export const getAllClinicsForAdmin = adminProcedure
+  .input(
+    z.object({
+      adminId: z.number(),
+    })
+  )
+  .query(async ({ input }) => {
+    try {
+      const { adminId } = input;
+
+      console.log("Fetching ALL clinics for admin:", adminId);
+
+      // 1️⃣ Validate this user is admin
+      const adminUser = await db
+        .select({
+          id: users.id,
+          userType: users.userType,
+        })
+        .from(users)
+        .where(eq(users.id, adminId))
+        .limit(1);
+
+      if (!adminUser.length || adminUser[0].userType !== "admin") {
+        throw new Error("ليس لديك صلاحية للوصول إلى بيانات العيادات");
+      }
+
+      // 2️⃣ Fetch ALL clinics
+      const allClinics = await db.select().from(clinics);
+
+      return {
+        success: true,
+        clinics: allClinics,
+      };
+    } catch (error) {
+      console.error("Error fetching clinics (admin):", error);
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب جميع العيادات");
+    }
+  });
+
+// ============== GET CLINIC BY ID (ADMIN ONLY) ==============
+export const getClinicByIdProcedure = protectedProcedure
+  .input(
+    z.object({
+      clinicId: z.number().int().positive("معرف العيادة غير صحيح"),
+    })
+  )
+  .query(async ({ input, ctx }) => {
+    try {
+      const userId = ctx.user.id;
+      const { clinicId } = input;
+
+      // 1️⃣ Check if user is admin
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+      if (!user || user.userType !== "admin") {
+        throw new Error("غير مصرح لك بالوصول إلى بيانات العيادة");
+      }
+
+      // 2️⃣ Fetch clinic
+      const [clinic] = await db.select().from(clinics).where(eq(clinics.id, clinicId)).limit(1);
+
+      if (!clinic) {
+        throw new Error("العيادة غير موجودة");
+      }
+
+      // 3️⃣ Parse JSON fields safely
+      const parseSafe = (value: any) => {
+        if (!value) return null;
+        try {
+          return JSON.parse(value);
+        } catch {
+          return value;
+        }
+      };
+
+      return {
+        success: true,
+        clinic,
+      };
+    } catch (error) {
+      console.error("❌ Error fetching clinic:", error);
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب بيانات العيادة");
     }
   });

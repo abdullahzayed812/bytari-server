@@ -15,6 +15,7 @@ const createStoreSchema = z.object({
   workingHours: z.string().optional(),
   licenseNumber: z.string().min(1, "رقم الترخيص مطلوب"),
   licenseImage: z.string().min(1, "صورة الترخيص مطلوبة"),
+  identityImage: z.string().optional(),
   images: z.array(z.string()).optional(),
 });
 
@@ -42,6 +43,7 @@ export const createStoreProcedure = protectedProcedure.input(createStoreSchema).
         longitude: input.longitude,
         workingHours: input.workingHours,
         licenseImage: input.licenseImage,
+        identityImage: input.identityImage || "",
         licenseNumber: input.licenseNumber,
         images: input.images ? JSON.stringify(input.images) : null,
         subscriptionStatus: "pending",
@@ -80,7 +82,7 @@ export const createStoreProcedure = protectedProcedure.input(createStoreSchema).
 
     return {
       success: true,
-      message: "تم إرسال طلب تسجيل المذخر بنجاح. سيتم مراجعته من قبل الإدارة ويتطلب دفع اشتراك شهري 25 دولار.",
+      message: "تم إرسال طلب تسجيل المذخر بنجاح. سيتم مراجعته من قبل الإدارة.",
       storeId: store.id,
       requestId: approvalRequest.id,
     };

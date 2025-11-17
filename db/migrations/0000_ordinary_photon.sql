@@ -181,6 +181,7 @@ CREATE TABLE "clinics" (
 	"is_active" boolean DEFAULT true NOT NULL,
 	"activation_start_date" timestamp with time zone,
 	"activation_end_date" timestamp with time zone,
+	"reviewing_renewal_request" boolean DEFAULT false NOT NULL,
 	"needs_renewal" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -669,6 +670,7 @@ CREATE TABLE "stores" (
 	"longitude" real,
 	"license_number" text,
 	"license_image" text,
+	"identity_image" text,
 	"working_hours" text,
 	"is_active" boolean DEFAULT false NOT NULL,
 	"is_verified" boolean DEFAULT false NOT NULL,
@@ -677,6 +679,7 @@ CREATE TABLE "stores" (
 	"total_sales" real DEFAULT 0,
 	"activation_start_date" timestamp with time zone,
 	"activation_end_date" timestamp with time zone,
+	"reviewing_renewal_request" boolean DEFAULT false NOT NULL,
 	"needs_renewal" boolean DEFAULT false NOT NULL,
 	"subscription_status" text DEFAULT 'pending',
 	"images" text,

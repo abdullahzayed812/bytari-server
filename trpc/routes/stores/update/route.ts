@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { db, stores, vetStores } from "../../../../db";
+import { db, stores } from "../../../../db";
 import { eq } from "drizzle-orm";
 
 // Update store details
@@ -25,20 +25,14 @@ export const updateStoreProcedure = publicProcedure
         .update(stores)
         .set({
           ...updateData,
-          ...(images && { images: JSON.stringify(images) }),
-          ...(workingHours && { workingHours: JSON.stringify(workingHours) }),
-          updatedAt: Math.floor(Date.now() / 1000),
+          updatedAt: new Date(),
         })
         .where(eq(stores.id, storeId))
         .returning();
 
       return {
         success: true,
-        store: {
-          ...updatedStore,
-          images: updatedStore.images ? JSON.parse(updatedStore.images) : [],
-          workingHours: updatedStore.workingHours ? JSON.parse(updatedStore.workingHours) : null,
-        },
+        store: updatedStore,
       };
     } catch (error) {
       console.error("Error updating store:", error);
