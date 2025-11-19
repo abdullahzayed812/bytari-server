@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { db, advertisements, adminActivityLogs } from "../../../../db";
-import { eq, and, desc, gte, lte, count, sum } from "drizzle-orm";
+import { eq, and, desc, gte, lte, count, sum, inArray } from "drizzle-orm";
 
 // Create advertisement
 export const createAdvertisementProcedure = publicProcedure
@@ -210,45 +210,40 @@ export const getActiveProcedure = publicProcedure
     console.log("📊 Getting active advertisements with input:", input);
 
     try {
-      // For development/demo purposes, return empty array when no database is available
-      // This prevents the "Query data cannot be undefined" error
-      console.log("📊 Returning empty array for ads (development mode)");
-
-      // Always return a valid array - never undefined or null
-      // This is critical to prevent React Query "data cannot be undefined" errors
-      return [];
-
-      // TODO: Uncomment when database is properly set up
-      /*
       const now = new Date();
-      
+
       const conditions = [
         eq(advertisements.isActive, true),
         lte(advertisements.startDate, now),
-        gte(advertisements.endDate, now)
+        gte(advertisements.endDate, now),
       ];
-      
+
       if (input.position) {
         conditions.push(eq(advertisements.position, input.position));
       }
-      
+
       if (input.type) {
         conditions.push(eq(advertisements.type, input.type));
       }
-      
+
+      if (input.interface) {
+        if (input.interface === "both") {
+          conditions.push(eq(advertisements.interface, "both"));
+        } else {
+          conditions.push(inArray(advertisements.interface, [input.interface, "both"]));
+        }
+      }
+
       const ads = await db
         .select()
         .from(advertisements)
-        .where(and(...conditions))
-        .orderBy(advertisements.createdAt);
+        .where(and(...conditions));
+      // .orderBy(advertisements.createdAt);
 
-      // Always return an array, even if empty
-      return Array.isArray(ads) ? ads : [];
-      */
+      return { success: true, ads: Array.isArray(ads) ? ads : [] };
     } catch (error) {
       console.error("❌ Error getting active advertisements:", error);
-      // Always return empty array instead of throwing error to prevent crashes
-      // This is critical for React Query to work properly
+
       return [];
     }
   });

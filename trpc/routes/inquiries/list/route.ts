@@ -126,7 +126,7 @@ export const getInquiryDetailsProcedure = publicProcedure.input(getInquiryDetail
         },
       })
       .from(inquiryResponses)
-      .leftJoin(users, eq(inquiryResponses.responderId, users.id))
+      .leftJoin(users, eq(inquiryResponses.userId, users.id))
       .where(eq(inquiryResponses.inquiryId, input.inquiryId))
       .orderBy(inquiryResponses.createdAt);
 

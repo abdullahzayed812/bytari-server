@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { publicProcedure } from '../../../create-context';
-import { db, inquiries, inquiryResponses, notifications } from '../../../../db';
-import { eq } from 'drizzle-orm';
+import { z } from "zod";
+import { publicProcedure } from "../../../create-context";
+import { db, inquiries, inquiryResponses, notifications } from "../../../../db";
+import { eq } from "drizzle-orm";
 
 const replyInquirySchema = z.object({
   inquiryId: z.number(),
@@ -16,40 +16,37 @@ export const replyInquiryProcedure = publicProcedure
   .mutation(async ({ input }: { input: z.infer<typeof replyInquirySchema> }) => {
     try {
       // التحقق من وجود الاستفسار
-      const inquiry = await db
-        .select()
-        .from(inquiries)
-        .where(eq(inquiries.id, input.inquiryId))
-        .limit(1);
+      const inquiry = await db.select().from(inquiries).where(eq(inquiries.id, input.inquiryId)).limit(1);
 
       if (inquiry.length === 0) {
-        throw new Error('Inquiry not found');
+        throw new Error("Inquiry not found");
       }
 
       const currentInquiry = inquiry[0];
 
-      // التحقق من أن المحادثة مفتوحة للرد
-      if (!currentInquiry.isConversationOpen) {
-        throw new Error('Conversation is closed for replies');
-      }
-
       // إضافة الرد
-      const [newResponse] = await db.insert(inquiryResponses).values({
-        inquiryId: input.inquiryId,
-        responderId: input.responderId,
-        content: input.content,
-        attachments: input.attachments,
-        isOfficial: true,
-        keepConversationOpen: input.keepConversationOpen,
-      }).returning();
+      const [newResponse] = await db
+        .insert(inquiryResponses)
+        .values({
+          inquiryId: input.inquiryId,
+          userId: input.responderId,
+          content: input.content,
+          attachments: input.attachments,
+          // isOfficial: true,
+          // keepConversationOpen: input.keepConversationOpen,
+        })
+        .returning();
+
+      // تحديث حالة الاستشارة
+      const newStatus = input.keepConversationOpen ? "answered" : "closed";
 
       // تحديث حالة الاستفسار
       await db
         .update(inquiries)
         .set({
-          status: 'answered',
-          answeredAt: new Date(),
-          isConversationOpen: input.keepConversationOpen, // تحديد ما إذا كانت المحادثة ستبقى مفتوحة
+          status: newStatus,
+          // answeredAt: new Date(),
+          // isConversationOpen: input.keepConversationOpen, // تحديد ما إذا كانت المحادثة ستبقى مفتوحة
           updatedAt: new Date(),
         })
         .where(eq(inquiries.id, input.inquiryId));
@@ -57,15 +54,15 @@ export const replyInquiryProcedure = publicProcedure
       // إرسال إشعار للطبيب صاحب الاستفسار
       await db.insert(notifications).values({
         userId: currentInquiry.userId,
-        title: 'تم الرد على استفسارك',
-        content: input.keepConversationOpen 
-          ? 'تم الرد على استفسارك. يمكنك الرد مرة أخرى إذا كان لديك استفسارات إضافية.'
-          : 'تم الرد على استفسارك. تم إغلاق المحادثة.',
-        type: 'inquiry',
-        data: JSON.stringify({ 
-          inquiryId: input.inquiryId, 
+        title: "تم الرد على استفسارك",
+        message: input.keepConversationOpen
+          ? "تم الرد على استفسارك. يمكنك الرد مرة أخرى إذا كان لديك استفسارات إضافية."
+          : "تم الرد على استفسارك. تم إغلاق المحادثة.",
+        type: "inquiry",
+        data: JSON.stringify({
+          inquiryId: input.inquiryId,
           responseId: newResponse.id,
-          conversationOpen: input.keepConversationOpen 
+          conversationOpen: input.keepConversationOpen,
         }),
       });
 
@@ -75,7 +72,7 @@ export const replyInquiryProcedure = publicProcedure
         conversationOpen: input.keepConversationOpen,
       };
     } catch (error) {
-      console.error('Error replying to inquiry:', error);
-      throw new Error('Failed to reply to inquiry');
+      console.error("Error replying to inquiry:", error);
+      throw new Error("Failed to reply to inquiry");
     }
   });

@@ -1105,8 +1105,9 @@ export const advertisements = pgTable("advertisements", {
   targetUrl: text("target_url"),
   type: text("type").notNull(), // 'banner', 'popup', 'inline'
   placement: text("placement"), // 'home', 'clinics', 'products', etc.
-  startDate: timestamp("start_date", { withTimezone: true }).notNull(),
-  endDate: timestamp("end_date", { withTimezone: true }).notNull(),
+  interface: text("interface").notNull().default("both"), // "vet", " pet_owner", "both"
+  startDate: timestamp("start_date", { withTimezone: true }).notNull().defaultNow(),
+  endDate: timestamp("end_date", { withTimezone: true }).notNull().defaultNow(),
   isActive: boolean("is_active").notNull().default(true),
   clickCount: integer("click_count").default(0),
   impressionCount: integer("impression_count").default(0),

@@ -213,7 +213,6 @@ export const getUserApprovedClinicsProcedure = publicProcedure
 
           return {
             ...clinic,
-            ...clinic,
             ...(isOwned && { needsRenewal, daysRemaining }),
             isOwned,
             isAssigned,

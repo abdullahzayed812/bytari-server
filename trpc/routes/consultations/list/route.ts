@@ -130,7 +130,7 @@ export const getConsultationDetailsProcedure = publicProcedure
           },
         })
         .from(consultationResponses)
-        .leftJoin(users, eq(consultationResponses.responderId, users.id))
+        .leftJoin(users, eq(consultationResponses.userId, users.id))
         .where(eq(consultationResponses.consultationId, input.consultationId))
         .orderBy(consultationResponses.createdAt);
 
