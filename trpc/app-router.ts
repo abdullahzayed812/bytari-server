@@ -218,10 +218,13 @@ import {
 import { adminAuthProcedure, adminVerifyProcedure, checkAdminPermissionsProcedure } from "./routes/admin/auth/route";
 import {
   getUserPermissionsProcedure,
-  getAllRolesProcedure,
-  getAllPermissionsProcedure,
-  assignRoleProcedure,
-  removeRoleProcedure,
+  // getAllRolesProcedure,
+  // getAllPermissionsProcedure,
+  // assignRoleProcedure,
+  // removeRoleProcedure,
+  getAllPermissionsGroupedProcedure,
+  assignPermissionsProcedure,
+  sendMessageToUserProcedure,
 } from "./routes/admin/permissions/route";
 import {
   sendSystemMessageProcedure,
@@ -627,11 +630,14 @@ export const appRouter = createTRPCRouter({
 
     // Permissions management
     permissions: createTRPCRouter({
+      getAllPermissionsGrouped: getAllPermissionsGroupedProcedure,
       getUserPermissions: getUserPermissionsProcedure,
-      getAllRoles: getAllRolesProcedure,
-      getAllPermissions: getAllPermissionsProcedure,
-      assignRole: assignRoleProcedure,
-      removeRole: removeRoleProcedure,
+      // getAllRoles: getAllRolesProcedure,
+      assignPermissions: assignPermissionsProcedure,
+      // getAllPermissions: getAllPermissionsProcedure,
+      sendMessageToUser: sendMessageToUserProcedure,
+      // assignRole: assignRoleProcedure,
+      // removeRole: removeRoleProcedure,
     }),
 
     // Messages and notifications

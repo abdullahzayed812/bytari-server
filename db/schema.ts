@@ -1069,6 +1069,8 @@ export const vetMagazines = pgTable("vet_magazines", {
   category: text("category").notNull(),
   filePath: text("file_path"), // Path to PDF file
   coverImage: text("cover_image"),
+  author: text("author"),
+  authorTitle: text("author_title"),
   language: text("language").default("ar"),
   pageCount: integer("page_count"),
   tags: text("tags"), // JSON string

@@ -812,6 +812,8 @@ CREATE TABLE "vet_magazines" (
 	"category" text NOT NULL,
 	"file_path" text,
 	"cover_image" text,
+	"author" text,
+	"author_title" text,
 	"language" text DEFAULT 'ar',
 	"page_count" integer,
 	"tags" text,
@@ -1362,340 +1364,138 @@ CREATE TABLE "store_permissions" (
 
 
 
---> statement-breakpoint
-ALTER TABLE "admin_activity_logs" ADD CONSTRAINT "admin_activity_logs_admin_id_users_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "admin_content" ADD CONSTRAINT "admin_content_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "admin_content" ADD CONSTRAINT "admin_content_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "admin_notifications" ADD CONSTRAINT "admin_notifications_recipient_id_users_id_fk" FOREIGN KEY ("recipient_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_vet_id_veterinarians_id_fk" FOREIGN KEY ("vet_id") REFERENCES "public"."veterinarians"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "approval_requests"
-ADD CONSTRAINT "approval_requests_requester_id_users_id_fk"
-FOREIGN KEY ("requester_id")
-REFERENCES "public"."users"("id")
-ON DELETE NO ACTION
-ON UPDATE NO ACTION;--> statement-breakpoint
-ALTER TABLE "approval_requests"
-ADD CONSTRAINT "approval_requests_reviewed_by_users_id_fk"
-FOREIGN KEY ("reviewed_by")
-REFERENCES "public"."users"("id")
-ON DELETE NO ACTION
-ON UPDATE NO ACTION;--> statement-breakpoint
-ALTER TABLE "consultation_replies" ADD CONSTRAINT "consultation_replies_consultation_id_consultations_id_fk" FOREIGN KEY ("consultation_id") REFERENCES "public"."consultations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "consultation_replies" ADD CONSTRAINT "consultation_replies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "consultations" ADD CONSTRAINT "consultations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "consultations" ADD CONSTRAINT "consultations_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_course_id_courses_id_fk" 
-	FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_user_id_users_id_fk" 
-	FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
-
-ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_reviewed_by_users_id_fk" 
-	FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-
-ALTER TABLE "hospital_announcements" ADD CONSTRAINT "hospital_announcements_hospital_id_fkey" 
-	FOREIGN KEY ("hospital_id") REFERENCES "hospitals"("id") ON DELETE CASCADE;
-
-ALTER TABLE "hospital_followers" ADD CONSTRAINT "hospital_followers_hospital_id_fkey" 
-	FOREIGN KEY ("hospital_id") REFERENCES "hospitals"("id") ON DELETE CASCADE;
-
-ALTER TABLE "hospital_followers" ADD CONSTRAINT "hospital_followers_user_id_fkey" 
-	FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
-
-ALTER TABLE "courses" ADD CONSTRAINT "courses_instructor_id_users_id_fk" 
-	FOREIGN KEY ("instructor_id") REFERENCES "public"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;--> statement-breakpoint
-ALTER TABLE "field_assignments" ADD CONSTRAINT "field_assignments_farm_id_poultry_farms_id_fk" FOREIGN KEY ("farm_id") REFERENCES "public"."poultry_farms"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "field_assignments" ADD CONSTRAINT "field_assignments_veterinarian_id_veterinarians_id_fk" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "field_assignments" ADD CONSTRAINT "field_assignments_supervisor_id_users_id_fk" FOREIGN KEY ("supervisor_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "inquiry_replies" ADD CONSTRAINT "inquiry_replies_inquiry_id_inquiries_id_fk" FOREIGN KEY ("inquiry_id") REFERENCES "public"."inquiries"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "inquiry_replies" ADD CONSTRAINT "inquiry_replies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-
--- Add Foreign Key Constraints
-ALTER TABLE "adoption_pets" 
-  ADD CONSTRAINT "adoption_pets_owner_id_fkey" 
-  FOREIGN KEY ("owner_id") 
-  REFERENCES "users"("id") 
-  ON DELETE CASCADE;
-
-ALTER TABLE "adoption_pets" 
-  ADD CONSTRAINT "adoption_pets_adopted_by_fkey" 
-  FOREIGN KEY ("adopted_by") 
-  REFERENCES "users"("id") 
-  ON DELETE SET NULL;
-
-ALTER TABLE "breeding_pets" 
-  ADD CONSTRAINT "breeding_pets_owner_id_fkey" 
-  FOREIGN KEY ("owner_id") 
-  REFERENCES "users"("id") 
-  ON DELETE CASCADE;
-
-ALTER TABLE "lost_pets" 
-  ADD CONSTRAINT "lost_pets_owner_id_fkey" 
-  FOREIGN KEY ("owner_id") 
-  REFERENCES "users"("id") 
-  ON DELETE CASCADE;
-
-ALTER TABLE "lost_pets" 
-  ADD CONSTRAINT "lost_pets_found_by_fkey" 
-  FOREIGN KEY ("found_by") 
-  REFERENCES "users"("id") 
-  ON DELETE SET NULL;
-
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "order_items" ADD CONSTRAINT "order_items_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "order_items" ADD CONSTRAINT "order_items_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-
-ALTER TABLE "pet_approval_requests" ADD CONSTRAINT "pet_approval_requests_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pet_approval_requests" ADD CONSTRAINT "pet_approval_requests_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pet_approvals" ADD CONSTRAINT "pet_approvals_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pet_approvals" ADD CONSTRAINT "pet_approvals_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pets" ADD CONSTRAINT "pets_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
-
---> statement-breakpoint
-ALTER TABLE "poultry_farms"
-	ADD CONSTRAINT "poultry_farms_assigned_vet_id_fkey"
-		FOREIGN KEY ("assigned_vet_id") REFERENCES "veterinarians"("id");
-
---> statement-breakpoint
-ALTER TABLE "poultry_farms"
-	ADD CONSTRAINT "poultry_farms_assigned_supervisor_id_fkey"
-		FOREIGN KEY ("assigned_supervisor_id") REFERENCES "users"("id");
-
---> statement-breakpoint
-ALTER TABLE "poultry_farms"
-	ADD CONSTRAINT "poultry_farms_owner_id_users_id_fk"
-		FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id")
-		ON DELETE NO ACTION ON UPDATE NO ACTION;
-
---> statement-breakpoint
-ALTER TABLE "assignment_requests"
-	ADD CONSTRAINT "assignment_requests_farm_id_fkey"
-		FOREIGN KEY ("farm_id") REFERENCES "poultry_farms"("id") ON DELETE CASCADE;
-
---> statement-breakpoint
-ALTER TABLE "assignment_requests"
-	ADD CONSTRAINT "assignment_requests_requested_by_fkey"
-		FOREIGN KEY ("requested_by") REFERENCES "users"("id");
-
---> statement-breakpoint
-ALTER TABLE "assignment_requests"
-	ADD CONSTRAINT "assignment_requests_target_user_id_fkey"
-		FOREIGN KEY ("target_user_id") REFERENCES "users"("id");
-
---> statement-breakpoint
-ALTER TABLE "assignment_requests"
-	ADD CONSTRAINT "assignment_requests_reviewed_by_fkey"
-		FOREIGN KEY ("reviewed_by") REFERENCES "users"("id");
-
---> statement-breakpoint
-ALTER TABLE "poultry_daily_data"
-	ADD CONSTRAINT "poultry_daily_data_batch_id_fkey"
-		FOREIGN KEY ("batch_id") REFERENCES "poultry_batches"("id") ON DELETE CASCADE;
-
---> statement-breakpoint
-ALTER TABLE "poultry_daily_data"
-	ADD CONSTRAINT "unique_batch_day_number"
-		UNIQUE ("batch_id", "day_number");
-
---> statement-breakpoint
-ALTER TABLE "poultry_batches"
-	ADD CONSTRAINT "poultry_batches_farm_id_fkey"
-		FOREIGN KEY ("farm_id") REFERENCES "poultry_farms"("id") ON DELETE CASCADE;
-
---> statement-breakpoint
-ALTER TABLE "poultry_batches"
-	ADD CONSTRAINT "unique_farm_batch_number"
-		UNIQUE ("farm_id", "batch_number");
-
---> statement-breakpoint
-ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_role_id_admin_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."admin_roles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_permission_id_admin_permissions_id_fk" FOREIGN KEY ("permission_id") REFERENCES "public"."admin_permissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "store_products" ADD CONSTRAINT "store_products_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-
-ALTER TABLE "products" ADD CONSTRAINT "products_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-
-
-ALTER TABLE "stores" ADD CONSTRAINT "stores_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "vet_stores"
-  ADD CONSTRAINT "vet_stores_owner_id_users_id_fk"
-  FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id")
-  ON DELETE NO ACTION
-  ON UPDATE NO ACTION;--> statement-breakpoint
-ALTER TABLE "system_message_recipients" ADD CONSTRAINT "system_message_recipients_message_id_system_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."system_messages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "system_message_recipients" ADD CONSTRAINT "system_message_recipients_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_recipient_id_users_id_fk" FOREIGN KEY ("recipient_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_sender_id_users_id_fk" FOREIGN KEY ("sender_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "tips" ADD CONSTRAINT "tips_author_id_users_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_role_id_admin_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."admin_roles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_assigned_by_users_id_fk" FOREIGN KEY ("assigned_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "vet_books" ADD CONSTRAINT "vet_books_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "vet_magazines" ADD CONSTRAINT "vet_magazines_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "veterinarians" ADD CONSTRAINT "veterinarians_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "veterinarians" ADD CONSTRAINT "veterinarians_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "warehouse_products" ADD CONSTRAINT "warehouse_products_warehouse_id_warehouses_id_fk" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "warehouses" ADD CONSTRAINT "warehouses_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
-
-
-
- ALTER TABLE "union_announcements" ADD CONSTRAINT "union_announcements_branch_id_fkey" 
-	FOREIGN KEY ("branch_id") REFERENCES "union_branches"("id") ON DELETE CASCADE;
-
-ALTER TABLE "union_announcements" ADD CONSTRAINT "union_announcements_main_union_id_fkey" 
-	FOREIGN KEY ("main_union_id") REFERENCES "union_main"("id") ON DELETE CASCADE;
-
-ALTER TABLE "union_followers" ADD CONSTRAINT "union_followers_user_id_fkey" 
-	FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
-
-ALTER TABLE "union_followers" ADD CONSTRAINT "union_followers_branch_id_fkey" 
-	FOREIGN KEY ("branch_id") REFERENCES "union_branches"("id") ON DELETE CASCADE;
-
-ALTER TABLE "union_followers" ADD CONSTRAINT "union_followers_main_union_id_fkey" 
-	FOREIGN KEY ("main_union_id") REFERENCES "union_main"("id") ON DELETE CASCADE;
-
-ALTER TABLE "union_users" ADD CONSTRAINT "union_users_user_id_fkey" 
-	FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
-
-ALTER TABLE "union_users" ADD CONSTRAINT "union_users_branch_id_fkey" 
-	FOREIGN KEY ("branch_id") REFERENCES "union_branches"("id") ON DELETE CASCADE;
-
-
-
-
-
-
-
-
-
-
-
-
-
-ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_veterinarian_id_veterinarians_id_fk" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE no action ON UPDATE no action;
-
-
-
-ALTER TABLE "vaccinations" ADD CONSTRAINT "vaccinations_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "vaccinations" ADD CONSTRAINT "vaccinations_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
-
-
-
-ALTER TABLE "pet_reminders" ADD CONSTRAINT "pet_reminders_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "pet_reminders" ADD CONSTRAINT "pet_reminders_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
-
-
-
-ALTER TABLE "treatment_cards" ADD CONSTRAINT "treatment_cards_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "treatment_cards" ADD CONSTRAINT "treatment_cards_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
-
-
-
-ALTER TABLE "follow_up_requests" ADD CONSTRAINT "follow_up_requests_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "follow_up_requests" ADD CONSTRAINT "follow_up_requests_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
-
-
--- Clinic access requests table foreign keys
-ALTER TABLE "clinic_access_requests" ADD CONSTRAINT "clinic_access_requests_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE;
-ALTER TABLE "clinic_access_requests" ADD CONSTRAINT "clinic_access_requests_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE;
-ALTER TABLE "clinic_access_requests" ADD CONSTRAINT "clinic_access_requests_veterinarian_id_veterinarians_id_fk" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE SET NULL;
-
--- Approved clinic access table foreign keys
-ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE;
-ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE;
-ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_request_id_clinic_access_requests_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."clinic_access_requests"("id") ON DELETE SET NULL;
-ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_granted_by_users_id_fk" FOREIGN KEY ("granted_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
-
-
-
--- Foreign key constraints
-ALTER TABLE "pending_medical_actions"
-  ADD CONSTRAINT "pending_medical_actions_pet_id_fkey"
-  FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id")
-  ON DELETE NO ACTION ON UPDATE NO ACTION;
-
-ALTER TABLE "pending_medical_actions"
-  ADD CONSTRAINT "pending_medical_actions_clinic_id_fkey"
-  FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id")
-  ON DELETE NO ACTION ON UPDATE NO ACTION;
-
-ALTER TABLE "pending_medical_actions"
-  ADD CONSTRAINT "pending_medical_actions_veterinarian_id_fkey"
-  FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id")
-  ON DELETE NO ACTION ON UPDATE NO ACTION;
-
-
--- Foreign key: veterinarian_id → veterinarians(id)
-ALTER TABLE "vet_permissions"
-ADD CONSTRAINT "vet_permissions_veterinarian_id_fkey"
-FOREIGN KEY ("veterinarian_id")
-REFERENCES "public"."veterinarians"("id")
-ON DELETE CASCADE ON UPDATE NO ACTION;
-
--- Foreign key: clinic_id → clinics(id)
-ALTER TABLE "vet_permissions"
-ADD CONSTRAINT "vet_permissions_clinic_id_fkey"
-FOREIGN KEY ("clinic_id")
-REFERENCES "public"."clinics"("id")
-ON DELETE CASCADE ON UPDATE NO ACTION;
-
-
-
--- Clinic reference
-ALTER TABLE "clinic_staff" 
-ADD CONSTRAINT "clinic_staff_clinic_id_clinics_id_fk"
-FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id")
-ON DELETE CASCADE ON UPDATE NO ACTION;
-
--- Veterinarian reference
-ALTER TABLE "clinic_staff" 
-ADD CONSTRAINT "clinic_staff_veterinarian_id_veterinarians_id_fk"
-FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id")
-ON DELETE CASCADE ON UPDATE NO ACTION;
-
--- User assigned reference
-ALTER TABLE "clinic_staff" 
-ADD CONSTRAINT "clinic_staff_user_id_users_id_fk"
-FOREIGN KEY ("user_id") REFERENCES "public"."users"("id")
-ON DELETE CASCADE ON UPDATE NO ACTION;
-
--- Added_by reference
-ALTER TABLE "clinic_staff" 
-ADD CONSTRAINT "clinic_staff_added_by_users_id_fk"
-FOREIGN KEY ("added_by") REFERENCES "public"."users"("id")
-ON DELETE NO ACTION ON UPDATE NO ACTION;
-
-
-
-
-
-ALTER TABLE "store_staff"
-    ADD CONSTRAINT "store_staff_store_id_stores_id_fk"
-    FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
-
-ALTER TABLE "store_staff"
-    ADD CONSTRAINT "store_staff_veterinarian_id_veterinarians_id_fk"
-    FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
-
-ALTER TABLE "store_staff"
-    ADD CONSTRAINT "store_staff_user_id_users_id_fk"
-    FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
-
-ALTER TABLE "store_staff"
-    ADD CONSTRAINT "store_staff_added_by_users_id_fk"
-    FOREIGN KEY ("added_by") REFERENCES "public"."users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-
-ALTER TABLE "store_permissions"
-    ADD CONSTRAINT "store_permissions_veterinarian_id_veterinarians_id_fk"
-    FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
-
-ALTER TABLE "store_permissions"
-    ADD CONSTRAINT "store_permissions_store_id_stores_id_fk"
-    FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
-
+-- Drop existing foreign key constraints
+ALTER TABLE "admin_activity_logs" DROP CONSTRAINT IF EXISTS "admin_activity_logs_admin_id_users_id_fk";
+ALTER TABLE "admin_content" DROP CONSTRAINT IF EXISTS "admin_content_created_by_users_id_fk";
+ALTER TABLE "admin_content" DROP CONSTRAINT IF EXISTS "admin_content_updated_by_users_id_fk";
+ALTER TABLE "admin_notifications" DROP CONSTRAINT IF EXISTS "admin_notifications_recipient_id_users_id_fk";
+ALTER TABLE "appointments" DROP CONSTRAINT IF EXISTS "appointments_user_id_users_id_fk";
+ALTER TABLE "approval_requests" DROP CONSTRAINT IF EXISTS "approval_requests_requester_id_users_id_fk";
+ALTER TABLE "approval_requests" DROP CONSTRAINT IF EXISTS "approval_requests_reviewed_by_users_id_fk";
+ALTER TABLE "consultation_replies" DROP CONSTRAINT IF EXISTS "consultation_replies_user_id_users_id_fk";
+ALTER TABLE "consultations" DROP CONSTRAINT IF EXISTS "consultations_user_id_users_id_fk";
+ALTER TABLE "course_registrations" DROP CONSTRAINT IF EXISTS "course_registrations_user_id_users_id_fk";
+ALTER TABLE "course_registrations" DROP CONSTRAINT IF EXISTS "course_registrations_reviewed_by_users_id_fk";
+ALTER TABLE "courses" DROP CONSTRAINT IF EXISTS "courses_instructor_id_users_id_fk";
+ALTER TABLE "field_assignments" DROP CONSTRAINT IF EXISTS "field_assignments_supervisor_id_users_id_fk";
+ALTER TABLE "inquiries" DROP CONSTRAINT IF EXISTS "inquiries_user_id_users_id_fk";
+ALTER TABLE "inquiry_replies" DROP CONSTRAINT IF EXISTS "inquiry_replies_user_id_users_id_fk";
+ALTER TABLE "adoption_pets" DROP CONSTRAINT IF EXISTS "adoption_pets_owner_id_fkey";
+ALTER TABLE "adoption_pets" DROP CONSTRAINT IF EXISTS "adoption_pets_adopted_by_fkey";
+ALTER TABLE "breeding_pets" DROP CONSTRAINT IF EXISTS "breeding_pets_owner_id_fkey";
+ALTER TABLE "lost_pets" DROP CONSTRAINT IF EXISTS "lost_pets_owner_id_fkey";
+ALTER TABLE "lost_pets" DROP CONSTRAINT IF EXISTS "lost_pets_found_by_fkey";
+ALTER TABLE "notifications" DROP CONSTRAINT IF EXISTS "notifications_user_id_users_id_fk";
+ALTER TABLE "orders" DROP CONSTRAINT IF EXISTS "orders_user_id_users_id_fk";
+ALTER TABLE "pet_approval_requests" DROP CONSTRAINT IF EXISTS "pet_approval_requests_owner_id_users_id_fk";
+ALTER TABLE "pet_approval_requests" DROP CONSTRAINT IF EXISTS "pet_approval_requests_reviewed_by_users_id_fk";
+ALTER TABLE "pet_approvals" DROP CONSTRAINT IF EXISTS "pet_approvals_user_id_users_id_fk";
+ALTER TABLE "pet_approvals" DROP CONSTRAINT IF EXISTS "pet_approvals_reviewed_by_users_id_fk";
+ALTER TABLE "pets" DROP CONSTRAINT IF EXISTS "pets_owner_id_users_id_fk";
+ALTER TABLE "poultry_farms" DROP CONSTRAINT IF EXISTS "poultry_farms_assigned_supervisor_id_fkey";
+ALTER TABLE "poultry_farms" DROP CONSTRAINT IF EXISTS "poultry_farms_owner_id_users_id_fk";
+ALTER TABLE "assignment_requests" DROP CONSTRAINT IF EXISTS "assignment_requests_requested_by_fkey";
+ALTER TABLE "assignment_requests" DROP CONSTRAINT IF EXISTS "assignment_requests_target_user_id_fkey";
+ALTER TABLE "assignment_requests" DROP CONSTRAINT IF EXISTS "assignment_requests_reviewed_by_fkey";
+ALTER TABLE "stores" DROP CONSTRAINT IF EXISTS "stores_owner_id_users_id_fk";
+ALTER TABLE "vet_stores" DROP CONSTRAINT IF EXISTS "vet_stores_owner_id_users_id_fk";
+ALTER TABLE "system_message_recipients" DROP CONSTRAINT IF EXISTS "system_message_recipients_user_id_users_id_fk";
+ALTER TABLE "system_messages" DROP CONSTRAINT IF EXISTS "system_messages_recipient_id_users_id_fk";
+ALTER TABLE "system_messages" DROP CONSTRAINT IF EXISTS "system_messages_sender_id_users_id_fk";
+ALTER TABLE "tips" DROP CONSTRAINT IF EXISTS "tips_author_id_users_id_fk";
+ALTER TABLE "user_roles" DROP CONSTRAINT IF EXISTS "user_roles_user_id_users_id_fk";
+ALTER TABLE "user_roles" DROP CONSTRAINT IF EXISTS "user_roles_assigned_by_users_id_fk";
+ALTER TABLE "vet_books" DROP CONSTRAINT IF EXISTS "vet_books_uploaded_by_users_id_fk";
+ALTER TABLE "vet_magazines" DROP CONSTRAINT IF EXISTS "vet_magazines_uploaded_by_users_id_fk";
+ALTER TABLE "veterinarians" DROP CONSTRAINT IF EXISTS "veterinarians_user_id_users_id_fk";
+ALTER TABLE "warehouses" DROP CONSTRAINT IF EXISTS "warehouses_owner_id_users_id_fk";
+ALTER TABLE "hospital_followers" DROP CONSTRAINT IF EXISTS "hospital_followers_user_id_fkey";
+ALTER TABLE "union_followers" DROP CONSTRAINT IF EXISTS "union_followers_user_id_fkey";
+ALTER TABLE "union_users" DROP CONSTRAINT IF EXISTS "union_users_user_id_fkey";
+ALTER TABLE "approved_clinic_access" DROP CONSTRAINT IF EXISTS "approved_clinic_access_granted_by_users_id_fk";
+ALTER TABLE "clinic_staff" DROP CONSTRAINT IF EXISTS "clinic_staff_user_id_users_id_fk";
+ALTER TABLE "clinic_staff" DROP CONSTRAINT IF EXISTS "clinic_staff_added_by_users_id_fk";
+ALTER TABLE "store_staff" DROP CONSTRAINT IF EXISTS "store_staff_user_id_users_id_fk";
+ALTER TABLE "store_staff" DROP CONSTRAINT IF EXISTS "store_staff_added_by_users_id_fk";
+ALTER TABLE "veterinarian_approvals" DROP CONSTRAINT IF EXISTS "veterinarian_approvals_user_id_fkey";
+ALTER TABLE "veterinarian_approvals" DROP CONSTRAINT IF EXISTS "veterinarian_approvals_reviewed_by_fkey";
+ALTER TABLE "reminders" DROP CONSTRAINT IF EXISTS "reminders_user_id_fkey";
+
+-- Recreate foreign key constraints with ON DELETE CASCADE
+ALTER TABLE "admin_activity_logs" ADD CONSTRAINT "admin_activity_logs_admin_id_users_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "admin_content" ADD CONSTRAINT "admin_content_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "admin_content" ADD CONSTRAINT "admin_content_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "admin_notifications" ADD CONSTRAINT "admin_notifications_recipient_id_users_id_fk" FOREIGN KEY ("recipient_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "appointments" ADD CONSTRAINT "appointments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "approval_requests" ADD CONSTRAINT "approval_requests_requester_id_users_id_fk" FOREIGN KEY ("requester_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "approval_requests" ADD CONSTRAINT "approval_requests_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "consultation_replies" ADD CONSTRAINT "consultation_replies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "consultations" ADD CONSTRAINT "consultations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "course_registrations" ADD CONSTRAINT "course_registrations_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "courses" ADD CONSTRAINT "courses_instructor_id_users_id_fk" FOREIGN KEY ("instructor_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "field_assignments" ADD CONSTRAINT "field_assignments_supervisor_id_users_id_fk" FOREIGN KEY ("supervisor_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "inquiry_replies" ADD CONSTRAINT "inquiry_replies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "adoption_pets" ADD CONSTRAINT "adoption_pets_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "adoption_pets" ADD CONSTRAINT "adoption_pets_adopted_by_fkey" FOREIGN KEY ("adopted_by") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "breeding_pets" ADD CONSTRAINT "breeding_pets_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "lost_pets" ADD CONSTRAINT "lost_pets_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "lost_pets" ADD CONSTRAINT "lost_pets_found_by_fkey" FOREIGN KEY ("found_by") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "orders" ADD CONSTRAINT "orders_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "pet_approval_requests" ADD CONSTRAINT "pet_approval_requests_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "pet_approval_requests" ADD CONSTRAINT "pet_approval_requests_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "pet_approvals" ADD CONSTRAINT "pet_approvals_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "pet_approvals" ADD CONSTRAINT "pet_approvals_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "pets" ADD CONSTRAINT "pets_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "poultry_farms" ADD CONSTRAINT "poultry_farms_assigned_supervisor_id_fkey" FOREIGN KEY ("assigned_supervisor_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "poultry_farms" ADD CONSTRAINT "poultry_farms_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "assignment_requests" ADD CONSTRAINT "assignment_requests_requested_by_fkey" FOREIGN KEY ("requested_by") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "assignment_requests" ADD CONSTRAINT "assignment_requests_target_user_id_fkey" FOREIGN KEY ("target_user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "assignment_requests" ADD CONSTRAINT "assignment_requests_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "stores" ADD CONSTRAINT "stores_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "vet_stores" ADD CONSTRAINT "vet_stores_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "system_message_recipients" ADD CONSTRAINT "system_message_recipients_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_recipient_id_users_id_fk" FOREIGN KEY ("recipient_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_sender_id_users_id_fk" FOREIGN KEY ("sender_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "tips" ADD CONSTRAINT "tips_author_id_users_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_assigned_by_users_id_fk" FOREIGN KEY ("assigned_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "vet_books" ADD CONSTRAINT "vet_books_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "vet_magazines" ADD CONSTRAINT "vet_magazines_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "veterinarians" ADD CONSTRAINT "veterinarians_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "warehouses" ADD CONSTRAINT "warehouses_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "hospital_followers" ADD CONSTRAINT "hospital_followers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "union_followers" ADD CONSTRAINT "union_followers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "union_users" ADD CONSTRAINT "union_users_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_granted_by_users_id_fk" FOREIGN KEY ("granted_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "clinic_staff" ADD CONSTRAINT "clinic_staff_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "clinic_staff" ADD CONSTRAINT "clinic_staff_added_by_users_id_fk" FOREIGN KEY ("added_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "store_staff" ADD CONSTRAINT "store_staff_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "store_staff" ADD CONSTRAINT "store_staff_added_by_users_id_fk" FOREIGN KEY ("added_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "veterinarian_approvals" ADD CONSTRAINT "veterinarian_approvals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "veterinarian_approvals" ADD CONSTRAINT "veterinarian_approvals_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "reminders" ADD CONSTRAINT "reminders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Also add CASCADE to other important relationships for data integrity
+ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "vaccinations" ADD CONSTRAINT "vaccinations_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "pet_reminders" ADD CONSTRAINT "pet_reminders_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "treatment_cards" ADD CONSTRAINT "treatment_cards_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "follow_up_requests" ADD CONSTRAINT "follow_up_requests_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "clinic_access_requests" ADD CONSTRAINT "clinic_access_requests_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "approved_clinic_access" ADD CONSTRAINT "approved_clinic_access_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "pending_medical_actions" ADD CONSTRAINT "pending_medical_actions_pet_id_fkey" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Add CASCADE to veterinarian-related constraints
+ALTER TABLE "vet_permissions" ADD CONSTRAINT "vet_permissions_veterinarian_id_fkey" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "store_permissions" ADD CONSTRAINT "store_permissions_veterinarian_id_veterinarians_id_fk" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "clinic_staff" ADD CONSTRAINT "clinic_staff_veterinarian_id_veterinarians_id_fk" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "store_staff" ADD CONSTRAINT "store_staff_veterinarian_id_veterinarians_id_fk" FOREIGN KEY ("veterinarian_id") REFERENCES "public"."veterinarians"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Add CASCADE to clinic/store-related constraints
+ALTER TABLE "vet_permissions" ADD CONSTRAINT "vet_permissions_clinic_id_fkey" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "store_permissions" ADD CONSTRAINT "store_permissions_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "clinic_staff" ADD CONSTRAINT "clinic_staff_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "store_staff" ADD CONSTRAINT "store_staff_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE CASCADE;

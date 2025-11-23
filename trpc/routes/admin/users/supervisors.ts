@@ -16,12 +16,14 @@ export const getSupervisorsProcedure = publicProcedure
       const supervisorRoles = await db
         .select()
         .from(adminRoles)
-        .where(or(
-          eq(adminRoles.name, 'vet_moderator'),
-          eq(adminRoles.name, 'user_moderator'),
-          eq(adminRoles.name, 'content_manager'),
-          eq(adminRoles.name, 'super_admin') // Include super_admin as they also supervise
-        ));
+        .where(
+          or(
+            eq(adminRoles.name, "vet_moderator"),
+            eq(adminRoles.name, "user_moderator"),
+            eq(adminRoles.name, "content_manager"),
+            eq(adminRoles.name, "super_admin") // Include super_admin as they also supervise
+          )
+        );
 
       if (supervisorRoles.length === 0) {
         return {
@@ -30,7 +32,7 @@ export const getSupervisorsProcedure = publicProcedure
         };
       }
 
-      const supervisorRoleIds = supervisorRoles.map(role => role.id);
+      const supervisorRoleIds = supervisorRoles.map((role) => role.id);
 
       const supervisorUsers = await db
         .selectDistinct({ user: users })
@@ -63,11 +65,7 @@ export const getSupervisorsProcedure = publicProcedure
             .from(userRoles)
             .innerJoin(adminRoles, eq(userRoles.roleId, adminRoles.id))
             .where(
-              and(
-                eq(userRoles.userId, supervisor.user.id),
-                eq(userRoles.isActive, true),
-                eq(adminRoles.isActive, true)
-              )
+              and(eq(userRoles.userId, supervisor.user.id), eq(userRoles.isActive, true), eq(adminRoles.isActive, true))
             );
 
           const roleIds = userActiveRoles.map((role) => role.roleId);
@@ -89,7 +87,7 @@ export const getSupervisorsProcedure = publicProcedure
           });
 
           const uniquePermissions = filteredPermissions.reduce((acc: any[], current: any) => {
-            const exists = acc.find(p => p.permissionName === current.permissionName);
+            const exists = acc.find((p) => p.permissionName === current.permissionName);
             if (!exists) {
               acc.push({
                 permissionName: current.permissionName,
