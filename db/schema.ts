@@ -624,6 +624,11 @@ export const stores = pgTable("stores", {
   // Working hours
   workingHours: text("working_hours"),
 
+  // Social connections
+  facebook: text("facebook"),
+  instagram: text("instagram"),
+  whatsapp: text("whatsapp"),
+
   // Status flags
   isActive: boolean("is_active").notNull().default(false), // Default false until approved
   isVerified: boolean("is_verified").notNull().default(false),

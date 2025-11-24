@@ -17,6 +17,10 @@ const createStoreSchema = z.object({
   licenseImage: z.string().min(1, "صورة الترخيص مطلوبة"),
   identityImage: z.string().optional(),
   images: z.array(z.string()).optional(),
+  facebook: z.string().optional(),
+  instagram: z.string().optional(),
+  whatsapp: z.string().optional(),
+  website: z.string().optional(),
 });
 
 export const createStoreProcedure = protectedProcedure.input(createStoreSchema).mutation(async ({ input, ctx }) => {
@@ -45,6 +49,10 @@ export const createStoreProcedure = protectedProcedure.input(createStoreSchema).
         licenseImage: input.licenseImage,
         identityImage: input.identityImage || "",
         licenseNumber: input.licenseNumber,
+        facebook: input.facebook,
+        instagram: input.instagram,
+        whatsapp: input.whatsapp,
+        website: input.website,
         images: input.images ? JSON.stringify(input.images) : null,
         subscriptionStatus: "pending",
         isActive: false,
