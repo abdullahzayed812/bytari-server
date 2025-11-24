@@ -16,11 +16,6 @@ export const getUserNotificationsProcedure = protectedProcedure
     })
   )
   .query(async ({ input }) => {
-    console.log(
-      "[getUserNotifications] Fetching notifications for user:",
-      input.userId
-    );
-
     const conditions = [eq(notifications.userId, input.userId)];
 
     if (input.type) {
@@ -39,9 +34,6 @@ export const getUserNotificationsProcedure = protectedProcedure
       .limit(input.limit)
       .offset(input.offset);
 
-    console.log(
-      `[getUserNotifications] Found ${userNotifications.length} notifications`
-    );
     return { success: true, notifications: userNotifications };
   });
 
@@ -54,27 +46,16 @@ export const markNotificationAsReadProcedure = protectedProcedure
     })
   )
   .mutation(async ({ input }) => {
-    console.log(
-      "[markNotificationAsRead] Marking notification as read:",
-      input.notificationId
-    );
-
     const result = await db
       .update(notifications)
       .set({ isRead: true })
-      .where(
-        and(
-          eq(notifications.id, input.notificationId),
-          eq(notifications.userId, input.userId)
-        )
-      )
+      .where(and(eq(notifications.id, input.notificationId), eq(notifications.userId, input.userId)))
       .returning();
 
     if (result.length === 0) {
       throw new Error("Notification not found");
     }
 
-    console.log("[markNotificationAsRead] Notification marked as read");
     return result[0];
   });
 
@@ -82,19 +63,11 @@ export const markNotificationAsReadProcedure = protectedProcedure
 export const markAllNotificationsAsReadProcedure = protectedProcedure
   .input(z.object({ userId: z.number() }))
   .mutation(async ({ input }) => {
-    console.log(
-      "[markAllNotificationsAsRead] Marking all notifications as read for user:",
-      input.userId
-    );
+    console.log("[markAllNotificationsAsRead] Marking all notifications as read for user:", input.userId);
 
-    await db
-      .update(notifications)
-      .set({ isRead: true })
-      .where(eq(notifications.userId, input.userId));
+    await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, input.userId));
 
-    console.log(
-      "[markAllNotificationsAsRead] All notifications marked as read"
-    );
+    console.log("[markAllNotificationsAsRead] All notifications marked as read");
     return { success: true };
   });
 
@@ -107,19 +80,11 @@ export const deleteUserNotificationProcedure = protectedProcedure
     })
   )
   .mutation(async ({ input }) => {
-    console.log(
-      "[deleteUserNotification] Deleting notification:",
-      input.notificationId
-    );
+    console.log("[deleteUserNotification] Deleting notification:", input.notificationId);
 
     await db
       .delete(notifications)
-      .where(
-        and(
-          eq(notifications.id, input.notificationId),
-          eq(notifications.userId, input.userId)
-        )
-      );
+      .where(and(eq(notifications.id, input.notificationId), eq(notifications.userId, input.userId)));
 
     console.log("[deleteUserNotification] Notification deleted");
     return { success: true };
@@ -129,25 +94,15 @@ export const deleteUserNotificationProcedure = protectedProcedure
 export const getUnreadNotificationsCountProcedure = protectedProcedure
   .input(z.object({ userId: z.number() }))
   .query(async ({ input }) => {
-    console.log(
-      "[getUnreadNotificationsCount] Getting count for user:",
-      input.userId
-    );
+    console.log("[getUnreadNotificationsCount] Getting count for user:", input.userId);
 
     const result = await db
       .select()
       .from(notifications)
-      .where(
-        and(
-          eq(notifications.userId, input.userId),
-          eq(notifications.isRead, false)
-        )
-      );
+      .where(and(eq(notifications.userId, input.userId), eq(notifications.isRead, false)));
 
     const count = result.length;
-    console.log(
-      `[getUnreadNotificationsCount] User has ${count} unread notifications`
-    );
+    console.log(`[getUnreadNotificationsCount] User has ${count} unread notifications`);
     return { count };
   });
 
@@ -163,10 +118,7 @@ export const createNotificationProcedure = protectedProcedure
     })
   )
   .mutation(async ({ input }) => {
-    console.log(
-      "[createNotification] Creating notification for user:",
-      input.userId
-    );
+    console.log("[createNotification] Creating notification for user:", input.userId);
 
     const result = await db
       .insert(notifications)

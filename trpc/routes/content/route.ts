@@ -29,17 +29,17 @@ export const contentRouter = createTRPCRouter({
       z
         .object({
           category: z.string().optional(),
-          isPublished: z.boolean().optional().default(true),
+          isPublished: z.boolean().optional(),
         })
         .optional()
     )
     .query(async ({ input }) => {
-      const { category, isPublished = true } = input;
+      const { category, isPublished } = input;
 
-      const conditions = [eq(tips.isPublished, isPublished)];
-      if (category) {
-        conditions.push(eq(tips.category, category));
-      }
+      const conditions = [];
+
+      if (isPublished) conditions.push(eq(vetMagazines.isPublished, isPublished));
+      if (category) conditions.push(eq(vetMagazines.category, category));
 
       const tipsList = await db
         .select()
