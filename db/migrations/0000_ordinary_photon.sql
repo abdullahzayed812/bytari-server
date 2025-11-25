@@ -1365,6 +1365,69 @@ CREATE TABLE "store_permissions" (
 
 
 
+-- Job vacancies table
+CREATE TABLE "job_vacancies" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "title" text NOT NULL,
+    "description" text NOT NULL,
+    "location" text NOT NULL,
+    "job_type" text NOT NULL, -- 'full-time', 'part-time', 'contract', 'internship'
+    "salary" text,
+    "requirements" text NOT NULL,
+    "contact_info" text NOT NULL,
+    "posted_by" text NOT NULL,
+    "status" text DEFAULT 'active' NOT NULL, -- 'active', 'inactive'
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Job applications table
+CREATE TABLE "job_applications" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "job_id" integer NOT NULL,
+    "applicant_name" text NOT NULL,
+    "applicant_email" text NOT NULL,
+    "applicant_phone" text NOT NULL,
+    "cover_letter" text NOT NULL,
+    "experience" text NOT NULL,
+    "education" text NOT NULL,
+    "cv" text, -- URL to CV file
+    "status" text DEFAULT 'pending' NOT NULL, -- 'pending', 'approved', 'rejected'
+    "reviewed_by" integer,
+    "reviewed_at" timestamp with time zone,
+    "notes" text,
+    "applied_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Field supervision requests table
+CREATE TABLE "field_supervision_requests" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "farm_name" text NOT NULL,
+    "farm_location" text NOT NULL,
+    "owner_name" text NOT NULL,
+    "owner_phone" text NOT NULL,
+    "request_type" text NOT NULL, -- 'routine_inspection', 'emergency', 'consultation'
+    "description" text NOT NULL,
+    "preferred_date" text NOT NULL,
+    "status" text DEFAULT 'pending' NOT NULL, -- 'pending', 'approved', 'rejected', 'completed'
+    "assigned_vet" text,
+    "assigned_vet_id" integer,
+    "reviewed_by" integer,
+    "reviewed_at" timestamp with time zone,
+    "completed_at" timestamp with time zone,
+    "notes" text,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+
+
+
+
+
 
 
 -- Drop existing foreign key constraints
@@ -1502,3 +1565,28 @@ ALTER TABLE "vet_permissions" ADD CONSTRAINT "vet_permissions_clinic_id_fkey" FO
 ALTER TABLE "store_permissions" ADD CONSTRAINT "store_permissions_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "clinic_staff" ADD CONSTRAINT "clinic_staff_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "store_staff" ADD CONSTRAINT "store_staff_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+
+
+
+
+-- Foreign key constraints for jobs vacacies.
+ALTER TABLE "job_applications" 
+    ADD CONSTRAINT "job_applications_job_id_job_vacancies_id_fk" 
+    FOREIGN KEY ("job_id") REFERENCES "public"."job_vacancies"("id") 
+    ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "job_applications" 
+    ADD CONSTRAINT "job_applications_reviewed_by_users_id_fk" 
+    FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") 
+    ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "field_supervision_requests" 
+    ADD CONSTRAINT "field_supervision_requests_assigned_vet_id_veterinarians_id_fk" 
+    FOREIGN KEY ("assigned_vet_id") REFERENCES "public"."veterinarians"("id") 
+    ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "field_supervision_requests" 
+    ADD CONSTRAINT "field_supervision_requests_reviewed_by_users_id_fk" 
+    FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") 
+    ON DELETE SET NULL ON UPDATE CASCADE;

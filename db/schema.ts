@@ -1680,4 +1680,63 @@ export const unionUsers = pgTable("union_users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Job vacancies table
+export const jobVacancies = pgTable("job_vacancies", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  location: text("location").notNull(),
+  jobType: text("job_type").notNull(), // 'full-time', 'part-time', 'contract', 'internship'
+  salary: text("salary"),
+  requirements: text("requirements").notNull(),
+  contactInfo: text("contact_info").notNull(),
+  postedBy: text("posted_by").notNull(),
+  status: text("status").notNull().default("active"), // 'active', 'inactive'
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Job applications table
+export const jobApplications = pgTable("job_applications", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id")
+    .notNull()
+    .references(() => jobVacancies.id, { onDelete: "cascade" }),
+  applicantName: text("applicant_name").notNull(),
+  applicantEmail: text("applicant_email").notNull(),
+  applicantPhone: text("applicant_phone").notNull(),
+  coverLetter: text("cover_letter").notNull(),
+  experience: text("experience").notNull(),
+  education: text("education").notNull(),
+  cv: text("cv"), // URL to CV file
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  notes: text("notes"),
+  appliedAt: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Field supervision requests table
+export const fieldSupervisionRequests = pgTable("field_supervision_requests", {
+  id: serial("id").primaryKey(),
+  farmName: text("farm_name").notNull(),
+  farmLocation: text("farm_location").notNull(),
+  ownerName: text("owner_name").notNull(),
+  ownerPhone: text("owner_phone").notNull(),
+  requestType: text("request_type").notNull(), // 'routine_inspection', 'emergency', 'consultation'
+  description: text("description").notNull(),
+  preferredDate: text("preferred_date").notNull(),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected', 'completed'
+  assignedVet: text("assigned_vet"),
+  assignedVetId: integer("assigned_vet_id").references(() => veterinarians.id),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export * from "drizzle-orm";

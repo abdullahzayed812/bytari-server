@@ -1,476 +1,606 @@
-import { z } from 'zod';
-import { publicProcedure, protectedProcedure } from '../../../create-context';
+import { z } from "zod";
+import { publicProcedure, protectedProcedure } from "../../../create-context";
+import { db } from "../../../../db";
+import { jobVacancies, jobApplications, fieldSupervisionRequests, courseRegistrations } from "../../../../db/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export const jobsRouter = {
   // Get all jobs
   getAllJobs: protectedProcedure
-    .input(z.object({
-      adminId: z.number(),
-      limit: z.number().optional().default(50),
-      offset: z.number().optional().default(0),
-      status: z.enum(['active', 'inactive', 'all']).optional().default('all')
-    }))
-    .query(async ({ input, ctx }: { input: { adminId: number; limit?: number; offset?: number; status?: 'active' | 'inactive' | 'all' }; ctx: any }) => {
+    .input(
+      z.object({
+        adminId: z.number(),
+        limit: z.number().optional().default(50),
+        offset: z.number().optional().default(0),
+        status: z.enum(["active", "inactive", "all"]).optional().default("all"),
+      })
+    )
+    .query(async ({ input, ctx }) => {
       try {
-        console.log('Getting all jobs for admin:', input.adminId);
-        
-        // Mock jobs data
-        const mockJobs = [
-          {
-            id: '1',
-            title: 'طبيب بيطري - عيادة الرحمة',
-            description: 'مطلوب طبيب بيطري للعمل في عيادة الرحمة البيطرية في بغداد',
-            location: 'بغداد',
-            jobType: 'full-time',
-            salary: '800000-1200000',
-            requirements: 'شهادة في الطب البيطري، خبرة لا تقل عن سنتين',
-            contactInfo: 'للتواصل: 07701234567',
-            status: 'active',
-            postedBy: 'عيادة الرحمة البيطرية',
-            createdAt: '2024-01-15T10:30:00Z',
-            applicationsCount: 12
-          },
-          {
-            id: '2',
-            title: 'مشرف ميداني - مزارع الدواجن',
-            description: 'مطلوب مشرف ميداني للإشراف على مزارع الدواجن في البصرة',
-            location: 'البصرة',
-            jobType: 'contract',
-            salary: '600000-900000',
-            requirements: 'خبرة في مجال الدواجن، القدرة على السفر',
-            contactInfo: 'للتواصل: 07801234567',
-            status: 'active',
-            postedBy: 'شركة الدواجن المتحدة',
-            createdAt: '2024-01-14T14:20:00Z',
-            applicationsCount: 8
-          }
-        ];
+        console.log("Getting all jobs for admin:", input.adminId);
+
+        const conditions = [];
+        if (input.status !== "all") {
+          conditions.push(eq(jobVacancies.status, input.status));
+        }
+
+        const jobs = await db
+          .select({
+            id: jobVacancies.id,
+            title: jobVacancies.title,
+            description: jobVacancies.description,
+            location: jobVacancies.location,
+            jobType: jobVacancies.jobType,
+            salary: jobVacancies.salary,
+            requirements: jobVacancies.requirements,
+            contactInfo: jobVacancies.contactInfo,
+            status: jobVacancies.status,
+            postedBy: jobVacancies.postedBy,
+            createdAt: jobVacancies.createdAt,
+          })
+          .from(jobVacancies)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .limit(input.limit)
+          .offset(input.offset)
+          .orderBy(desc(jobVacancies.createdAt));
+
+        // Get applications count for each job
+        const jobsWithCounts = await Promise.all(
+          jobs.map(async (job) => {
+            const [{ count }] = await db
+              .select({ count: sql<number>`count(*)` })
+              .from(jobApplications)
+              .where(eq(jobApplications.jobId, job.id));
+
+            return {
+              ...job,
+              applicationsCount: Number(count) || 0,
+            };
+          })
+        );
 
         return {
           success: true,
-          jobs: mockJobs,
-          total: mockJobs.length,
-          message: 'تم جلب الوظائف بنجاح'
+          jobs: jobsWithCounts,
+          total: jobsWithCounts.length,
+          message: "تم جلب الوظائف بنجاح",
         };
       } catch (error) {
-        console.error('Error getting jobs:', error);
+        console.error("Error getting jobs:", error);
         return {
           success: false,
           jobs: [],
           total: 0,
-          message: 'حدث خطأ في جلب الوظائف'
+          message: "حدث خطأ في جلب الوظائف",
         };
       }
     }),
 
   // Create new job
   createJob: protectedProcedure
-    .input(z.object({
-      adminId: z.number(),
-      title: z.string(),
-      description: z.string(),
-      location: z.string(),
-      jobType: z.enum(['full-time', 'part-time', 'contract', 'internship']),
-      salary: z.string().optional(),
-      requirements: z.string(),
-      contactInfo: z.string(),
-      postedBy: z.string()
-    }))
-    .mutation(async ({ input, ctx }: { input: { adminId: number; title: string; description: string; location: string; jobType: 'full-time' | 'part-time' | 'contract' | 'internship'; salary?: string; requirements: string; contactInfo: string; postedBy: string }; ctx: any }) => {
+    .input(
+      z.object({
+        adminId: z.number(),
+        title: z.string(),
+        description: z.string(),
+        location: z.string(),
+        jobType: z.enum(["full-time", "part-time", "contract", "internship"]),
+        salary: z.string().optional(),
+        requirements: z.string(),
+        contactInfo: z.string(),
+        postedBy: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
       try {
-        console.log('Creating new job:', input.title, 'by admin:', input.adminId);
-        
-        // Mock implementation
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+        console.log("Creating new job:", input.title, "by admin:", input.adminId);
+
+        const [newJob] = await db
+          .insert(jobVacancies)
+          .values({
+            title: input.title,
+            description: input.description,
+            location: input.location,
+            jobType: input.jobType,
+            salary: input.salary,
+            requirements: input.requirements,
+            contactInfo: input.contactInfo,
+            postedBy: input.postedBy,
+            status: "active",
+          })
+          .returning();
+
         return {
           success: true,
-          jobId: `job_${Date.now()}`,
-          message: 'تم إنشاء الوظيفة بنجاح'
+          jobId: newJob.id.toString(),
+          message: "تم إنشاء الوظيفة بنجاح",
         };
       } catch (error) {
-        console.error('Error creating job:', error);
+        console.error("Error creating job:", error);
         return {
           success: false,
-          message: 'حدث خطأ أثناء إنشاء الوظيفة'
+          message: "حدث خطأ أثناء إنشاء الوظيفة",
         };
       }
     }),
 
   // Update job
   updateJob: protectedProcedure
-    .input(z.object({
-      adminId: z.number(),
-      jobId: z.string(),
-      title: z.string().optional(),
-      description: z.string().optional(),
-      location: z.string().optional(),
-      jobType: z.enum(['full-time', 'part-time', 'contract', 'internship']).optional(),
-      salary: z.string().optional(),
-      requirements: z.string().optional(),
-      contactInfo: z.string().optional(),
-      status: z.enum(['active', 'inactive']).optional()
-    }))
-    .mutation(async ({ input, ctx }: { input: { adminId: number; jobId: string; title?: string; description?: string; location?: string; jobType?: 'full-time' | 'part-time' | 'contract' | 'internship'; salary?: string; requirements?: string; contactInfo?: string; status?: 'active' | 'inactive' }; ctx: any }) => {
+    .input(
+      z.object({
+        adminId: z.number(),
+        jobId: z.string(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        location: z.string().optional(),
+        jobType: z.enum(["full-time", "part-time", "contract", "internship"]).optional(),
+        salary: z.string().optional(),
+        requirements: z.string().optional(),
+        contactInfo: z.string().optional(),
+        status: z.enum(["active", "inactive"]).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
       try {
-        console.log('Updating job:', input.jobId, 'by admin:', input.adminId);
-        
-        // Mock implementation
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+        console.log("Updating job:", input.jobId, "by admin:", input.adminId);
+
+        const updateData: any = {};
+        if (input.title) updateData.title = input.title;
+        if (input.description) updateData.description = input.description;
+        if (input.location) updateData.location = input.location;
+        if (input.jobType) updateData.jobType = input.jobType;
+        if (input.salary) updateData.salary = input.salary;
+        if (input.requirements) updateData.requirements = input.requirements;
+        if (input.contactInfo) updateData.contactInfo = input.contactInfo;
+        if (input.status) updateData.status = input.status;
+
+        updateData.updatedAt = new Date();
+
+        await db
+          .update(jobVacancies)
+          .set(updateData)
+          .where(eq(jobVacancies.id, parseInt(input.jobId)));
+
         return {
           success: true,
-          message: 'تم تحديث الوظيفة بنجاح'
+          message: "تم تحديث الوظيفة بنجاح",
         };
       } catch (error) {
-        console.error('Error updating job:', error);
+        console.error("Error updating job:", error);
         return {
           success: false,
-          message: 'حدث خطأ أثناء تحديث الوظيفة'
+          message: "حدث خطأ أثناء تحديث الوظيفة",
         };
       }
     }),
 
   // Delete job
   deleteJob: protectedProcedure
-    .input(z.object({
-      adminId: z.number(),
-      jobId: z.string()
-    }))
-    .mutation(async ({ input, ctx }: { input: { adminId: number; jobId: string }; ctx: any }) => {
+    .input(
+      z.object({
+        adminId: z.number(),
+        jobId: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
       try {
-        console.log('Deleting job:', input.jobId, 'by admin:', input.adminId);
-        
-        // Mock implementation
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+        console.log("Deleting job:", input.jobId, "by admin:", input.adminId);
+
+        await db.delete(jobVacancies).where(eq(jobVacancies.id, parseInt(input.jobId)));
+
         return {
           success: true,
-          message: 'تم حذف الوظيفة بنجاح'
+          message: "تم حذف الوظيفة بنجاح",
         };
       } catch (error) {
-        console.error('Error deleting job:', error);
+        console.error("Error deleting job:", error);
         return {
           success: false,
-          message: 'حدث خطأ أثناء حذف الوظيفة'
+          message: "حدث خطأ أثناء حذف الوظيفة",
         };
       }
     }),
 
   // Get job applications
   getJobApplications: protectedProcedure
-    .input(z.object({
-      adminId: z.number(),
-      jobId: z.string().optional(),
-      limit: z.number().optional().default(50),
-      offset: z.number().optional().default(0)
-    }))
-    .query(async ({ input, ctx }: { input: { adminId: number; jobId?: string; limit?: number; offset?: number }; ctx: any }) => {
+    .input(
+      z.object({
+        adminId: z.number(),
+        jobId: z.string().optional(),
+        limit: z.number().optional().default(50),
+        offset: z.number().optional().default(0),
+      })
+    )
+    .query(async ({ input, ctx }) => {
       try {
-        console.log('Getting job applications for admin:', input.adminId);
-        
-        // Mock applications data
-        const mockApplications = [
-          {
-            id: '1',
-            jobId: '1',
-            jobTitle: 'طبيب بيطري - عيادة الرحمة',
-            applicantName: 'د. أحمد محمد',
-            applicantEmail: 'ahmed@example.com',
-            applicantPhone: '+964771234567',
-            cv: 'https://example.com/cv1.pdf',
-            coverLetter: 'أتقدم بطلب للعمل في عيادتكم الموقرة...',
-            status: 'pending',
-            appliedAt: '2024-01-16T09:00:00Z'
-          },
-          {
-            id: '2',
-            jobId: '2',
-            jobTitle: 'مشرف ميداني - مزارع الدواجن',
-            applicantName: 'محمد علي',
-            applicantEmail: 'mohammed@example.com',
-            applicantPhone: '+964781234567',
-            cv: 'https://example.com/cv2.pdf',
-            coverLetter: 'لدي خبرة 5 سنوات في مجال الدواجن...',
-            status: 'pending',
-            appliedAt: '2024-01-15T15:30:00Z'
-          }
-        ];
+        console.log("Getting job applications for admin:", input.adminId);
+
+        const conditions = [];
+        if (input.jobId) {
+          conditions.push(eq(jobApplications.jobId, parseInt(input.jobId)));
+        }
+
+        const applications = await db
+          .select()
+          .from(jobApplications)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .limit(input.limit)
+          .offset(input.offset)
+          .orderBy(desc(jobApplications.appliedAt));
 
         return {
           success: true,
-          applications: mockApplications,
-          total: mockApplications.length,
-          message: 'تم جلب طلبات التوظيف بنجاح'
+          applications,
+          total: applications.length,
+          message: "تم جلب طلبات التوظيف بنجاح",
         };
       } catch (error) {
-        console.error('Error getting job applications:', error);
+        console.error("Error getting job applications:", error);
         return {
           success: false,
           applications: [],
           total: 0,
-          message: 'حدث خطأ في جلب طلبات التوظيف'
+          message: "حدث خطأ في جلب طلبات التوظيف",
         };
       }
     }),
 
   // Manage job application (approve/reject)
   manageJobApplication: protectedProcedure
-    .input(z.object({
-      adminId: z.number(),
-      applicationId: z.string(),
-      action: z.enum(['approve', 'reject']),
-      notes: z.string().optional()
-    }))
-    .mutation(async ({ input, ctx }: { input: { adminId: number; applicationId: string; action: 'approve' | 'reject'; notes?: string }; ctx: any }) => {
+    .input(
+      z.object({
+        adminId: z.number(),
+        applicationId: z.string(),
+        action: z.enum(["approve", "reject"]),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
       try {
-        console.log('Managing job application:', input.applicationId, 'action:', input.action, 'by admin:', input.adminId);
-        
-        // Mock implementation
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const actionText = input.action === 'approve' ? 'الموافقة على' : 'رفض';
-        
+        console.log(
+          "Managing job application:",
+          input.applicationId,
+          "action:",
+          input.action,
+          "by admin:",
+          input.adminId
+        );
+
+        const status = input.action === "approve" ? "approved" : "rejected";
+
+        await db
+          .update(jobApplications)
+          .set({
+            status,
+            reviewedBy: input.adminId,
+            reviewedAt: new Date(),
+            notes: input.notes,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobApplications.id, parseInt(input.applicationId)));
+
+        const actionText = input.action === "approve" ? "الموافقة على" : "رفض";
+
         return {
           success: true,
-          message: `تم ${actionText} طلب التوظيف بنجاح`
+          message: `تم ${actionText} طلب التوظيف بنجاح`,
         };
       } catch (error) {
-        console.error('Error managing job application:', error);
+        console.error("Error managing job application:", error);
         return {
           success: false,
-          message: 'حدث خطأ أثناء معالجة طلب التوظيف'
+          message: "حدث خطأ أثناء معالجة طلب التوظيف",
         };
       }
     }),
 
   // Get field supervision requests
   getFieldSupervisionRequests: protectedProcedure
-    .input(z.object({
-      adminId: z.number(),
-      limit: z.number().optional().default(50),
-      offset: z.number().optional().default(0),
-      status: z.enum(['pending', 'approved', 'rejected', 'all']).optional().default('all')
-    }))
-    .query(async ({ input, ctx }: { input: { adminId: number; limit?: number; offset?: number; status?: 'pending' | 'approved' | 'rejected' | 'all' }; ctx: any }) => {
+    .input(
+      z.object({
+        adminId: z.number(),
+        limit: z.number().optional().default(50),
+        offset: z.number().optional().default(0),
+        status: z.enum(["pending", "approved", "rejected", "all"]).optional().default("all"),
+      })
+    )
+    .query(async ({ input, ctx }) => {
       try {
-        console.log('Getting field supervision requests for admin:', input.adminId);
-        
-        // Mock supervision requests data
-        const mockRequests = [
-          {
-            id: '1',
-            farmName: 'مزرعة الأمل للدواجن',
-            farmLocation: 'البصرة - الزبير',
-            ownerName: 'حسن علي',
-            ownerPhone: '+964771234567',
-            requestType: 'routine_inspection',
-            description: 'طلب زيارة دورية للفحص الصحي للدواجن',
-            preferredDate: '2024-01-20',
-            status: 'pending',
-            assignedVet: null,
-            createdAt: '2024-01-15T10:30:00Z'
-          },
-          {
-            id: '2',
-            farmName: 'مزرعة النور للأبقار',
-            farmLocation: 'بغداد - أبو غريب',
-            ownerName: 'فاطمة محمد',
-            ownerPhone: '+964781234567',
-            requestType: 'emergency',
-            description: 'حالة طارئة - مرض في القطيع',
-            preferredDate: '2024-01-17',
-            status: 'approved',
-            assignedVet: 'د. أحمد الطبيب',
-            createdAt: '2024-01-14T14:20:00Z'
-          }
-        ];
+        console.log("Getting field supervision requests for admin:", input.adminId);
+
+        const conditions = [];
+        if (input.status !== "all") {
+          conditions.push(eq(fieldSupervisionRequests.status, input.status));
+        }
+
+        const requests = await db
+          .select()
+          .from(fieldSupervisionRequests)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .limit(input.limit)
+          .offset(input.offset)
+          .orderBy(desc(fieldSupervisionRequests.createdAt));
 
         return {
           success: true,
-          requests: mockRequests,
-          total: mockRequests.length,
-          message: 'تم جلب طلبات الإشراف الميداني بنجاح'
+          requests,
+          total: requests.length,
+          message: "تم جلب طلبات الإشراف الميداني بنجاح",
         };
       } catch (error) {
-        console.error('Error getting field supervision requests:', error);
+        console.error("Error getting field supervision requests:", error);
         return {
           success: false,
           requests: [],
           total: 0,
-          message: 'حدث خطأ في جلب طلبات الإشراف الميداني'
+          message: "حدث خطأ في جلب طلبات الإشراف الميداني",
+        };
+      }
+    }),
+
+  // Submit field supervision request
+  submitFieldSupervisionRequest: publicProcedure
+    .input(
+      z.object({
+        farmName: z.string(),
+        farmLocation: z.string(),
+        ownerName: z.string(),
+        ownerPhone: z.string(),
+        requestType: z.enum(["routine_inspection", "emergency", "consultation"]),
+        description: z.string(),
+        preferredDate: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        console.log("Submitting field supervision request for farm:", input.farmName);
+
+        const [request] = await db
+          .insert(fieldSupervisionRequests)
+          .values({
+            farmName: input.farmName,
+            farmLocation: input.farmLocation,
+            ownerName: input.ownerName,
+            ownerPhone: input.ownerPhone,
+            requestType: input.requestType,
+            description: input.description,
+            preferredDate: input.preferredDate,
+            status: "pending",
+          })
+          .returning();
+
+        return {
+          success: true,
+          requestId: request.id.toString(),
+          message: "تم إرسال طلب الإشراف الميداني بنجاح. سيتم مراجعته والتواصل معك قريباً.",
+        };
+      } catch (error) {
+        console.error("Error submitting field supervision request:", error);
+        return {
+          success: false,
+          message: "حدث خطأ أثناء إرسال طلب الإشراف الميداني. يرجى المحاولة مرة أخرى.",
         };
       }
     }),
 
   // Get jobs analytics
   getJobsAnalytics: protectedProcedure
-    .input(z.object({
-      adminId: z.number(),
-      period: z.enum(['week', 'month', 'quarter', 'year']).optional().default('month')
-    }))
-    .query(async ({ input, ctx }: { input: { adminId: number; period?: 'week' | 'month' | 'quarter' | 'year' }; ctx: any }) => {
+    .input(
+      z.object({
+        adminId: z.number(),
+        period: z.enum(["week", "month", "quarter", "year"]).optional().default("month"),
+      })
+    )
+    .query(async ({ input, ctx }) => {
       try {
-        console.log('Getting jobs analytics for admin:', input.adminId, 'period:', input.period);
-        
-        // Mock analytics data
+        console.log("Getting jobs analytics for admin:", input.adminId, "period:", input.period);
+
+        // Get total jobs
+        const [{ totalJobs }] = await db.select({ totalJobs: sql<number>`count(*)` }).from(jobVacancies);
+
+        // Get active jobs
+        const [{ activeJobs }] = await db
+          .select({ activeJobs: sql<number>`count(*)` })
+          .from(jobVacancies)
+          .where(eq(jobVacancies.status, "active"));
+
+        // Get total applications
+        const [{ totalApplications }] = await db
+          .select({ totalApplications: sql<number>`count(*)` })
+          .from(jobApplications);
+
+        // Get pending applications
+        const [{ pendingApplications }] = await db
+          .select({ pendingApplications: sql<number>`count(*)` })
+          .from(jobApplications)
+          .where(eq(jobApplications.status, "pending"));
+
+        // Get approved applications
+        const [{ approvedApplications }] = await db
+          .select({ approvedApplications: sql<number>`count(*)` })
+          .from(jobApplications)
+          .where(eq(jobApplications.status, "approved"));
+
+        // Get rejected applications
+        const [{ rejectedApplications }] = await db
+          .select({ rejectedApplications: sql<number>`count(*)` })
+          .from(jobApplications)
+          .where(eq(jobApplications.status, "rejected"));
+
+        // Get field supervision requests
+        const [{ fieldRequests }] = await db
+          .select({ fieldRequests: sql<number>`count(*)` })
+          .from(fieldSupervisionRequests);
+
+        // Get completed supervisions
+        const [{ completedSupervisions }] = await db
+          .select({ completedSupervisions: sql<number>`count(*)` })
+          .from(fieldSupervisionRequests)
+          .where(eq(fieldSupervisionRequests.status, "completed"));
+
         const mockAnalytics = {
-          totalJobs: 45,
-          activeJobs: 32,
-          totalApplications: 156,
-          pendingApplications: 23,
-          approvedApplications: 89,
-          rejectedApplications: 44,
-          fieldSupervisionRequests: 18,
-          completedSupervisions: 12,
+          totalJobs: Number(totalJobs) || 0,
+          activeJobs: Number(activeJobs) || 0,
+          totalApplications: Number(totalApplications) || 0,
+          pendingApplications: Number(pendingApplications) || 0,
+          approvedApplications: Number(approvedApplications) || 0,
+          rejectedApplications: Number(rejectedApplications) || 0,
+          fieldSupervisionRequests: Number(fieldRequests) || 0,
+          completedSupervisions: Number(completedSupervisions) || 0,
           jobsByCategory: {
-            veterinarian: 28,
-            fieldSupervisor: 12,
-            technician: 5
+            veterinarian: 0,
+            fieldSupervisor: 0,
+            technician: 0,
           },
-          applicationsByMonth: [
-            { month: 'يناير', applications: 45 },
-            { month: 'فبراير', applications: 52 },
-            { month: 'مارس', applications: 38 },
-            { month: 'أبريل', applications: 59 }
-          ]
+          applicationsByMonth: [],
         };
 
         return {
           success: true,
           analytics: mockAnalytics,
-          message: 'تم جلب إحصائيات الوظائف بنجاح'
+          message: "تم جلب إحصائيات الوظائف بنجاح",
         };
       } catch (error) {
-        console.error('Error getting jobs analytics:', error);
+        console.error("Error getting jobs analytics:", error);
         return {
           success: false,
           analytics: null,
-          message: 'حدث خطأ في جلب إحصائيات الوظائف'
+          message: "حدث خطأ في جلب إحصائيات الوظائف",
         };
       }
     }),
 
   // Submit job application
   submitJobApplication: publicProcedure
-    .input(z.object({
-      jobId: z.string(),
-      applicantName: z.string(),
-      applicantEmail: z.string(),
-      applicantPhone: z.string(),
-      coverLetter: z.string(),
-      experience: z.string(),
-      education: z.string(),
-      cv: z.string().optional() // URL to CV file
-    }))
-    .mutation(async ({ input, ctx }: { input: { jobId: string; applicantName: string; applicantEmail: string; applicantPhone: string; coverLetter: string; experience: string; education: string; cv?: string }; ctx: any }) => {
+    .input(
+      z.object({
+        jobId: z.string(),
+        applicantName: z.string(),
+        applicantEmail: z.string(),
+        applicantPhone: z.string(),
+        coverLetter: z.string(),
+        experience: z.string(),
+        education: z.string(),
+        cv: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
       try {
-        console.log('Submitting job application for job:', input.jobId, 'by:', input.applicantName);
-        
-        // Mock implementation - simulate saving to database
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Generate application ID
-        const applicationId = `app_${Date.now()}`;
-        
+        console.log("Submitting job application for job:", input.jobId, "by:", input.applicantName);
+
+        const [application] = await db
+          .insert(jobApplications)
+          .values({
+            jobId: parseInt(input.jobId),
+            applicantName: input.applicantName,
+            applicantEmail: input.applicantEmail,
+            applicantPhone: input.applicantPhone,
+            coverLetter: input.coverLetter,
+            experience: input.experience,
+            education: input.education,
+            cv: input.cv,
+            status: "pending",
+          })
+          .returning();
+
         return {
           success: true,
-          applicationId,
-          message: 'تم تقديم طلب التوظيف بنجاح. سيتم مراجعة طلبك والتواصل معك قريباً.'
+          applicationId: application.id.toString(),
+          message: "تم تقديم طلب التوظيف بنجاح. سيتم مراجعة طلبك والتواصل معك قريباً.",
         };
       } catch (error) {
-        console.error('Error submitting job application:', error);
+        console.error("Error submitting job application:", error);
         return {
           success: false,
-          message: 'حدث خطأ أثناء تقديم طلب التوظيف. يرجى المحاولة مرة أخرى.'
+          message: "حدث خطأ أثناء تقديم طلب التوظيف. يرجى المحاولة مرة أخرى.",
         };
       }
     }),
 
   // Submit course registration
   submitCourseRegistration: publicProcedure
-    .input(z.object({
-      courseId: z.string(),
-      courseName: z.string(),
-      participantName: z.string().optional(),
-      participantEmail: z.string().email().optional(),
-      participantPhone: z.string().optional(),
-      specialRequests: z.string().optional(),
-    }))
-    .mutation(async ({ input, ctx }: { input: { courseId: string; courseName: string; participantName?: string; participantEmail?: string; participantPhone?: string; specialRequests?: string }; ctx: any }) => {
+    .input(
+      z.object({
+        courseId: z.string(),
+        courseName: z.string(),
+        participantName: z.string(),
+        participantEmail: z.string().email(),
+        participantPhone: z.string(),
+        specialRequests: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
       try {
-        console.log('Submitting course registration for course:', input.courseId, 'by:', input.participantName);
-        
-        // Mock implementation - simulate saving to database
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Generate registration ID
-        const registrationId = `reg_${Date.now()}`;
-        
+        console.log("Submitting course registration for course:", input.courseId, "by:", input.participantName);
+
+        const [registration] = await db
+          .insert(courseRegistrations)
+          .values({
+            courseId: parseInt(input.courseId),
+            courseName: input.courseName,
+            participantName: input.participantName,
+            participantEmail: input.participantEmail,
+            participantPhone: input.participantPhone,
+            notes: input.specialRequests,
+            status: "pending",
+          })
+          .returning();
+
         return {
           success: true,
-          registrationId,
-          message: 'تم إرسال طلب التسجيل بنجاح. سيتم التواصل معك قريباً.'
+          registrationId: registration.id.toString(),
+          message: "تم إرسال طلب التسجيل بنجاح. سيتم التواصل معك قريباً.",
         };
       } catch (error) {
-        console.error('Error submitting course registration:', error);
+        console.error("Error submitting course registration:", error);
         return {
           success: false,
-          message: 'حدث خطأ أثناء إرسال طلب التسجيل. يرجى المحاولة مرة أخرى.'
+          message: "حدث خطأ أثناء إرسال طلب التسجيل. يرجى المحاولة مرة أخرى.",
         };
       }
     }),
 
   // Get course registrations
   getCourseRegistrations: protectedProcedure
-    .input(z.object({
-      adminId: z.number(),
-      courseId: z.string().optional(),
-      limit: z.number().optional().default(50),
-      offset: z.number().optional().default(0)
-    }))
-    .query(async ({ input, ctx }: { input: { adminId: number; courseId?: string; limit?: number; offset?: number }; ctx: any }) => {
+    .input(
+      z.object({
+        adminId: z.number(),
+        courseId: z.string().optional(),
+        limit: z.number().optional().default(50),
+        offset: z.number().optional().default(0),
+      })
+    )
+    .query(async ({ input, ctx }) => {
       try {
-        console.log('Getting course registrations for admin:', input.adminId);
-        
-        // Mock registrations data
-        const mockRegistrations = [
-          {
-            id: '1',
-            courseId: '1',
-            courseName: 'دورة الطب البيطري الحديث',
-            participantName: 'د. سارة أحمد',
-            participantEmail: 'sara@example.com',
-            participantPhone: '+964771234567',
-            status: 'pending',
-            registeredAt: '2024-01-16T09:00:00Z'
-          },
-          {
-            id: '2',
-            courseId: '2',
-            courseName: 'ندوة: مستقبل الطب البيطري في المملكة',
-            participantName: 'د. محمد علي',
-            participantEmail: 'mohammed@example.com',
-            participantPhone: '+964781234567',
-            status: 'approved',
-            registeredAt: '2024-01-15T15:30:00Z'
-          }
-        ];
+        console.log("Getting course registrations for admin:", input.adminId);
+
+        const conditions = [];
+        if (input.courseId) {
+          conditions.push(eq(courseRegistrations.courseId, parseInt(input.courseId)));
+        }
+
+        const registrations = await db
+          .select()
+          .from(courseRegistrations)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .limit(input.limit)
+          .offset(input.offset)
+          .orderBy(desc(courseRegistrations.registrationDate));
 
         return {
           success: true,
-          registrations: mockRegistrations,
-          total: mockRegistrations.length,
-          message: 'تم جلب تسجيلات الدورات بنجاح'
+          registrations,
+          total: registrations.length,
+          message: "تم جلب تسجيلات الدورات بنجاح",
         };
       } catch (error) {
-        console.error('Error getting course registrations:', error);
+        console.error("Error getting course registrations:", error);
         return {
           success: false,
           registrations: [],
           total: 0,
-          message: 'حدث خطأ في جلب تسجيلات الدورات'
+          message: "حدث خطأ في جلب تسجيلات الدورات",
         };
       }
-    })
+    }),
 };

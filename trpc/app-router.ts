@@ -755,6 +755,7 @@ export const appRouter = createTRPCRouter({
       getJobApplications: jobsRouter.getJobApplications,
       manageJobApplication: jobsRouter.manageJobApplication,
       getFieldSupervisionRequests: jobsRouter.getFieldSupervisionRequests,
+      submitFieldSupervisionRequest: jobsRouter.submitFieldSupervisionRequest,
       getJobsAnalytics: jobsRouter.getJobsAnalytics,
       submitJobApplication: jobsRouter.submitJobApplication,
       submitCourseRegistration: jobsRouter.submitCourseRegistration,
