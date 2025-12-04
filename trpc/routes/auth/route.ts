@@ -120,9 +120,11 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
         id: users.id,
         email: users.email,
         name: users.name,
+        phone: users.phone,
         userType: users.userType,
         password: users.password,
         isActive: users.isActive,
+        avatar: users.avatar,
       })
       .from(users)
       .where(and(eq(users.email, email.toLowerCase()), eq(users.isActive, true)))
@@ -252,6 +254,7 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
         isSuperAdmin,
         isModerator,
         moderatorPermissions,
+        avatar: user?.avatar || "",
       },
       tokens,
     };
@@ -289,9 +292,24 @@ export const getProfileProcedure = protectedProcedure
     })
   )
   .query(async ({ input, ctx }) => {
+    // Fetch full user data including avatar
+    const [userData] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        phone: users.phone,
+        userType: users.userType,
+        avatar: users.avatar,
+        isActive: users.isActive,
+      })
+      .from(users)
+      .where(eq(users.id, ctx.user.id))
+      .limit(1);
+
     return {
       success: true,
-      user: ctx.user,
+      user: userData || ctx.user,
     };
   });
 
@@ -301,16 +319,18 @@ export const updateProfileProcedure = protectedProcedure
     z.object({
       name: z.string().min(2).optional(),
       phone: z.string().optional(),
+      avatar: z.string().optional(),
     })
   )
   .mutation(async ({ input, ctx }) => {
     try {
-      const { name, phone } = input;
+      const { name, phone, avatar } = input;
       const userId = ctx.user.id;
 
       const updateData: any = {};
       if (name !== undefined) updateData.name = name;
       if (phone !== undefined) updateData.phone = phone;
+      if (avatar !== undefined) updateData.avatar = avatar;
 
       if (Object.keys(updateData).length === 0) {
         throw new ValidationError("No fields provided for update");
@@ -329,6 +349,7 @@ export const updateProfileProcedure = protectedProcedure
           name: users.name,
           phone: users.phone,
           userType: users.userType,
+          avatar: users.avatar,
         });
 
       return {
@@ -420,4 +441,28 @@ export const validateTokenProcedure = protectedProcedure.query(async ({ ctx }) =
       userType: ctx.user.userType,
     },
   };
+});
+
+// Delete account (soft delete)
+export const deleteAccountProcedure = protectedProcedure.mutation(async ({ ctx }) => {
+  try {
+    const userId = ctx.user.id;
+
+    // Soft delete user
+    await db
+      .update(users)
+      .set({
+        isActive: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    return {
+      success: true,
+      message: "Account deleted successfully",
+    };
+  } catch (error) {
+    console.error("Delete account error:", error);
+    throw new ValidationError("Failed to delete account");
+  }
 });

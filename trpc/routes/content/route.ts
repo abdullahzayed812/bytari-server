@@ -347,12 +347,12 @@ export const contentRouter = createTRPCRouter({
         .optional()
     )
     .query(async ({ input }) => {
-      const { category, isPublished } = input;
+      const { isPublished } = input;
 
       const conditions = [];
 
       if (isPublished) conditions.push(eq(vetMagazines.isPublished, isPublished));
-      if (category) conditions.push(eq(vetMagazines.category, category));
+      // if (category) conditions.push(eq(vetMagazines.category, category));
 
       const books = await db
         .select()

@@ -14,6 +14,7 @@ import {
   changePasswordProcedure,
   logoutProcedure,
   validateTokenProcedure,
+  deleteAccountProcedure,
 } from "./routes/auth/route";
 
 // Admin user management
@@ -386,6 +387,7 @@ export const appRouter = createTRPCRouter({
     updateProfile: updateProfileProcedure,
     changePassword: changePasswordProcedure,
     validateToken: validateTokenProcedure,
+    deleteAccount: deleteAccountProcedure,
   }),
 
   example: createTRPCRouter({

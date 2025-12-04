@@ -13,9 +13,11 @@ export const getStoreByIdProcedure = publicProcedure
     try {
       const rawStores = await db.select().from(stores).where(eq(stores.id, input.storeId));
 
+      const images = JSON.parse(rawStores[0].images);
+
       return {
         success: true,
-        store: rawStores[0],
+        store: { ...rawStores[0], images },
       };
     } catch (error) {
       console.error("Error fetching stores:", error);

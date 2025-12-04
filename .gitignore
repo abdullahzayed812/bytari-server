@@ -86,3 +86,6 @@ Thumbs.db
 # Bun
 .bun
 
+
+# Uploads
+uploads/

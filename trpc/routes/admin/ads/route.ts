@@ -35,7 +35,7 @@ export const createAdvertisementProcedure = publicProcedure
         .values({
           title: input.title,
           content: input.content,
-          image: input.image,
+          imageUrl: input.image,
           link: input.link,
           type: input.type,
           position: input.position,
@@ -94,6 +94,10 @@ export const updateAdvertisementProcedure = publicProcedure
       // Validate dates if both are provided
       if (updateData.startDate && updateData.endDate && updateData.endDate <= updateData.startDate) {
         throw new Error("End date must be after start date");
+      }
+
+      if (updateData.image) {
+        updateData.imageUrl = updateData.image;
       }
 
       // Update advertisement

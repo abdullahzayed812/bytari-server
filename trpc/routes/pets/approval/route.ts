@@ -93,6 +93,7 @@ export const createPetApprovalProcedure = publicProcedure
           .returning();
         petId = specificRecord.id;
       } else if (input.requestType === "lost_pet") {
+        console.log({ input });
         if (!input.lastSeenLocation || !input.lastSeenDate) {
           throw new Error("Last seen location and date are required for lost pets");
         }
@@ -135,8 +136,8 @@ export const createPetApprovalProcedure = publicProcedure
         input.requestType === "adoption"
           ? `طلب تبني - ${input.name}`
           : input.requestType === "breeding"
-          ? `طلب تزويج - ${input.name}`
-          : `بلاغ حيوان مفقود - ${input.name}`;
+            ? `طلب تزويج - ${input.name}`
+            : `بلاغ حيوان مفقود - ${input.name}`;
 
       const [approvalRequest] = await db
         .insert(petApprovalRequests)

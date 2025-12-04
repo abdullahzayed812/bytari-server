@@ -79,21 +79,33 @@ export const updateStoreBasicInfoProcedure = protectedProcedure
       category: z.string().optional(),
       latitude: z.number().optional(),
       longitude: z.number().optional(),
+      images: z.array(z.string()).optional(),
     })
   )
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input }) => {
     try {
+
+      const updateData = {
+        name: input.name,
+        address: input.address,
+        description: input.description,
+        category: input.category,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        images: input.images,
+      };
+
       const now = new Date();
+
+      if (input.images !== undefined) {
+        updateData.images = JSON.stringify(input.images);
+      }
+
 
       const [updatedStore] = await db
         .update(stores)
         .set({
-          name: input.name,
-          address: input.address,
-          description: input.description,
-          category: input.category,
-          latitude: input.latitude,
-          longitude: input.longitude,
+          ...updateData,
           updatedAt: now,
         })
         .where(eq(stores.id, input.storeId))

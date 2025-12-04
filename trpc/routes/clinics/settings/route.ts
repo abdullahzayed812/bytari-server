@@ -79,21 +79,32 @@ export const updateClinicBasicInfoProcedure = protectedProcedure
       description: z.string().optional(),
       latitude: z.number().optional(),
       longitude: z.number().optional(),
+      images: z.array(z.string()).optional(),
     })
   )
   .mutation(async ({ input, ctx }) => {
     try {
       const now = new Date();
 
+      const updateData: any = {
+        name: input.name,
+        address: input.address,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        updatedAt: now,
+      };
+
+      if (input.description !== undefined) {
+        updateData.description = input.description;
+      }
+
+      if (input.images !== undefined) {
+        updateData.images = JSON.stringify(input.images);
+      }
+
       const [updatedClinic] = await db
         .update(clinics)
-        .set({
-          name: input.name,
-          address: input.address,
-          latitude: input.latitude,
-          longitude: input.longitude,
-          updatedAt: now,
-        })
+        .set(updateData)
         .where(eq(clinics.id, input.clinicId))
         .returning();
 

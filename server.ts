@@ -78,12 +78,12 @@ app.use(
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
   : [
-      "http://localhost:8081",
-      "http://localhost:3000",
-      "http://127.0.0.1:8081",
-      "http://127.0.0.1:3000",
-      "exp://192.168.0.128:8081",
-    ];
+    "http://localhost:8081",
+    "http://localhost:3000",
+    "http://127.0.0.1:8081",
+    "http://127.0.0.1:3000",
+    "exp://192.168.0.128:8081",
+  ];
 
 // Add production origins
 if (process.env.NODE_ENV === "production") {
@@ -153,6 +153,14 @@ app.use(
     endpoint: "/trpc",
   })
 );
+
+// Mount upload router
+import uploadApp from "./routes/upload";
+app.route("/upload", uploadApp);
+
+// Serve uploaded files statically
+import { serveStatic } from "hono/bun";
+app.use("/uploads/*", serveStatic({ root: "./" }));
 
 // Start server
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;

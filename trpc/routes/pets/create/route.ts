@@ -12,6 +12,7 @@ const createPetSchema = z.object({
   color: z.string().optional(),
   gender: z.enum(["male", "female"]).optional(),
   image: z.string().optional(),
+  images: z.array(z.string()).optional(),
   medicalHistory: z.string().optional(),
   vaccinations: z.string().optional(),
 });
@@ -30,6 +31,7 @@ export const createPetProcedure = protectedProcedure.input(createPetSchema).muta
         color: input.color,
         gender: input.gender,
         image: input.image,
+        images: input.images,
         medicalHistory: input.medicalHistory,
         vaccinations: input.vaccinations
           ? JSON.parse(JSON.stringify(input.vaccinations.split(",").map((v) => v.trim())))
