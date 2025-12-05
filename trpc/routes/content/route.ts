@@ -20,7 +20,7 @@ export const contentRouter = createTRPCRouter({
 
     return {
       success: true,
-      tip: tip[0],
+      tip: tip[0]
     };
   }),
 
@@ -49,7 +49,7 @@ export const contentRouter = createTRPCRouter({
 
       return {
         success: true,
-        tips: tipsList,
+        tips: tipsList
       };
     }),
 

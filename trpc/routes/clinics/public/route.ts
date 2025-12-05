@@ -37,9 +37,21 @@ export const getActiveClinicsListProcedure = publicProcedure
         .offset(input.offset)
         .orderBy(clinics.createdAt);
 
+      // Filter out clinics that need renewal
+      const now = new Date();
+      const filteredClinics = activeClinics.filter((clinic: any) => {
+        const endDate = clinic.activationEndDate ? new Date(clinic.activationEndDate) : null;
+        if (!endDate) return true; // Include clinics without end date
+
+        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const needsRenewal = daysRemaining < 1;
+
+        return !needsRenewal; // Exclude clinics that need renewal
+      });
+
       return {
         success: true,
-        clinics: activeClinics.map((clinic: any) => ({
+        clinics: filteredClinics.map((clinic: any) => ({
           ...clinic,
           workingHours: clinic.workingHours,
           services: clinic.services,
@@ -49,7 +61,7 @@ export const getActiveClinicsListProcedure = publicProcedure
           updatedAt:
             typeof clinic.updatedAt === "number" ? new Date(clinic.updatedAt * 1000).toISOString() : clinic.updatedAt,
         })),
-        total: activeClinics.length,
+        total: filteredClinics.length,
       };
     } catch (error) {
       console.error("Error getting active clinics:", error);

@@ -48,9 +48,21 @@ export const listActiveStoresProcedure = publicProcedure
 
       const rawStores = await db.select().from(stores).where(whereConditions);
 
+      // Filter out stores that need renewal
+      const now = new Date();
+      const filteredStores = rawStores.filter((store: any) => {
+        const endDate = store.activationEndDate ? new Date(store.activationEndDate) : null;
+        if (!endDate) return true; // Include stores without end date
+
+        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const needsRenewal = daysRemaining < 1;
+
+        return !needsRenewal; // Exclude stores that need renewal
+      });
+
       return {
         success: true,
-        stores: rawStores.map((store: any) => ({
+        stores: filteredStores.map((store: any) => ({
           ...store,
           images: store.images ? JSON.parse(store.images) : [],
           workingHours: store.workingHours,
@@ -158,11 +170,11 @@ export const getUserApprovedStoresProcedure = publicProcedure
             // Include assignment details if it's an assigned store
             ...(isAssigned && assignment
               ? {
-                  role: assignment.role,
-                  assignedAt: assignment.assignedAt,
-                  staffStatus: assignment.status,
-                  staffNotes: assignment.notes,
-                }
+                role: assignment.role,
+                assignedAt: assignment.assignedAt,
+                staffStatus: assignment.status,
+                staffNotes: assignment.notes,
+              }
               : {}),
           };
         }),
@@ -271,11 +283,11 @@ export const getUserStoresProcedure = publicProcedure
             // assignment details (if employee)
             ...(isAssigned && assignment
               ? {
-                  role: assignment.role,
-                  assignedAt: assignment.assignedAt,
-                  staffStatus: assignment.status,
-                  staffNotes: assignment.notes,
-                }
+                role: assignment.role,
+                assignedAt: assignment.assignedAt,
+                staffStatus: assignment.status,
+                staffNotes: assignment.notes,
+              }
               : {}),
           };
         })

@@ -130,6 +130,7 @@ export const getPendingApprovalsProcedure = publicProcedure
             ownerId: users.id,
             ownerName: users.name,
             ownerEmail: users.email,
+            images: clinics.images,
           })
           .from(clinics)
           .innerJoin(users, eq(clinics.id, users.id)) // Assuming clinic owner relationship
@@ -141,11 +142,10 @@ export const getPendingApprovalsProcedure = publicProcedure
           requesterId: clinic.ownerId,
           resourceId: clinic.id,
           title: `طلب تجديد اشتراك عيادة ${clinic.name}`,
-          description: `انتهت صلاحية تفعيل العيادة في ${
-            clinic.activationEndDate ? new Date(clinic.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
-          }`,
+          description: `انتهت صلاحية تفعيل العيادة في ${clinic.activationEndDate ? new Date(clinic.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
+            }`,
           documents: null,
-          licenseImages: null,
+          licenseImages: clinic.images ? JSON.stringify(clinic.images) : null,
           identityImages: null,
           officialDocuments: null,
           paymentStatus: "pending" as const,
@@ -174,6 +174,8 @@ export const getPendingApprovalsProcedure = publicProcedure
             ownerId: stores.ownerId,
             ownerName: users.name,
             ownerEmail: users.email,
+            licenseImage: stores.licenseImage,
+            identityImage: stores.identityImage,
           })
           .from(stores)
           .innerJoin(users, eq(stores.ownerId, users.id))
@@ -185,12 +187,11 @@ export const getPendingApprovalsProcedure = publicProcedure
           requesterId: store.ownerId,
           resourceId: store.id,
           title: `طلب تجديد اشتراك مخزن ${store.name}`,
-          description: `انتهت صلاحية تفعيل المخزن في ${
-            store.activationEndDate ? new Date(store.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
-          }`,
+          description: `انتهت صلاحية تفعيل المخزن في ${store.activationEndDate ? new Date(store.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
+            }`,
           documents: null,
-          licenseImages: null,
-          identityImages: null,
+          licenseImages: store.licenseImage ? JSON.stringify([store.licenseImage]) : null,
+          identityImages: store.identityImage ? JSON.stringify([store.identityImage]) : null,
           officialDocuments: null,
           paymentStatus: "pending" as const,
           paymentAmount: 800,

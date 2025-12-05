@@ -367,7 +367,7 @@ export const createTipProcedure = publicProcedure
       content: z.string().min(1),
       category: z.string(),
       tags: z.array(z.string()).optional(),
-      image: z.string().optional(),
+      images: z.array(z.string()).optional(),
       isPublished: z.boolean().default(false),
     })
   )
@@ -375,13 +375,16 @@ export const createTipProcedure = publicProcedure
     try {
       // TODO: Implement proper permission checking
 
-      const { adminId, tags, ...tipData } = input;
+      const { adminId, tags, images, ...tipData } = input;
 
       // Create tip
       const [tip] = await db
         .insert(tips)
         .values({
-          ...tipData,
+          title: tipData.title,
+          content: tipData.content,
+          category: tipData.category,
+          images: images ? JSON.stringify(images) : null,
           tags: tags ? JSON.stringify(tags) : null,
           authorId: adminId,
           isPublished: true,
@@ -413,7 +416,7 @@ export const updateTipProcedure = publicProcedure
       content: z.string().min(1).optional(),
       category: z.string().optional(),
       tags: z.array(z.string()).optional(),
-      image: z.string().optional(),
+      images: z.array(z.string()).optional(),
       isPublished: z.boolean().optional(),
     })
   )
@@ -421,16 +424,20 @@ export const updateTipProcedure = publicProcedure
     try {
       // TODO: Implement proper permission checking
 
-      const { adminId, tipId, tags, ...updateData } = input;
+      const { adminId, tipId, tags, images, ...updateData } = input;
+
+      // Prepare update payload
+      const updatePayload: any = {
+        ...updateData,
+        tags: tags ? JSON.stringify(tags) : undefined,
+        images: images ? JSON.stringify(images) : undefined,
+        updatedAt: new Date(),
+      };
 
       // Update tip
       const [updatedTip] = await db
         .update(tips)
-        .set({
-          ...updateData,
-          tags: tags ? JSON.stringify(tags) : undefined,
-          updatedAt: new Date(),
-        })
+        .set(updatePayload)
         .where(eq(tips.id, tipId))
         .returning();
 
