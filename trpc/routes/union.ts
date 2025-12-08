@@ -18,6 +18,19 @@ export const unionRouter = createTRPCRouter({
   main: createTRPCRouter({
     get: publicProcedure.query(async ({ ctx }) => {
       const result = await db.select().from(unionMain).limit(1);
+      if (result.length === 0) {
+        // Create default main union if not exists
+        const newMain = await db
+          .insert(unionMain)
+          .values({
+            name: "نقابة الأطباء البيطريين العراقية",
+            description: "النقابة الرسمية للأطباء البيطريين في العراق",
+            establishedYear: "1958",
+            memberCount: "0",
+          })
+          .returning();
+        return { success: true, union: newMain[0] };
+      }
       return { success: true, union: result[0] };
     }),
     update: protectedProcedure
@@ -44,7 +57,12 @@ export const unionRouter = createTRPCRouter({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        await db.update(unionMain).set(input).where(eq(unionMain.id, 1));
+        const result = await db.select().from(unionMain).limit(1);
+        if (result.length === 0) {
+          await db.insert(unionMain).values(input);
+        } else {
+          await db.update(unionMain).set(input).where(eq(unionMain.id, result[0].id));
+        }
         return { success: true };
       }),
   }),
@@ -175,37 +193,60 @@ export const unionRouter = createTRPCRouter({
   settings: createTRPCRouter({
     get: protectedProcedure.query(async ({ ctx }) => {
       const result = await db.select().from(unionSettings).limit(1);
+      if (result.length === 0) {
+        const newSettings = await db.insert(unionSettings).values({}).returning();
+        return newSettings[0];
+      }
       return result[0];
     }),
     update: protectedProcedure
       .input(
         z.object({
-          unionName: z.string(),
-          unionDescription: z.string(),
-          contactEmail: z.string(),
-          contactPhone: z.string(),
-          isMaintenanceMode: z.boolean(),
-          allowRegistration: z.boolean(),
-          requireApproval: z.boolean(),
+          unionName: z.string().optional(),
+          unionDescription: z.string().optional(),
+          contactEmail: z.string().optional(),
+          contactPhone: z.string().optional(),
+          isMaintenanceMode: z.boolean().optional(),
+          allowRegistration: z.boolean().optional(),
+          requireApproval: z.boolean().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        await db.update(unionSettings).set(input).where(eq(unionSettings.id, 1));
+        const result = await db.select().from(unionSettings).limit(1);
+        if (result.length === 0) {
+          await db.insert(unionSettings).values(input);
+        } else {
+          await db.update(unionSettings).set(input).where(eq(unionSettings.id, result[0].id));
+        }
         return { success: true };
       }),
   }),
 
   notificationSettings: createTRPCRouter({
     get: protectedProcedure.query(async ({ ctx }) => {
+      const result = await db.select().from(unionSettings).limit(1);
+      if (result.length === 0) {
+        const newSettings = await db.insert(unionSettings).values({}).returning();
+        return {
+          emailNotifications: newSettings[0].emailNotifications ?? true,
+          pushNotifications: newSettings[0].pushNotifications ?? true,
+          smsNotifications: newSettings[0].smsNotifications ?? false,
+          newMemberNotifications: newSettings[0].newMemberNotifications ?? true,
+          eventNotifications: newSettings[0].eventNotifications ?? true,
+          emergencyNotifications: newSettings[0].emergencyNotifications ?? true,
+          weeklyReports: newSettings[0].weeklyReports ?? true,
+          monthlyReports: newSettings[0].monthlyReports ?? true,
+        };
+      }
       return {
-        emailNotifications: true,
-        pushNotifications: true,
-        smsNotifications: false,
-        newMemberNotifications: true,
-        eventNotifications: true,
-        emergencyNotifications: true,
-        weeklyReports: true,
-        monthlyReports: true,
+        emailNotifications: result[0].emailNotifications ?? true,
+        pushNotifications: result[0].pushNotifications ?? true,
+        smsNotifications: result[0].smsNotifications ?? false,
+        newMemberNotifications: result[0].newMemberNotifications ?? true,
+        eventNotifications: result[0].eventNotifications ?? true,
+        emergencyNotifications: result[0].emergencyNotifications ?? true,
+        weeklyReports: result[0].weeklyReports ?? true,
+        monthlyReports: result[0].monthlyReports ?? true,
       };
     }),
     update: protectedProcedure
@@ -222,36 +263,52 @@ export const unionRouter = createTRPCRouter({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        console.log("Updating notification settings:", input);
+        const result = await db.select().from(unionSettings).limit(1);
+        if (result.length === 0) {
+          await db.insert(unionSettings).values(input);
+        } else {
+          await db.update(unionSettings).set(input).where(eq(unionSettings.id, result[0].id));
+        }
         return { success: true };
       }),
   }),
 
   analytics: createTRPCRouter({
     getStats: protectedProcedure.query(async ({ ctx }) => {
+      // Real counts from DB
+      const [membersCount, branchesCount, announcementsCount] = await Promise.all([
+        db.select({ count: count() }).from(unionUsers),
+        db.select({ count: count() }).from(unionBranches),
+        db.select({ count: count() }).from(unionAnnouncements),
+      ]);
+
       return {
-        totalMembers: { value: "8,520", change: "+120", changeType: "positive" },
-        newMembers: { value: "350", change: "+30", changeType: "positive" },
-        events: { value: "42", change: "+5", changeType: "positive" },
-        activityRate: { value: "92%", change: "-1%", changeType: "negative" },
+        totalMembers: {
+          value: membersCount[0]?.count.toString() || "0",
+          change: "+0",
+          changeType: "neutral"
+        },
+        newMembers: {
+          value: "0", // Needs 'createdAt' filtering for accurate 'new' count
+          change: "0",
+          changeType: "neutral"
+        },
+        events: {
+          value: announcementsCount[0]?.count.toString() || "0",
+          change: "+0",
+          changeType: "neutral"
+        },
+        activityRate: { value: "100%", change: "0%", changeType: "neutral" },
         chartData: [
-          { month: "Jan", members: 100, events: 5 },
-          { month: "Feb", members: 120, events: 8 },
-          { month: "Mar", members: 150, events: 7 },
-          { month: "Apr", members: 180, events: 10 },
-          { month: "May", members: 220, events: 12 },
-          { month: "Jun", members: 250, events: 15 },
+          { month: "Jan", members: 0, events: 0 },
+          { month: "Feb", members: 0, events: 0 },
+          { month: "Mar", members: 0, events: 0 },
+          { month: "Apr", members: 0, events: 0 },
+          { month: "May", members: 0, events: 0 },
+          { month: "Jun", members: 0, events: 0 },
         ],
-        topEvents: [
-          { name: "ورشة الطب البيطري الحديث", participants: 145 },
-          { name: "مؤتمر الصحة الحيوانية", participants: 120 },
-          { name: "دورة الجراحة المتقدمة", participants: 98 },
-        ],
-        regionDistribution: [
-          { region: "بغداد", count: 3250, percentage: 28 },
-          { region: "البصرة", count: 1890, percentage: 16 },
-          { region: "أربيل", count: 1560, percentage: 14 },
-        ],
+        topEvents: [],
+        regionDistribution: [],
       };
     }),
   }),
@@ -265,7 +322,7 @@ export const unionRouter = createTRPCRouter({
         z.object({
           userId: z.number(),
           role: z.enum(unionRoleEnum.enumValues),
-          branchId: z.number(),
+          branchId: z.number().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -277,7 +334,7 @@ export const unionRouter = createTRPCRouter({
         z.object({
           id: z.number(),
           role: z.enum(unionRoleEnum.enumValues),
-          branchId: z.number(),
+          branchId: z.number().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {

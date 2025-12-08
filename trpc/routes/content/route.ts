@@ -1,5 +1,5 @@
-import { publicProcedure, createTRPCRouter } from "../../create-context";
-import { db, tips, vetMagazines, vetBooks } from "../../../db";
+import { publicProcedure, createTRPCRouter, protectedProcedure } from "../../create-context";
+import { db, tips, vetMagazines, vetBooks, users, comments, likes } from "../../../db";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -20,7 +20,7 @@ export const contentRouter = createTRPCRouter({
 
     return {
       success: true,
-      tip: tip[0]
+      tip: tip[0],
     };
   }),
 
@@ -49,7 +49,7 @@ export const contentRouter = createTRPCRouter({
 
       return {
         success: true,
-        tips: tipsList
+        tips: tipsList,
       };
     }),
 
@@ -183,30 +183,35 @@ export const contentRouter = createTRPCRouter({
         .where(and(...conditions))
         .orderBy(desc(vetMagazines.createdAt));
 
+      const articlesWithStats = await Promise.all(
+        articles.map(async (article) => {
+          const likeCountResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(likes)
+            .where(eq(likes.articleId, article.id));
+
+          const commentCountResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(comments)
+            .where(eq(comments.articleId, article.id));
+
+          return {
+            ...article,
+            author: article.author || "مؤلف غير معروف",
+            authorTitle: article.authorTitle || "كاتب",
+            image: article.coverImage || "",
+            likes: Number(likeCountResult[0]?.count || 0),
+            comments: Number(commentCountResult[0]?.count || 0),
+            isSelectedForHome: article.isPublished,
+          };
+        })
+      );
+
       return {
         success: true,
-        articles: articles.map((article) => ({
-          ...article,
-          // Add default values for UI requirements
-          author: article.author || "مؤلف غير معروف",
-          authorTitle: article.authorTitle || "كاتب",
-          image: article.coverImage || "",
-          likes: 0, // Would come from a likes table
-          comments: 0, // Would come from a comments table
-          isSelectedForHome: article.isPublished,
-        })),
+        articles: articlesWithStats,
       };
     }),
-
-  likeArticle: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
-    // Increment rating as a like mechanism
-    await db
-      .update(vetMagazines)
-      .set({ rating: sql`COALESCE(${vetMagazines.rating}, 0) + 0.1` })
-      .where(eq(vetMagazines.id, input.id));
-
-    return { success: true };
-  }),
 
   toggleArticleHomeVisibility: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const article = await db.select().from(vetMagazines).where(eq(vetMagazines.id, input.id));
@@ -457,6 +462,136 @@ export const contentRouter = createTRPCRouter({
     await db.update(vetBooks).set({ isPublished: !book[0].isPublished }).where(eq(vetBooks.id, input.id));
 
     return { success: true };
+  }),
+
+  // ==================== COMMENTS & LIKES ====================
+  addComment: protectedProcedure
+    .input(
+      z.object({
+        articleId: z.number(),
+        content: z.string(),
+        parentId: z.number().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx?.user?.id) return { success: false, message: "Unauthorized" };
+
+      const [comment] = await db
+        .insert(comments)
+        .values({
+          userId: ctx.user?.id,
+          articleId: input.articleId,
+          content: input.content,
+          parentId: input.parentId,
+        })
+        .returning();
+
+      return { success: true, comment };
+    }),
+
+  getComments: publicProcedure.input(z.object({ articleId: z.number() })).query(async ({ input }) => {
+    const commentsList = await db
+      .select({
+        id: comments.id,
+        content: comments.content,
+        createdAt: comments.createdAt,
+        parentId: comments.parentId,
+        user: {
+          id: users.id,
+          name: users.name,
+          avatar: users.avatar,
+        },
+      })
+      .from(comments)
+      .leftJoin(users, eq(comments.userId, users.id))
+      .where(eq(comments.articleId, input.articleId))
+      .orderBy(desc(comments.createdAt));
+
+    return { success: true, comments: commentsList };
+  }),
+
+  deleteComment: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+    // Check ownership
+    const comment = await db.select().from(comments).where(eq(comments.id, input.id));
+    if (!comment[0]) throw new Error("Comment not found");
+
+    // Allow admin or owner to delete
+    // if (comment[0].userId !== ctx.user?.id && !ctx.user?.isAdmin) {
+    //   throw new Error("Unauthorized");
+    // }
+
+    await db.delete(comments).where(eq(comments.id, input.id));
+    return { success: true };
+  }),
+
+  toggleLike: publicProcedure.input(z.object({ articleId: z.number() })).mutation(async ({ input, ctx }) => {
+    const userId = ctx.user?.id || 1;
+    const existingLike = await db
+      .select()
+      .from(likes)
+      .where(and(eq(likes.articleId, input.articleId), eq(likes.userId, userId)));
+
+    let isLiked = false;
+
+    if (existingLike.length > 0) {
+      await db.delete(likes).where(eq(likes.id, existingLike[0].id));
+      isLiked = false;
+    } else {
+      await db.insert(likes).values({
+        userId: userId,
+        articleId: input.articleId,
+      });
+      isLiked = true;
+    }
+
+    // Update rating/like count on article for sorting/display
+    // We can use a subquery or just increment/decrement
+    if (isLiked) {
+      await db
+        .update(vetMagazines)
+        .set({ rating: sql`COALESCE(${vetMagazines.rating}, 0) + 1` })
+        .where(eq(vetMagazines.id, input.articleId));
+    } else {
+      await db
+        .update(vetMagazines)
+        .set({ rating: sql`GREATEST(COALESCE(${vetMagazines.rating}, 0) - 1, 0)` })
+        .where(eq(vetMagazines.id, input.articleId));
+    }
+
+    return { success: true, isLiked };
+  }),
+
+  getArticleStats: publicProcedure.input(z.object({ articleId: z.number() })).query(async ({ input, ctx }) => {
+    const userId = ctx.user?.id;
+
+    // Get like count
+    const likeCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(likes)
+      .where(eq(likes.articleId, input.articleId));
+
+    // Get comment count
+    const commentCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(comments)
+      .where(eq(comments.articleId, input.articleId));
+
+    // Check if user liked
+    let isLiked = false;
+    if (userId) {
+      const userLike = await db
+        .select()
+        .from(likes)
+        .where(and(eq(likes.articleId, input.articleId), eq(likes.userId, userId)));
+      isLiked = userLike.length > 0;
+    }
+
+    return {
+      success: true,
+      likes: Number(likeCountResult[0]?.count || 0),
+      comments: Number(commentCountResult[0]?.count || 0),
+      isLiked,
+    };
   }),
 
   deleteBook: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {

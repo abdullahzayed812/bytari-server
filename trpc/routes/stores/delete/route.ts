@@ -11,10 +11,7 @@ export const deleteStoreProcedure = publicProcedure
   )
   .mutation(async ({ input }: { input: { id: number } }) => {
     try {
-      // First delete all products associated with the store
-      await db.delete(products).where(eq(products.storeId, input.id));
-
-      // Then delete the store
+      // Delete the store (products will be deleted automatically via cascade)
       await db.delete(stores).where(eq(stores.id, input.id));
 
       return {

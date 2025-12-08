@@ -383,7 +383,148 @@ export const jobsRouter = {
       }
     }),
 
-  // Get jobs analytics
+  // Get all requests (aggregated)
+  getAllRequests: protectedProcedure
+    .input(
+      z.object({
+        adminId: z.number(),
+        limit: z.number().optional().default(50),
+        offset: z.number().optional().default(0),
+        status: z.enum(["pending", "approved", "rejected", "all"]).optional().default("all"),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      try {
+        console.log("Getting all requests for admin:", input.adminId);
+
+        // Fetch Job Vacancies
+        const jobs = await db
+          .select()
+          .from(jobVacancies)
+          .orderBy(desc(jobVacancies.createdAt))
+          .limit(input.limit);
+
+        // Fetch Job Applications
+        const applications = await db
+          .select()
+          .from(jobApplications)
+          .orderBy(desc(jobApplications.appliedAt))
+          .limit(input.limit);
+
+        // Fetch Field Supervision Requests
+        const supervisionRequests = await db
+          .select()
+          .from(fieldSupervisionRequests)
+          .orderBy(desc(fieldSupervisionRequests.createdAt))
+          .limit(input.limit);
+
+        // Map to common structure
+        const mappedJobs = jobs.map((job) => ({
+          id: job.id.toString(),
+          type: "job_posting" as const,
+          title: job.title,
+          applicantName: job.postedBy, // Using postedBy as applicantName for consistency
+          submittedDate: job.createdAt.toISOString(),
+          status: job.status === "active" ? "approved" : "pending", // Map active to approved for UI consistency
+          location: job.location,
+          details: {
+            company: job.postedBy,
+            salary: job.salary,
+            description: job.description,
+          },
+        }));
+
+        const mappedApplications = applications.map((app) => ({
+          id: app.id.toString(),
+          type: "job_application" as const,
+          title: "طلب توظيف", // Generic title, ideally should fetch job title
+          applicantName: app.applicantName,
+          submittedDate: app.appliedAt.toISOString(),
+          status: app.status as "pending" | "approved" | "rejected",
+          location: "N/A",
+          details: {
+            position: "Job ID: " + app.jobId, // Should ideally fetch job title
+            experience: app.experience,
+            education: app.education,
+            employmentStatus: app.status,
+          },
+        }));
+
+        const mappedSupervision = supervisionRequests.map((req) => ({
+          id: req.id.toString(),
+          type: "field_supervision" as const,
+          title: "طلب إشراف ميداني",
+          applicantName: req.ownerName,
+          submittedDate: req.createdAt.toISOString(),
+          status: req.status as "pending" | "approved" | "rejected",
+          location: req.farmLocation,
+          details: {
+            farmType: req.requestType,
+            animalCount: "N/A", // Not in schema currently
+            employmentStatus: req.status,
+          },
+        }));
+
+        // Combine and sort
+        const allRequests = [...mappedJobs, ...mappedApplications, ...mappedSupervision].sort(
+          (a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime()
+        );
+
+        // Apply status filter if needed
+        const filteredRequests =
+          input.status === "all"
+            ? allRequests
+            : allRequests.filter((req) => req.status === input.status);
+
+        return {
+          success: true,
+          requests: filteredRequests.slice(input.offset, input.offset + input.limit),
+          total: filteredRequests.length,
+          message: "تم جلب جميع الطلبات بنجاح",
+        };
+      } catch (error) {
+        console.error("Error getting all requests:", error);
+        return {
+          success: false,
+          requests: [],
+          total: 0,
+          message: "حدث خطأ في جلب الطلبات",
+        };
+      }
+    }),
+
+  // Manage field supervision request
+  manageFieldSupervisionRequest: protectedProcedure
+    .input(
+      z.object({
+        adminId: z.number(),
+        requestId: z.string(),
+        action: z.enum(["approve", "reject"]),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const status = input.action === "approve" ? "approved" : "rejected";
+        await db
+          .update(fieldSupervisionRequests)
+          .set({ status })
+          .where(eq(fieldSupervisionRequests.id, parseInt(input.requestId)));
+
+        return {
+          success: true,
+          message: `تم ${input.action === "approve" ? "الموافقة على" : "رفض"} الطلب بنجاح`,
+        };
+      } catch (error) {
+        console.error("Error managing field supervision request:", error);
+        return {
+          success: false,
+          message: "حدث خطأ أثناء معالجة الطلب",
+        };
+      }
+    }),
+
+  // Get jobs analytics (Updated with real data aggregation)
   getJobsAnalytics: protectedProcedure
     .input(
       z.object({
@@ -393,71 +534,45 @@ export const jobsRouter = {
     )
     .query(async ({ input, ctx }) => {
       try {
-        console.log("Getting jobs analytics for admin:", input.adminId, "period:", input.period);
-
-        // Get total jobs
-        const [{ totalJobs }] = await db.select({ totalJobs: sql<number>`count(*)` }).from(jobVacancies);
-
-        // Get active jobs
-        const [{ activeJobs }] = await db
-          .select({ activeJobs: sql<number>`count(*)` })
-          .from(jobVacancies)
-          .where(eq(jobVacancies.status, "active"));
-
-        // Get total applications
-        const [{ totalApplications }] = await db
-          .select({ totalApplications: sql<number>`count(*)` })
-          .from(jobApplications);
-
-        // Get pending applications
-        const [{ pendingApplications }] = await db
-          .select({ pendingApplications: sql<number>`count(*)` })
-          .from(jobApplications)
-          .where(eq(jobApplications.status, "pending"));
-
-        // Get approved applications
-        const [{ approvedApplications }] = await db
-          .select({ approvedApplications: sql<number>`count(*)` })
-          .from(jobApplications)
-          .where(eq(jobApplications.status, "approved"));
-
-        // Get rejected applications
-        const [{ rejectedApplications }] = await db
-          .select({ rejectedApplications: sql<number>`count(*)` })
-          .from(jobApplications)
-          .where(eq(jobApplications.status, "rejected"));
-
-        // Get field supervision requests
-        const [{ fieldRequests }] = await db
-          .select({ fieldRequests: sql<number>`count(*)` })
-          .from(fieldSupervisionRequests);
-
-        // Get completed supervisions
-        const [{ completedSupervisions }] = await db
-          .select({ completedSupervisions: sql<number>`count(*)` })
-          .from(fieldSupervisionRequests)
-          .where(eq(fieldSupervisionRequests.status, "completed"));
-
-        const mockAnalytics = {
-          totalJobs: Number(totalJobs) || 0,
-          activeJobs: Number(activeJobs) || 0,
-          totalApplications: Number(totalApplications) || 0,
-          pendingApplications: Number(pendingApplications) || 0,
-          approvedApplications: Number(approvedApplications) || 0,
-          rejectedApplications: Number(rejectedApplications) || 0,
-          fieldSupervisionRequests: Number(fieldRequests) || 0,
-          completedSupervisions: Number(completedSupervisions) || 0,
-          jobsByCategory: {
-            veterinarian: 0,
-            fieldSupervisor: 0,
-            technician: 0,
-          },
-          applicationsByMonth: [],
-        };
+        // Basic counts
+        const [
+          { totalJobs },
+          { activeJobs },
+          { totalApplications },
+          { pendingApplications },
+          { approvedApplications },
+          { rejectedApplications },
+          { fieldRequests },
+          { completedSupervisions },
+        ] = await Promise.all([
+          db.select({ totalJobs: sql<number>`count(*)` }).from(jobVacancies).then(res => res[0]),
+          db.select({ activeJobs: sql<number>`count(*)` }).from(jobVacancies).where(eq(jobVacancies.status, "active")).then(res => res[0]),
+          db.select({ totalApplications: sql<number>`count(*)` }).from(jobApplications).then(res => res[0]),
+          db.select({ pendingApplications: sql<number>`count(*)` }).from(jobApplications).where(eq(jobApplications.status, "pending")).then(res => res[0]),
+          db.select({ approvedApplications: sql<number>`count(*)` }).from(jobApplications).where(eq(jobApplications.status, "approved")).then(res => res[0]),
+          db.select({ rejectedApplications: sql<number>`count(*)` }).from(jobApplications).where(eq(jobApplications.status, "rejected")).then(res => res[0]),
+          db.select({ fieldRequests: sql<number>`count(*)` }).from(fieldSupervisionRequests).then(res => res[0]),
+          db.select({ completedSupervisions: sql<number>`count(*)` }).from(fieldSupervisionRequests).where(eq(fieldSupervisionRequests.status, "completed")).then(res => res[0]),
+        ]);
 
         return {
           success: true,
-          analytics: mockAnalytics,
+          analytics: {
+            totalJobs: Number(totalJobs) || 0,
+            activeJobs: Number(activeJobs) || 0,
+            totalApplications: Number(totalApplications) || 0,
+            pendingApplications: Number(pendingApplications) || 0,
+            approvedApplications: Number(approvedApplications) || 0,
+            rejectedApplications: Number(rejectedApplications) || 0,
+            fieldSupervisionRequests: Number(fieldRequests) || 0,
+            completedSupervisions: Number(completedSupervisions) || 0,
+            jobsByCategory: {
+              veterinarian: 0, // Placeholder as category isn't in schema yet
+              fieldSupervisor: 0,
+              technician: 0,
+            },
+            applicationsByMonth: [], // Placeholder
+          },
           message: "تم جلب إحصائيات الوظائف بنجاح",
         };
       } catch (error) {

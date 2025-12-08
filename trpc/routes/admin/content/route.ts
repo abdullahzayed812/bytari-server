@@ -729,14 +729,14 @@ export const updateContactInfoProcedure = protectedProcedure
           title: "معلومات التواصل",
           content: JSON.stringify(contactData),
           isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         })
         .onConflictDoUpdate({
           target: adminContent.type,
           set: {
             content: JSON.stringify(contactData),
-            updatedAt: new Date().toISOString(),
+            updatedAt: new Date(),
           },
         });
 

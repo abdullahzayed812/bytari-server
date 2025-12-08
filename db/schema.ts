@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, relations } from "drizzle-orm";
 import {
   integer,
   pgTable,
@@ -60,7 +60,7 @@ export const medicalRecords = pgTable("medical_records", {
   id: serial("id").primaryKey(),
   petId: integer("pet_id")
     .notNull()
-    .references(() => pets.id),
+    .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
   veterinarianId: integer("veterinarian_id").references(() => veterinarians.id),
   diagnosis: text("diagnosis").notNull(),
@@ -77,7 +77,7 @@ export const vaccinations = pgTable("vaccinations", {
   id: serial("id").primaryKey(),
   petId: integer("pet_id")
     .notNull()
-    .references(() => pets.id),
+    .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
   name: text("name").notNull(),
   date: timestamp("date", { withTimezone: true }).notNull().defaultNow(),
@@ -93,7 +93,7 @@ export const petReminders = pgTable("pet_reminders", {
   id: serial("id").primaryKey(),
   petId: integer("pet_id")
     .notNull()
-    .references(() => pets.id),
+    .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
   title: text("title").notNull(),
   description: text("description"),
@@ -109,7 +109,7 @@ export const treatmentCards = pgTable("treatment_cards", {
   id: serial("id").primaryKey(),
   petId: integer("pet_id")
     .notNull()
-    .references(() => pets.id),
+    .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
     .notNull()
     .references(() => clinics.id),
@@ -126,7 +126,7 @@ export const followUpRequests = pgTable("follow_up_requests", {
   id: serial("id").primaryKey(),
   petId: integer("pet_id")
     .notNull()
-    .references(() => pets.id),
+    .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
     .notNull()
     .references(() => clinics.id),
@@ -143,7 +143,7 @@ export const clinicAccessRequests = pgTable("clinic_access_requests", {
   id: serial("id").primaryKey(),
   petId: integer("pet_id")
     .notNull()
-    .references(() => pets.id),
+    .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
     .notNull()
     .references(() => clinics.id),
@@ -168,7 +168,7 @@ export const approvedClinicAccess = pgTable("approved_clinic_access", {
   id: serial("id").primaryKey(),
   petId: integer("pet_id")
     .notNull()
-    .references(() => pets.id),
+    .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
     .notNull()
     .references(() => clinics.id),
@@ -188,7 +188,7 @@ export const pendingMedicalActions = pgTable("pending_medical_actions", {
   id: serial("id").primaryKey(),
   petId: integer("pet_id")
     .notNull()
-    .references(() => pets.id),
+    .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
     .notNull()
     .references(() => clinics.id),
@@ -339,7 +339,7 @@ export const appointments = pgTable("appointments", {
     .references(() => veterinarians.id),
   petId: integer("pet_id")
     .notNull()
-    .references(() => pets.id),
+    .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
   appointmentDate: timestamp("appointment_date", {
     withTimezone: true,
@@ -476,9 +476,8 @@ export const lostPets = pgTable("lost_pets", {
 // Products table
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
-  storeId: integer("store_id")
-    .notNull()
-    .references(() => stores.id),
+  storeId: integer("store_id").references(() => stores.id, { onDelete: "cascade" }),
+  vetStoreId: integer("vet_store_id").references(() => vetStores.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   price: real("price").notNull(),
@@ -745,6 +744,9 @@ export const vetStores = pgTable("vet_stores", {
   needsRenewal: boolean("needs_renewal").notNull().default(false),
   subscriptionStatus: text("subscription_status").default("active"), // 'active', 'expired', 'pending'
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  workingHours: jsonb("working_hours"),
+  images: jsonb("images"),
+  services: jsonb("services"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -754,7 +756,7 @@ export const storeProducts = pgTable("store_products", {
 
   storeId: integer("store_id")
     .notNull()
-    .references(() => stores.id),
+    .references(() => stores.id, { onDelete: "cascade" }),
 
   name: text("name").notNull(),
   description: text("description"),
@@ -1087,6 +1089,66 @@ export const vetMagazines = pgTable("vet_magazines", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Comments table
+export const comments = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  articleId: integer("article_id")
+    .references(() => vetMagazines.id)
+    .notNull(),
+  content: text("content").notNull(),
+  parentId: integer("parent_id"), // Self-reference for replies
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Likes table
+export const likes = pgTable("likes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  articleId: integer("article_id")
+    .references(() => vetMagazines.id)
+    .notNull(),
+  type: text("type").notNull().default("like"), // 'like', 'dislike'
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Relations for comments
+export const commentsRelations = relations(comments, ({ one, many }) => ({
+  user: one(users, {
+    fields: [comments.userId],
+    references: [users.id],
+  }),
+  article: one(vetMagazines, {
+    fields: [comments.articleId],
+    references: [vetMagazines.id],
+  }),
+  parent: one(comments, {
+    fields: [comments.parentId],
+    references: [comments.id],
+    relationName: "replies",
+  }),
+  replies: many(comments, {
+    relationName: "replies",
+  }),
+}));
+
+// Relations for likes
+export const likesRelations = relations(likes, ({ one }) => ({
+  user: one(users, {
+    fields: [likes.userId],
+    references: [users.id],
+  }),
+  article: one(vetMagazines, {
+    fields: [likes.articleId],
+    references: [vetMagazines.id],
+  }),
+}));
+
 // Admin content table (for admin-managed content like contact info, settings, etc.)
 export const adminContent = pgTable("admin_content", {
   id: serial("id").primaryKey(),
@@ -1117,6 +1179,7 @@ export const advertisements = pgTable("advertisements", {
   endDate: timestamp("end_date", { withTimezone: true }).notNull().defaultNow(),
   isActive: boolean("is_active").notNull().default(true),
   clickCount: integer("click_count").default(0),
+  clickAction: text("click_action").default("none"), // "none" | "open_link" | "open_file";
   impressionCount: integer("impression_count").default(0),
   budget: real("budget"),
   costPerClick: real("cost_per_click"),
@@ -1171,22 +1234,22 @@ export const approvalRequests = pgTable("approval_requests", {
   paymentAmount: real("payment_amount"),
   paymentMethod: text("payment_method"),
   paymentTransactionId: text("payment_transaction_id"),
-  paymentCompletedAt: integer("payment_completed_at", { mode: "timestamp" }),
+  paymentCompletedAt: integer("payment_completed_at"),
   paymentReceipt: text("payment_receipt"),
 
   status: text("status").notNull().default("pending"),
   reviewedBy: integer("reviewed_by").references(() => users.id),
-  reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+  reviewedAt: integer("reviewed_at"),
   rejectionReason: text("rejection_reason"),
   adminNotes: text("admin_notes"),
 
   priority: text("priority").notNull().default("normal"),
 
   // ✅ PostgreSQL-compatible defaults
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: integer("created_at")
     .notNull()
     .default(sql`extract(epoch from now())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  updatedAt: integer("updated_at")
     .notNull()
     .default(sql`extract(epoch from now())`),
 });
@@ -1497,7 +1560,7 @@ export const pollVotes = pgTable("poll_votes", {
 
 // Veterinarian approval requests - طلبات موافقة الأطباء البيطريين والطلاب
 export const veterinarianApprovals = pgTable("veterinarian_approvals", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  id: serial("id").primaryKey(),
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
@@ -1615,6 +1678,8 @@ export const unionMain = pgTable("union_main", {
   website: varchar("website", { length: 256 }),
   address: text("address"),
   services: jsonb("services"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const unionBranches = pgTable("union_branches", {
@@ -1631,6 +1696,11 @@ export const unionBranches = pgTable("union_branches", {
   description: text("description"),
   establishedYear: integer("established_year"),
   services: jsonb("services"),
+  status: text("status").notNull().default("active"),
+  followersCount: integer("followers_count").default(0),
+  announcementsCount: integer("announcements_count").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const unionAnnouncements = pgTable("union_announcements", {
@@ -1647,6 +1717,7 @@ export const unionAnnouncements = pgTable("union_announcements", {
   author: varchar("author", { length: 256 }),
   views: integer("views").default(0),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const unionFollowers = pgTable("union_followers", {
@@ -1668,6 +1739,17 @@ export const unionSettings = pgTable("union_settings", {
   isMaintenanceMode: boolean("is_maintenance_mode").default(false),
   allowRegistration: boolean("allow_registration").default(true),
   requireApproval: boolean("require_approval").default(true),
+  // Notification Settings
+  emailNotifications: boolean("email_notifications").default(true),
+  pushNotifications: boolean("push_notifications").default(true),
+  smsNotifications: boolean("sms_notifications").default(false),
+  newMemberNotifications: boolean("new_member_notifications").default(true),
+  eventNotifications: boolean("event_notifications").default(true),
+  emergencyNotifications: boolean("emergency_notifications").default(true),
+  weeklyReports: boolean("weekly_reports").default(true),
+  monthlyReports: boolean("monthly_reports").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const unionUsers = pgTable("union_users", {

@@ -4,7 +4,7 @@ import { db, polls, pollOptions, pollVotes, advertisements } from "../../../db";
 import { eq, desc, and, sql } from "drizzle-orm";
 
 // Get poll by advertisement ID
-export const getPollByAdIdProcedure = publicProcedure
+export const getByAdId = publicProcedure
   .input(
     z.object({
       adId: z.number(),
@@ -16,7 +16,7 @@ export const getPollByAdIdProcedure = publicProcedure
       const pollData = await db.select().from(polls).where(eq(polls.advertisementId, input.adId)).limit(1);
 
       if (pollData.length === 0) {
-        throw new Error("Poll not found");
+        return {};
       }
 
       const poll = pollData[0];
@@ -39,7 +39,7 @@ export const getPollByAdIdProcedure = publicProcedure
   });
 
 // Vote on poll
-export const voteProcedure = publicProcedure
+export const vote = publicProcedure
   .input(
     z.object({
       pollId: z.number(),
@@ -143,7 +143,7 @@ export const voteProcedure = publicProcedure
   });
 
 // Get poll results
-export const getPollResultsProcedure = publicProcedure
+export const getResults = publicProcedure
   .input(
     z.object({
       pollId: z.number(),
@@ -190,7 +190,7 @@ export const getPollResultsProcedure = publicProcedure
   });
 
 // Check if user has voted
-export const hasUserVotedProcedure = publicProcedure
+export const hasVoted = publicProcedure
   .input(
     z.object({
       pollId: z.number(),
@@ -230,7 +230,7 @@ export const hasUserVotedProcedure = publicProcedure
   });
 
 // Get active polls
-export const getActivePollsProcedure = publicProcedure
+export const getActive = publicProcedure
   .input(
     z.object({
       limit: z.number().default(10),
@@ -265,3 +265,129 @@ export const getActivePollsProcedure = publicProcedure
       throw new Error(error instanceof Error ? error.message : "Failed to get active polls");
     }
   });
+
+export const create = publicProcedure
+  .input(
+    z.object({
+      question: z.string(),
+      description: z.string().optional(),
+      advertisementId: z.number(),
+      isMultipleChoice: z.boolean(),
+      showResults: z.boolean(),
+      isActive: z.boolean(),
+      endDate: z.date().optional(),
+      options: z.array(
+        z.object({
+          optionText: z.string(),
+          order: z.number(),
+        })
+      ),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const [poll] = await db
+      .insert(polls)
+      .values({
+        question: input.question,
+        description: input.description,
+        advertisementId: input.advertisementId,
+        isMultipleChoice: input.isMultipleChoice,
+        showResults: input.showResults,
+        isActive: input.isActive,
+        endDate: input.endDate,
+      })
+      .returning();
+
+    for (const option of input.options) {
+      await db.insert(pollOptions).values({
+        pollId: poll.id,
+        optionText: option.optionText,
+        order: option.order,
+      });
+    }
+
+    return poll;
+  });
+
+export const update = publicProcedure
+  .input(
+    z.object({
+      id: z.number(),
+      question: z.string(),
+      description: z.string().optional(),
+      advertisementId: z.number(),
+      isMultipleChoice: z.boolean(),
+      showResults: z.boolean(),
+      isActive: z.boolean(),
+      endDate: z.date().optional(),
+      options: z.array(
+        z.object({
+          id: z.number().optional(),
+          optionText: z.string(),
+          order: z.number(),
+        })
+      ),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const [poll] = await db
+      .update(polls)
+      .set({
+        question: input.question,
+        description: input.description,
+        advertisementId: input.advertisementId,
+        isMultipleChoice: input.isMultipleChoice,
+        showResults: input.showResults,
+        isActive: input.isActive,
+        endDate: input.endDate,
+      })
+      .where(eq(polls.id, input.id))
+      .returning();
+
+    const existingOptions = await db.select().from(pollOptions).where(eq(pollOptions.pollId, input.id));
+    const newOptionIds = input.options.map((o) => o.id).filter((id) => id !== undefined);
+
+    // Delete options that are no longer in the list
+    for (const option of existingOptions) {
+      if (!newOptionIds.includes(option.id)) {
+        await db.delete(pollOptions).where(eq(pollOptions.id, option.id));
+      }
+    }
+
+    for (const option of input.options) {
+      if (option.id) {
+        await db
+          .update(pollOptions)
+          .set({
+            optionText: option.optionText,
+            order: option.order,
+          })
+          .where(eq(pollOptions.id, option.id));
+      } else {
+        await db.insert(pollOptions).values({
+          pollId: input.id,
+          optionText: option.optionText,
+          order: option.order,
+        });
+      }
+    }
+
+    return poll;
+  });
+
+export const deletePoll = publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+  await db.delete(pollVotes).where(eq(pollVotes.pollId, input.id));
+  await db.delete(pollOptions).where(eq(pollOptions.pollId, input.id));
+  await db.delete(polls).where(eq(polls.id, input.id));
+  return { success: true };
+});
+
+export const getAll = publicProcedure.query(async () => {
+  const allPolls = await db.select().from(polls);
+  const allOptions = await db.select().from(pollOptions);
+
+  return allPolls.map((poll) => ({
+    ...poll,
+    options: allOptions.filter((opt) => opt.pollId === poll.id),
+  }));
+});

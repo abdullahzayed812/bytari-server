@@ -16,12 +16,31 @@ const CourseSchema = z.object({
   price: z.string().min(1, "سعر الدورة مطلوب"),
   description: z.string().min(1, "وصف الدورة مطلوب"),
   category: z.string().min(1, "التصنيف مطلوب"),
-  courseUrl: z.string().url("رابط غير صحيح").optional().or(z.literal("")),
+  courseUrl: z.string().optional().or(z.literal("")),
   registrationType: z.enum(["link", "internal"]),
   status: z.enum(["active", "inactive", "completed"]).default("active"),
   thumbnailImage: z.string().optional(),
   images: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
+}).superRefine((data, ctx) => {
+  if (data.registrationType === "link") {
+    if (!data.courseUrl || data.courseUrl.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "رابط التسجيل مطلوب",
+        path: ["courseUrl"],
+      });
+    } else {
+      const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      if (!urlPattern.test(data.courseUrl)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "رابط غير صحيح",
+          path: ["courseUrl"],
+        });
+      }
+    }
+  }
 });
 
 const CourseRegistrationSchema = z.object({

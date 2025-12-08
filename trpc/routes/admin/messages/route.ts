@@ -33,6 +33,8 @@ export const sendSystemMessageProcedure = publicProcedure
       targetUserIds: z.array(z.number()).optional(),
       priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
       scheduledAt: z.date().optional(),
+      imageUrl: z.string().optional(),
+      linkUrl: z.string().optional(),
     })
   )
   .mutation(async ({ input }: { input: any }) => {
@@ -57,6 +59,8 @@ export const sendSystemMessageProcedure = publicProcedure
           priority: input.priority,
           scheduledAt: input.scheduledAt,
           sentAt: input.scheduledAt ? null : new Date(),
+          imageUrl: input.imageUrl,
+          linkUrl: input.linkUrl,
         })
         .returning();
 

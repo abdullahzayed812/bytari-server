@@ -334,11 +334,15 @@ import { listOrdersProcedure } from "./routes/orders/list/route";
 
 // Polls
 import {
-  getPollByAdIdProcedure,
-  voteProcedure,
-  getPollResultsProcedure,
-  hasUserVotedProcedure,
-  getActivePollsProcedure,
+  getByAdId,
+  vote,
+  getResults,
+  hasVoted,
+  getActive,
+  create,
+  update,
+  deletePoll,
+  getAll,
 } from "./routes/polls/route";
 
 import { getPoultryFarmDetailsProcedure, listPoultryFarmsProcedure } from "../trpc/routes/poultry-farms/list/route";
@@ -376,7 +380,32 @@ import {
   rejectAssignmentRequestProcedure,
 } from "./routes/assignment-requests/route";
 
+// Vet Store routes
+import { createVetStoreProcedure } from "./routes/vet-stores/create/route";
+import { updateVetStoreProcedure } from "./routes/vet-stores/update/route";
+import { deleteVetStoreProcedure } from "./routes/vet-stores/delete/route";
+import { getUserVetStoresProcedure, listActiveVetStoresProcedure } from "./routes/vet-stores/list/route";
+import { getVetStoreByIdProcedure } from "./routes/vet-stores/getById/route";
+import { addVetStoreProductProcedure } from "./routes/vet-stores/products/create/route";
+import { listVetStoreProductsProcedure } from "./routes/vet-stores/products/list/route";
+
 export const appRouter = createTRPCRouter({
+  // ... existing routes ...
+
+  // Vet Store routes
+  vetStores: createTRPCRouter({
+    create: createVetStoreProcedure,
+    update: updateVetStoreProcedure,
+    delete: deleteVetStoreProcedure,
+    getUserStores: getUserVetStoresProcedure,
+    listActive: listActiveVetStoresProcedure,
+    getById: getVetStoreByIdProcedure,
+    products: createTRPCRouter({
+      create: addVetStoreProductProcedure,
+      list: listVetStoreProductsProcedure,
+    }),
+  }),
+
   // Authentication routes
   auth: createTRPCRouter({
     register: registerProcedure,
@@ -829,11 +858,15 @@ export const appRouter = createTRPCRouter({
   }),
 
   polls: createTRPCRouter({
-    getByAdId: getPollByAdIdProcedure,
-    vote: voteProcedure,
-    getResults: getPollResultsProcedure,
-    hasVoted: hasUserVotedProcedure,
-    getActive: getActivePollsProcedure,
+    getByAdId: getByAdId,
+    vote: vote,
+    getResults: getResults,
+    hasVoted: hasVoted,
+    getActive: getActive,
+    create: create,
+    update: update,
+    delete: deletePoll,
+    getAll: getAll,
   }),
 
   // User notifications

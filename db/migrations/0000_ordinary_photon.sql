@@ -78,6 +78,7 @@ CREATE TABLE "advertisements" (
 	"end_date" timestamp with time zone NOT NULL DEFAULT NOW(),
 	"is_active" boolean DEFAULT true NOT NULL,
 	"click_count" integer DEFAULT 0,
+	"click_action" text DEFAULT 'none',
 	"impression_count" integer DEFAULT 0,
 	"budget" real,
 	"cost_per_click" real,
@@ -827,6 +828,27 @@ CREATE TABLE "vet_magazines" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+
+CREATE TABLE "comments" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "user_id" integer NOT NULL,
+    "article_id" integer NOT NULL,
+    "content" text NOT NULL,
+    "parent_id" integer,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+CREATE TABLE "likes" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "user_id" integer NOT NULL,
+    "article_id" integer NOT NULL,
+    "type" text DEFAULT 'like' NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
 --> statement-breakpoint
 CREATE TABLE "veterinarians" (
 	"id" serial PRIMARY KEY NOT NULL,
@@ -1051,7 +1073,7 @@ CREATE TABLE "union_followers" (
 );
 
 -- Union Settings table
-CREATE TABLE "union_settings" (
+CREATE TABLE IF NOT EXISTS "union_settings" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"union_name" varchar(256),
 	"union_description" text,
@@ -1060,6 +1082,14 @@ CREATE TABLE "union_settings" (
 	"is_maintenance_mode" boolean DEFAULT false,
 	"allow_registration" boolean DEFAULT true,
 	"require_approval" boolean DEFAULT true,
+	"email_notifications" boolean DEFAULT true,
+	"push_notifications" boolean DEFAULT true,
+	"sms_notifications" boolean DEFAULT false,
+	"new_member_notifications" boolean DEFAULT true,
+	"event_notifications" boolean DEFAULT true,
+	"emergency_notifications" boolean DEFAULT true,
+	"weekly_reports" boolean DEFAULT true,
+	"monthly_reports" boolean DEFAULT true,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -1587,6 +1617,57 @@ ALTER TABLE "field_supervision_requests"
     ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE "field_supervision_requests" 
-    ADD CONSTRAINT "field_supervision_requests_reviewed_by_users_id_fk" 
+    ADD CONSTRAINT "field_supervision_requests_reviewed_by_users_id_fk"
     FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") 
     ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- ALTER TABLE "appointments" ADD CONSTRAINT "appointments_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- ALTER TABLE "products" ADD CONSTRAINT "products_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- ALTER TABLE "store_products" ADD CONSTRAINT "store_products_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- -- Vet Store Updates
+-- ALTER TABLE "products" ADD COLUMN "vet_store_id" integer;
+-- ALTER TABLE "products" ALTER COLUMN "store_id" DROP NOT NULL;
+-- ALTER TABLE "products" ADD CONSTRAINT "products_vet_store_id_vet_stores_id_fk" FOREIGN KEY ("vet_store_id") REFERENCES "public"."vet_stores"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+
+-- ALTER TABLE "vet_stores" ADD COLUMN "working_hours" jsonb;
+-- ALTER TABLE "vet_stores" ADD COLUMN "images" jsonb;
+-- ALTER TABLE "vet_stores" ADD COLUMN "services" jsonb;
+
+
+-- FK → users
+ALTER TABLE "comments" 
+ADD CONSTRAINT "comments_user_id_users_id_fk"
+FOREIGN KEY ("user_id")
+REFERENCES "public"."users"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- FK → vet_magazines
+ALTER TABLE "comments" 
+ADD CONSTRAINT "comments_article_id_vet_magazines_id_fk"
+FOREIGN KEY ("article_id")
+REFERENCES "public"."vet_magazines"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Self-reference for threaded replies
+ALTER TABLE "comments"
+ADD CONSTRAINT "comments_parent_id_comments_id_fk"
+FOREIGN KEY ("parent_id")
+REFERENCES "public"."comments"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;
+
+
+
+-- FK → users
+ALTER TABLE "likes"
+ADD CONSTRAINT "likes_user_id_users_id_fk"
+FOREIGN KEY ("user_id")
+REFERENCES "public"."users"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- FK → vet_magazines
+ALTER TABLE "likes"
+ADD CONSTRAINT "likes_article_id_vet_magazines_id_fk"
+FOREIGN KEY ("article_id")
+REFERENCES "public"."vet_magazines"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { db, advertisements, adminActivityLogs } from "../../../../db";
-import { eq, and, desc, gte, lte, count, sum, inArray } from "drizzle-orm";
+import { eq, and, desc, gte, lte, count, sum, inArray, sql } from "drizzle-orm";
 
 // Create advertisement
 export const createAdvertisementProcedure = publicProcedure
@@ -9,9 +9,9 @@ export const createAdvertisementProcedure = publicProcedure
     z.object({
       adminId: z.number(),
       title: z.string().min(1),
-      content: z.string().optional(),
-      image: z.string().optional(),
-      link: z.string().optional(),
+      description: z.string().optional(),
+      imageUrl: z.string().optional(),
+      targetUrl: z.string().optional(),
       type: z.enum(["banner", "popup", "inline", "image_only", "image_with_link"]),
       position: z.string().optional(),
       interface: z.enum(["pet_owner", "vet", "both"]).default("both"),
@@ -34,9 +34,9 @@ export const createAdvertisementProcedure = publicProcedure
         .insert(advertisements)
         .values({
           title: input.title,
-          content: input.content,
-          imageUrl: input.image,
-          link: input.link,
+          description: input.description,
+          imageUrl: input.imageUrl,
+          targetUrl: input.targetUrl,
           type: input.type,
           position: input.position,
           interface: input.interface,
@@ -73,9 +73,9 @@ export const updateAdvertisementProcedure = publicProcedure
       adminId: z.number(),
       adId: z.number(),
       title: z.string().min(1).optional(),
-      content: z.string().optional(),
-      image: z.string().optional(),
-      link: z.string().optional(),
+      description: z.string().optional(),
+      imageUrl: z.string().optional(),
+      targetUrl: z.string().optional(),
       type: z.enum(["banner", "popup", "inline", "image_only", "image_with_link"]).optional(),
       position: z.string().optional(),
       interface: z.enum(["pet_owner", "vet", "both"]).optional(),
@@ -94,10 +94,6 @@ export const updateAdvertisementProcedure = publicProcedure
       // Validate dates if both are provided
       if (updateData.startDate && updateData.endDate && updateData.endDate <= updateData.startDate) {
         throw new Error("End date must be after start date");
-      }
-
-      if (updateData.image) {
-        updateData.imageUrl = updateData.image;
       }
 
       // Update advertisement
@@ -205,7 +201,7 @@ export const getAllAdvertisementsProcedure = publicProcedure
 export const getActiveProcedure = publicProcedure
   .input(
     z.object({
-      position: z.string().optional(),
+      // position: z.string().optional(),
       type: z.enum(["banner", "popup", "inline", "image_only", "image_with_link"]).optional(),
       interface: z.enum(["pet_owner", "vet", "both"]).optional(),
     })
@@ -222,9 +218,9 @@ export const getActiveProcedure = publicProcedure
         gte(advertisements.endDate, now),
       ];
 
-      if (input.position) {
-        conditions.push(eq(advertisements.position, input.position));
-      }
+      // if (input.position) {
+      //   conditions.push(eq(advertisements.position, input.position));
+      // }
 
       if (input.type) {
         conditions.push(eq(advertisements.type, input.type));
@@ -259,17 +255,13 @@ export const trackClickProcedure = publicProcedure
       adId: z.number(),
     })
   )
-  .mutation(async ({ input }: { input: any }) => {
+  .mutation(async ({ input }) => {
     try {
-      // Increment click count
+      // Increment clickCount atomically
       await db
         .update(advertisements)
         .set({
-          clicks: await db
-            .select({ clicks: advertisements.clicks })
-            .from(advertisements)
-            .where(eq(advertisements.id, input.adId))
-            .then((result: any[]) => (result[0]?.clicks || 0) + 1),
+          clickCount: sql`${advertisements.clickCount} + 1`,
           updatedAt: new Date(),
         })
         .where(eq(advertisements.id, input.adId));
@@ -288,17 +280,13 @@ export const trackImpressionProcedure = publicProcedure
       adId: z.number(),
     })
   )
-  .mutation(async ({ input }: { input: any }) => {
+  .mutation(async ({ input }) => {
     try {
-      // Increment impression count
+      // Atomic increment of impressionCount
       await db
         .update(advertisements)
         .set({
-          impressions: await db
-            .select({ impressions: advertisements.impressions })
-            .from(advertisements)
-            .where(eq(advertisements.id, input.adId))
-            .then((result: any[]) => (result[0]?.impressions || 0) + 1),
+          impressionCount: sql`${advertisements.impressionCount} + 1`,
           updatedAt: new Date(),
         })
         .where(eq(advertisements.id, input.adId));
