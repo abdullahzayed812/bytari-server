@@ -34,12 +34,10 @@ export const contentRouter = createTRPCRouter({
         .optional()
     )
     .query(async ({ input }) => {
-      const { category, isPublished } = input;
-
       const conditions = [];
 
-      if (isPublished) conditions.push(eq(vetMagazines.isPublished, isPublished));
-      if (category) conditions.push(eq(vetMagazines.category, category));
+      if (input?.isPublished) conditions.push(eq(vetMagazines.isPublished, input.isPublished));
+      if (input?.category) conditions.push(eq(vetMagazines.category, input?.category));
 
       const tipsList = await db
         .select()
@@ -79,7 +77,7 @@ export const contentRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  createTip: publicProcedure
+  createTip: protectedProcedure
     .input(
       z.object({
         title: z.string(),
@@ -96,7 +94,7 @@ export const contentRouter = createTRPCRouter({
         .insert(tips)
         .values({
           ...input,
-          authorId: ctx.user?.id || null,
+          authorId: ctx.user?.id,
           tags: input.tags ? JSON.stringify(input.tags) : null,
           images: input.images ? JSON.stringify(input.images) : null,
         })
@@ -149,10 +147,10 @@ export const contentRouter = createTRPCRouter({
     }
 
     // Increment download count (used as view count)
-    await db
-      .update(vetMagazines)
-      .set({ downloadCount: sql`${vetMagazines.downloadCount} + 1` })
-      .where(eq(vetMagazines.id, input.id));
+    // await db
+    //   .update(vetMagazines)
+    //   .set({ downloadCount: sql`${vetMagazines.downloadCount} + 1` })
+    //   .where(eq(vetMagazines.id, input.id));
 
     return {
       success: true,
@@ -170,18 +168,15 @@ export const contentRouter = createTRPCRouter({
         .optional()
     )
     .query(async ({ input }) => {
-      const { category, isPublished } = input;
-
       const conditions = [];
 
-      if (isPublished) conditions.push(eq(vetMagazines.isPublished, isPublished));
-      if (category) conditions.push(eq(vetMagazines.category, category));
+      if (input?.isPublished) conditions.push(eq(vetMagazines.isPublished, input?.isPublished));
+      if (input?.category) conditions.push(eq(vetMagazines.category, input?.category));
 
       const articles = await db
         .select()
         .from(vetMagazines)
-        .where(and(...conditions))
-        .orderBy(desc(vetMagazines.createdAt));
+        .where(and(...conditions));
 
       const articlesWithStats = await Promise.all(
         articles.map(async (article) => {
@@ -230,7 +225,7 @@ export const contentRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  createArticle: publicProcedure
+  createArticle: protectedProcedure
     .input(
       z.object({
         title: z.string(),
@@ -242,7 +237,7 @@ export const contentRouter = createTRPCRouter({
         coverImage: z.string().optional(),
         author: z.string().optional(),
         authorTitle: z.string().optional(),
-        filePath: z.string().optional(),
+        filePath: z.string(),
         language: z.string().optional().default("ar"),
         pageCount: z.number().optional(),
         tags: z.array(z.string()).optional(),
@@ -254,8 +249,9 @@ export const contentRouter = createTRPCRouter({
         .insert(vetMagazines)
         .values({
           ...input,
-          uploadedBy: ctx.user?.id || null,
+          uploadedBy: ctx.user?.id,
           tags: input.tags ? JSON.stringify(input.tags) : null,
+          isPublished: true,
         })
         .returning();
 
@@ -278,7 +274,7 @@ export const contentRouter = createTRPCRouter({
         coverImage: z.string().optional(),
         author: z.string().optional(),
         authorTitle: z.string().optional(),
-        filePath: z.string().optional(),
+        filePath: z.string(),
         language: z.string().optional(),
         pageCount: z.number().optional(),
         tags: z.array(z.string()).optional(),
@@ -330,7 +326,30 @@ export const contentRouter = createTRPCRouter({
 
   // ==================== BOOKS ====================
   getBookById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
-    const book = await db.select().from(vetBooks).where(eq(vetBooks.id, input.id));
+    const book = await db
+      .select({
+        id: vetBooks.id,
+        title: vetBooks.title,
+        description: vetBooks.description,
+        author: vetBooks.author,
+        category: vetBooks.category,
+        isbn: vetBooks.isbn,
+        filePath: vetBooks.filePath,
+        coverImage: vetBooks.coverImage,
+        language: vetBooks.language,
+        pageCount: vetBooks.pageCount,
+        publishedYear: vetBooks.publishedYear,
+        tags: vetBooks.tags,
+        isPublished: vetBooks.isPublished,
+        downloadCount: vetBooks.downloadCount,
+        rating: vetBooks.rating,
+        uploadedBy: users.name,
+        createdAt: vetBooks.createdAt,
+        updatedAt: vetBooks.updatedAt,
+      })
+      .from(vetBooks)
+      .leftJoin(users, eq(vetBooks.uploadedBy, users.id))
+      .where(eq(vetBooks.id, input.id));
 
     if (!book[0]) {
       throw new Error("Book not found");
@@ -352,18 +371,15 @@ export const contentRouter = createTRPCRouter({
         .optional()
     )
     .query(async ({ input }) => {
-      const { isPublished } = input;
-
       const conditions = [];
 
-      if (isPublished) conditions.push(eq(vetMagazines.isPublished, isPublished));
+      if (input?.isPublished) conditions.push(eq(vetBooks.isPublished, input?.isPublished));
       // if (category) conditions.push(eq(vetMagazines.category, category));
 
       const books = await db
         .select()
         .from(vetBooks)
-        .where(and(...conditions))
-        .orderBy(desc(vetBooks.createdAt));
+        .where(and(...conditions));
 
       return {
         success: true,
@@ -385,7 +401,7 @@ export const contentRouter = createTRPCRouter({
     };
   }),
 
-  createBook: publicProcedure
+  createBook: protectedProcedure
     .input(
       z.object({
         title: z.string(),
@@ -393,7 +409,7 @@ export const contentRouter = createTRPCRouter({
         author: z.string().optional(),
         category: z.string(),
         isbn: z.string().optional(),
-        filePath: z.string().optional(),
+        filePath: z.string(),
         coverImage: z.string().optional(),
         language: z.string().optional().default("ar"),
         pageCount: z.number().optional(),
@@ -407,8 +423,9 @@ export const contentRouter = createTRPCRouter({
         .insert(vetBooks)
         .values({
           ...input,
-          uploadedBy: ctx.user.id || null,
+          uploadedBy: ctx.user.id,
           tags: input.tags ? JSON.stringify(input.tags) : null,
+          isPublished: true,
         })
         .returning();
 
@@ -427,7 +444,7 @@ export const contentRouter = createTRPCRouter({
         author: z.string().optional(),
         category: z.string().optional(),
         isbn: z.string().optional(),
-        filePath: z.string().optional(),
+        filePath: z.string(),
         coverImage: z.string().optional(),
         language: z.string().optional(),
         pageCount: z.number().optional(),
@@ -524,8 +541,8 @@ export const contentRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  toggleLike: publicProcedure.input(z.object({ articleId: z.number() })).mutation(async ({ input, ctx }) => {
-    const userId = ctx.user?.id || 1;
+  toggleLike: protectedProcedure.input(z.object({ articleId: z.number() })).mutation(async ({ input, ctx }) => {
+    const userId = ctx.user?.id;
     const existingLike = await db
       .select()
       .from(likes)
@@ -561,7 +578,7 @@ export const contentRouter = createTRPCRouter({
     return { success: true, isLiked };
   }),
 
-  getArticleStats: publicProcedure.input(z.object({ articleId: z.number() })).query(async ({ input, ctx }) => {
+  getArticleStats: protectedProcedure.input(z.object({ articleId: z.number() })).query(async ({ input, ctx }) => {
     const userId = ctx.user?.id;
 
     // Get like count
@@ -592,6 +609,24 @@ export const contentRouter = createTRPCRouter({
       comments: Number(commentCountResult[0]?.count || 0),
       isLiked,
     };
+  }),
+
+  watchBook: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+    await db
+      .update(vetBooks)
+      .set({ watchCount: sql`${vetBooks.watchCount} + 1` })
+      .where(eq(vetBooks.id, input.id));
+
+    return { success: true };
+  }),
+
+  watchArticle: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+    await db
+      .update(vetMagazines)
+      .set({ watchCount: sql`${vetMagazines.watchCount} + 1` })
+      .where(eq(vetMagazines.id, input.id));
+
+    return { success: true };
   }),
 
   deleteBook: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {

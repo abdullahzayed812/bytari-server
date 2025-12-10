@@ -1057,8 +1057,9 @@ export const vetBooks = pgTable("vet_books", {
   pageCount: integer("page_count"),
   publishedYear: integer("published_year"),
   tags: text("tags"), // JSON string
-  isPublished: boolean("is_published").notNull().default(false),
+  isPublished: boolean("is_published").notNull().default(true),
   downloadCount: integer("download_count").default(0),
+  watchCount: integer("watch_count").default(0),
   rating: real("rating").default(0),
   uploadedBy: integer("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1081,8 +1082,9 @@ export const vetMagazines = pgTable("vet_magazines", {
   language: text("language").default("ar"),
   pageCount: integer("page_count"),
   tags: text("tags"), // JSON string
-  isPublished: boolean("is_published").notNull().default(false),
+  isPublished: boolean("is_published").notNull().default(true),
   downloadCount: integer("download_count").default(0),
+  watchCount: integer("watch_count").default(0),
   rating: real("rating").default(0),
   uploadedBy: integer("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

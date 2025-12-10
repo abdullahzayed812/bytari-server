@@ -17,31 +17,42 @@ uploadApp.post("/", async (c) => {
       return c.json({ error: "No file uploaded" }, 400);
     }
 
-    // Validate file type (optional but recommended)
-    if (!file.type.startsWith("image/")) {
-      return c.json({ error: "Only image files are allowed" }, 400);
+    // --- VALIDATION (Images + PDF) ---
+    const allowedExtensions = ["jpg", "jpeg", "png", "webp", "pdf"];
+    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    const isImage = file.type.startsWith("image/");
+    const isPDF = file.type === "application/pdf";
+
+    if (!ext || !allowedExtensions.includes(ext)) {
+      return c.json({ error: "Only image or PDF files are allowed" }, 400);
     }
 
-    // Generate unique filename
+    // Fix RN odd MIME cases
+    if (ext === "pdf" && !(isPDF || file.type === "application/octet-stream")) {
+      return c.json({ error: "Invalid PDF file" }, 400);
+    }
+    if (["jpg", "jpeg", "png", "webp"].includes(ext) && !isImage) {
+      return c.json({ error: "Invalid image file" }, 400);
+    }
+
+    // --- SAVE TO DISK ---
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 10000);
-    const extension = file.name.split(".").pop() || "jpg";
-    const filename = `image_${timestamp}_${random}.${extension}`;
+    const filename = `upload_${timestamp}_${random}.${ext}`;
     const path = `${UPLOAD_DIR}/${filename}`;
 
-    // Write file to disk
     await Bun.write(path, file);
 
-    // Return the public URL
-    // Assuming the server serves 'uploads' directory at /uploads
     const protocol = c.req.header("x-forwarded-proto") || "http";
     const host = c.req.header("host");
     const url = `${protocol}://${host}/uploads/${filename}`;
 
     return c.json({
       success: true,
-      url: url,
-      filename: filename,
+      url,
+      filename,
+      ext,
     });
   } catch (error) {
     console.error("Upload error:", error);
