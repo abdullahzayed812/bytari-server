@@ -142,8 +142,9 @@ export const getPendingApprovalsProcedure = publicProcedure
           requesterId: clinic.ownerId,
           resourceId: clinic.id,
           title: `طلب تجديد اشتراك عيادة ${clinic.name}`,
-          description: `انتهت صلاحية تفعيل العيادة في ${clinic.activationEndDate ? new Date(clinic.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
-            }`,
+          description: `انتهت صلاحية تفعيل العيادة في ${
+            clinic.activationEndDate ? new Date(clinic.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
+          }`,
           documents: null,
           licenseImages: clinic.images ? JSON.stringify(clinic.images) : null,
           identityImages: null,
@@ -187,8 +188,9 @@ export const getPendingApprovalsProcedure = publicProcedure
           requesterId: store.ownerId,
           resourceId: store.id,
           title: `طلب تجديد اشتراك مخزن ${store.name}`,
-          description: `انتهت صلاحية تفعيل المخزن في ${store.activationEndDate ? new Date(store.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
-            }`,
+          description: `انتهت صلاحية تفعيل المخزن في ${
+            store.activationEndDate ? new Date(store.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
+          }`,
           documents: null,
           licenseImages: store.licenseImage ? JSON.stringify([store.licenseImage]) : null,
           identityImages: store.identityImage ? JSON.stringify([store.identityImage]) : null,
@@ -453,7 +455,7 @@ export const rejectRequestProcedure = publicProcedure
             isActive: false,
             needsRenewal: false,
             reviewingRenewalRequest: true,
-            updatedAt: Math.floor(Date.now() / 1000),
+            updatedAt: new Date(),
           })
           .where(eq(clinics.id, resourceId));
       } else if (requestType === "store_activation" || requestType === "store_renewal") {
@@ -465,7 +467,7 @@ export const rejectRequestProcedure = publicProcedure
             subscriptionStatus: "rejected",
             needsRenewal: false,
             reviewingRenewalRequest: true,
-            updatedAt: Math.floor(Date.now() / 1000),
+            updatedAt: new Date(),
           })
           .where(eq(stores.id, resourceId));
       }

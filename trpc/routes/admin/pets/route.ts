@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure } from "../../../create-context";
+import { protectedProcedure, publicProcedure } from "../../../create-context";
 import { db, pets, users } from "../../../../db";
 import { eq, like, or } from "drizzle-orm";
 
@@ -51,7 +51,7 @@ export const getPetProfileProcedure = publicProcedure
   });
 
 // Update pet profile by admin
-export const updatePetProfileProcedure = publicProcedure
+export const updatePetProfileProcedure = protectedProcedure
   .input(
     z.object({
       petId: z.number(),
@@ -104,7 +104,7 @@ export const updatePetProfileProcedure = publicProcedure
   });
 
 // Delete pet
-export const deletePetProcedure = publicProcedure
+export const deletePetProcedure = protectedProcedure
   .input(
     z.object({
       petId: z.number(),
@@ -116,10 +116,7 @@ export const deletePetProcedure = publicProcedure
     try {
       // TODO: Check admin permissions here
 
-      const deletedPet = await db
-        .delete(pets)
-        .where(eq(pets.id, input.petId))
-        .returning();
+      const deletedPet = await db.delete(pets).where(eq(pets.id, input.petId)).returning();
 
       if (deletedPet.length === 0) {
         throw new Error("فشل في حذف الحيوان");
