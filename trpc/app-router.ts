@@ -348,9 +348,9 @@ import {
 import { getPoultryFarmDetailsProcedure, listPoultryFarmsProcedure } from "../trpc/routes/poultry-farms/list/route";
 import { createPoultryFarmProcedure } from "../trpc/routes/poultry-farms/create/route";
 import {
+  fieldAssignmentsRouter,
   getAvailableSupervisors,
   getAvailableVets,
-  getFieldAssignments,
 } from "../trpc/routes/admin/field-assignments/route";
 
 import { hospitalRouter } from "./routes/hospitals/hospital";
@@ -824,9 +824,19 @@ export const appRouter = createTRPCRouter({
       toggle: toggleAiProcedure,
     }),
 
+    // courses: createTRPCRouter({
+    //   getAll: coursesRouter.getAll,
+    //   create: coursesRouter.create,
+    //   update: coursesRouter.update,
+    //   delete: coursesRouter.delete,
+    // }),
+
     // Field assignments management
     fieldAssignments: createTRPCRouter({
-      getFieldAssignments: getFieldAssignments,
+      getAll: fieldAssignmentsRouter.getAll,
+      create: fieldAssignmentsRouter.create,
+      update: fieldAssignmentsRouter.update,
+      delete: fieldAssignmentsRouter.delete,
       getAvailableVets: getAvailableVets,
       getAvailableSupervisors: getAvailableSupervisors,
     }),

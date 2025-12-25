@@ -1,8 +1,15 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { jobVacancies, jobApplications, fieldSupervisionRequests, courseRegistrations } from "../../../../db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import {
+  jobVacancies,
+  jobApplications,
+  fieldSupervisionRequests,
+  courseRegistrations,
+  users,
+  poultryFarms,
+} from "../../../../db/schema";
+import { eq, and, desc, sql, getTableColumns } from "drizzle-orm";
 
 export const jobsRouter = {
   // Get all jobs
@@ -401,49 +408,63 @@ export const jobsRouter = {
         const jobs = await db
           .select()
           .from(jobVacancies)
+          .leftJoin(users, eq(jobVacancies.postedBy, users.id.toString()))
           .orderBy(desc(jobVacancies.createdAt))
           .limit(input.limit);
 
         // Fetch Job Applications
         const applications = await db
-          .select()
+          .select({
+            ...getTableColumns(jobApplications),
+            applicantId: users.id,
+            jobTitle: jobVacancies.title,
+          })
           .from(jobApplications)
+          .leftJoin(users, eq(jobApplications.applicantEmail, users.email))
+          .leftJoin(jobVacancies, eq(jobApplications.jobId, jobVacancies.id))
           .orderBy(desc(jobApplications.appliedAt))
           .limit(input.limit);
 
         // Fetch Field Supervision Requests
         const supervisionRequests = await db
-          .select()
+          .select({
+            ...getTableColumns(fieldSupervisionRequests),
+            applicantId: poultryFarms.ownerId,
+          })
           .from(fieldSupervisionRequests)
+          .leftJoin(poultryFarms, eq(fieldSupervisionRequests.farmName, poultryFarms.name))
           .orderBy(desc(fieldSupervisionRequests.createdAt))
           .limit(input.limit);
 
         // Map to common structure
         const mappedJobs = jobs.map((job) => ({
-          id: job.id.toString(),
+          id: job.job_vacancies.id.toString(),
+          applicantId: job.users?.id,
           type: "job_posting" as const,
-          title: job.title,
-          applicantName: job.postedBy, // Using postedBy as applicantName for consistency
-          submittedDate: job.createdAt.toISOString(),
-          status: job.status === "active" ? "approved" : "pending", // Map active to approved for UI consistency
-          location: job.location,
+          title: job.job_vacancies.title,
+          applicantName: job.job_vacancies.postedBy, // Using postedBy as applicantName for consistency
+          submittedDate: job.job_vacancies.createdAt.toISOString(),
+          status: job.job_vacancies.status as "pending" | "approved" | "rejected", // Map active to approved for UI consistency
+          location: job.job_vacancies.location,
           details: {
-            company: job.postedBy,
-            salary: job.salary,
-            description: job.description,
+            company: job.job_vacancies.postedBy,
+            salary: job.job_vacancies.salary,
+            description: job.job_vacancies.description,
+            employmentStatus: job.job_vacancies.status,
           },
         }));
 
         const mappedApplications = applications.map((app) => ({
           id: app.id.toString(),
+          applicantId: app.applicantId,
           type: "job_application" as const,
-          title: "طلب توظيف", // Generic title, ideally should fetch job title
+          title: app.jobTitle || "طلب توظيف", // Generic title, ideally should fetch job title
           applicantName: app.applicantName,
           submittedDate: app.appliedAt.toISOString(),
           status: app.status as "pending" | "approved" | "rejected",
           location: "N/A",
           details: {
-            position: "Job ID: " + app.jobId, // Should ideally fetch job title
+            position: app.jobTitle || "Job ID: " + app.jobId, // Should ideally fetch job title
             experience: app.experience,
             education: app.education,
             employmentStatus: app.status,
@@ -452,6 +473,7 @@ export const jobsRouter = {
 
         const mappedSupervision = supervisionRequests.map((req) => ({
           id: req.id.toString(),
+          applicantId: req.applicantId,
           type: "field_supervision" as const,
           title: "طلب إشراف ميداني",
           applicantName: req.ownerName,
@@ -460,7 +482,7 @@ export const jobsRouter = {
           location: req.farmLocation,
           details: {
             farmType: req.requestType,
-            animalCount: "N/A", // Not in schema currently
+            animalCount: req.animalCount || "N/A", // Not in schema currently
             employmentStatus: req.status,
           },
         }));
@@ -472,9 +494,7 @@ export const jobsRouter = {
 
         // Apply status filter if needed
         const filteredRequests =
-          input.status === "all"
-            ? allRequests
-            : allRequests.filter((req) => req.status === input.status);
+          input.status === "all" ? allRequests : allRequests.filter((req) => req.status === input.status);
 
         return {
           success: true,
@@ -545,14 +565,43 @@ export const jobsRouter = {
           { fieldRequests },
           { completedSupervisions },
         ] = await Promise.all([
-          db.select({ totalJobs: sql<number>`count(*)` }).from(jobVacancies).then(res => res[0]),
-          db.select({ activeJobs: sql<number>`count(*)` }).from(jobVacancies).where(eq(jobVacancies.status, "active")).then(res => res[0]),
-          db.select({ totalApplications: sql<number>`count(*)` }).from(jobApplications).then(res => res[0]),
-          db.select({ pendingApplications: sql<number>`count(*)` }).from(jobApplications).where(eq(jobApplications.status, "pending")).then(res => res[0]),
-          db.select({ approvedApplications: sql<number>`count(*)` }).from(jobApplications).where(eq(jobApplications.status, "approved")).then(res => res[0]),
-          db.select({ rejectedApplications: sql<number>`count(*)` }).from(jobApplications).where(eq(jobApplications.status, "rejected")).then(res => res[0]),
-          db.select({ fieldRequests: sql<number>`count(*)` }).from(fieldSupervisionRequests).then(res => res[0]),
-          db.select({ completedSupervisions: sql<number>`count(*)` }).from(fieldSupervisionRequests).where(eq(fieldSupervisionRequests.status, "completed")).then(res => res[0]),
+          db
+            .select({ totalJobs: sql<number>`count(*)` })
+            .from(jobVacancies)
+            .then((res) => res[0]),
+          db
+            .select({ activeJobs: sql<number>`count(*)` })
+            .from(jobVacancies)
+            .where(eq(jobVacancies.status, "active"))
+            .then((res) => res[0]),
+          db
+            .select({ totalApplications: sql<number>`count(*)` })
+            .from(jobApplications)
+            .then((res) => res[0]),
+          db
+            .select({ pendingApplications: sql<number>`count(*)` })
+            .from(jobApplications)
+            .where(eq(jobApplications.status, "pending"))
+            .then((res) => res[0]),
+          db
+            .select({ approvedApplications: sql<number>`count(*)` })
+            .from(jobApplications)
+            .where(eq(jobApplications.status, "approved"))
+            .then((res) => res[0]),
+          db
+            .select({ rejectedApplications: sql<number>`count(*)` })
+            .from(jobApplications)
+            .where(eq(jobApplications.status, "rejected"))
+            .then((res) => res[0]),
+          db
+            .select({ fieldRequests: sql<number>`count(*)` })
+            .from(fieldSupervisionRequests)
+            .then((res) => res[0]),
+          db
+            .select({ completedSupervisions: sql<number>`count(*)` })
+            .from(fieldSupervisionRequests)
+            .where(eq(fieldSupervisionRequests.status, "completed"))
+            .then((res) => res[0]),
         ]);
 
         return {
@@ -715,6 +764,137 @@ export const jobsRouter = {
           registrations: [],
           total: 0,
           message: "حدث خطأ في جلب تسجيلات الدورات",
+        };
+      }
+    }),
+
+  // Get request details
+  getRequestDetails: protectedProcedure
+    .input(
+      z.object({
+        adminId: z.number(),
+        requestId: z.string(),
+        requestType: z.enum(["job_posting", "job_application", "field_supervision"]),
+      })
+    )
+    .query(async ({ input }) => {
+      const { requestId, requestType } = input;
+      let requestDetails: any = null;
+
+      try {
+        if (requestType === "job_posting") {
+          const job = await db
+            .select()
+            .from(jobVacancies)
+            .where(eq(jobVacancies.id, parseInt(requestId)))
+            .leftJoin(users, eq(jobVacancies.postedBy, users.id.toString()))
+            .limit(1);
+
+          if (job.length > 0) {
+            const j = job[0];
+            requestDetails = {
+              id: j.job_vacancies.id.toString(),
+              type: "job_posting",
+              title: j.job_vacancies.title,
+              applicantName: j.job_vacancies.postedBy,
+              submittedDate: j.job_vacancies.createdAt.toISOString(),
+              status: j.job_vacancies.status,
+              location: j.job_vacancies.location,
+              details: {
+                company: j.job_vacancies.postedBy,
+                salary: j.job_vacancies.salary,
+                description: j.job_vacancies.description,
+              },
+              applicantInfo: {
+                name: j.users?.name,
+                avatar: j.users?.avatar,
+                email: j.users?.email,
+                phone: j.users?.phone,
+              },
+            };
+          }
+        } else if (requestType === "job_application") {
+          const application = await db
+            .select()
+            .from(jobApplications)
+            .where(eq(jobApplications.id, parseInt(requestId)))
+            .leftJoin(users, eq(jobApplications.applicantEmail, users.email))
+            .leftJoin(jobVacancies, eq(jobApplications.jobId, jobVacancies.id))
+            .limit(1);
+
+          if (application.length > 0) {
+            const app = application[0];
+            requestDetails = {
+              id: app.job_applications.id.toString(),
+              type: "job_application",
+              title: app.job_vacancies?.title || "طلب توظيف",
+              applicantName: app.job_applications.applicantName,
+              submittedDate: app.job_applications.appliedAt.toISOString(),
+              status: app.job_applications.status,
+              location: app.job_vacancies?.location || "N/A",
+              details: {
+                position: app.job_vacancies?.title || "Job ID: " + app.job_applications.jobId,
+                experience: app.job_applications.experience,
+                education: app.job_applications.education,
+              },
+              applicantInfo: {
+                name: app.users?.name,
+                avatar: app.users?.avatar,
+                email: app.users?.email,
+                phone: app.users?.phone,
+                cv: app.job_applications.cv,
+              },
+            };
+          }
+        } else if (requestType === "field_supervision") {
+          const supervision = await db
+            .select()
+            .from(fieldSupervisionRequests)
+            .where(eq(fieldSupervisionRequests.id, parseInt(requestId)))
+            .leftJoin(poultryFarms, eq(fieldSupervisionRequests.farmName, poultryFarms.name))
+            .leftJoin(users, eq(poultryFarms.ownerId, users.id))
+            .limit(1);
+
+          if (supervision.length > 0) {
+            const sup = supervision[0];
+            requestDetails = {
+              id: sup.field_supervision_requests.id.toString(),
+              type: "field_supervision",
+              title: "طلب إشراف ميداني",
+              applicantName: sup.field_supervision_requests.ownerName,
+              submittedDate: sup.field_supervision_requests.createdAt.toISOString(),
+              status: sup.field_supervision_requests.status,
+              location: sup.field_supervision_requests.farmLocation,
+              details: {
+                farmType: sup.field_supervision_requests.requestType,
+                animalCount: sup.field_supervision_requests.animalCount,
+              },
+              applicantInfo: {
+                name: sup.users?.name,
+                avatar: sup.users?.avatar,
+                email: sup.users?.email,
+                phone: sup.users?.phone,
+              },
+            };
+          }
+        }
+
+        if (requestDetails) {
+          return {
+            success: true,
+            ...requestDetails,
+          };
+        } else {
+          return {
+            success: false,
+            message: "لم يتم العثور على الطلب",
+          };
+        }
+      } catch (error) {
+        console.error("Error getting request details:", error);
+        return {
+          success: false,
+          message: "حدث خطأ أثناء جلب تفاصيل الطلب",
         };
       }
     }),

@@ -1443,6 +1443,7 @@ CREATE TABLE "field_supervision_requests" (
     "request_type" text NOT NULL, -- 'routine_inspection', 'emergency', 'consultation'
     "description" text NOT NULL,
     "preferred_date" text NOT NULL,
+		"animalCount" INTEGER NOT NULL DEFAULT 0,
     "status" text DEFAULT 'pending' NOT NULL, -- 'pending', 'approved', 'rejected', 'completed'
     "assigned_vet" text,
     "assigned_vet_id" integer,

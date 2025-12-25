@@ -1809,6 +1809,7 @@ export const fieldSupervisionRequests = pgTable("field_supervision_requests", {
   farmLocation: text("farm_location").notNull(),
   ownerName: text("owner_name").notNull(),
   ownerPhone: text("owner_phone").notNull(),
+  animalCount: integer("animal_count").notNull().default(0),
   requestType: text("request_type").notNull(), // 'routine_inspection', 'emergency', 'consultation'
   description: text("description").notNull(),
   preferredDate: text("preferred_date").notNull(),
