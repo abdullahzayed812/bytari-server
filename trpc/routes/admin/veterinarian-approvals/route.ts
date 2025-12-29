@@ -123,7 +123,7 @@ export const veterinarianApprovalsRouter = {
           await db.insert(notifications).values({
             userId: app.userId,
             title: "تم الموافقة على حسابك كطبيب بيطري",
-            content:
+            message:
               "مبروك! تم الموافقة على طلب تسجيلك كطبيب بيطري. يمكنك الآن الوصول إلى جميع ميزات الأطباء البيطريين.",
             type: "veterinarian_approval",
             isRead: false,

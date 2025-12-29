@@ -8,6 +8,7 @@ import {
   courseRegistrations,
   users,
   poultryFarms,
+  notifications,
 } from "../../../../db/schema";
 import { eq, and, desc, sql, getTableColumns } from "drizzle-orm";
 
@@ -275,7 +276,7 @@ export const jobsRouter = {
 
         const status = input.action === "approve" ? "approved" : "rejected";
 
-        await db
+        const [application] = await db
           .update(jobApplications)
           .set({
             status,
@@ -284,7 +285,30 @@ export const jobsRouter = {
             notes: input.notes,
             updatedAt: new Date(),
           })
-          .where(eq(jobApplications.id, parseInt(input.applicationId)));
+          .where(eq(jobApplications.id, parseInt(input.applicationId)))
+          .returning();
+
+        if (application) {
+          const [user] = await db.select().from(users).where(eq(users.email, application.applicantEmail));
+          if (user) {
+            const [job] = await db.select().from(jobVacancies).where(eq(jobVacancies.id, application.jobId));
+            const notificationTitle = input.action === "approve" ? "تم قبول طلب التوظيف" : "تم رفض طلب التوظيف";
+            const notificationMessage = `تم ${input.action === "approve" ? "قبول" : "رفض"} طلبك لوظيفة "${
+              job?.title
+            }".`;
+
+            await db.insert(notifications).values({
+              userId: user.id,
+              title: notificationTitle,
+              message: notificationMessage,
+              type: input.action === "approve" ? "success" : "error",
+              data: {
+                applicationId: application.id,
+                jobId: application.jobId,
+              },
+            });
+          }
+        }
 
         const actionText = input.action === "approve" ? "الموافقة على" : "رفض";
 
@@ -353,6 +377,7 @@ export const jobsRouter = {
         farmLocation: z.string(),
         ownerName: z.string(),
         ownerPhone: z.string(),
+        ownerEmail: z.string().email(),
         requestType: z.enum(["routine_inspection", "emergency", "consultation"]),
         description: z.string(),
         preferredDate: z.string(),
@@ -362,6 +387,14 @@ export const jobsRouter = {
       try {
         console.log("Submitting field supervision request for farm:", input.farmName);
 
+        const user = await db.select().from(users).where(eq(users.email, input.ownerEmail));
+        if (user.length === 0) {
+          return {
+            success: false,
+            message: "المستخدم غير موجود",
+          };
+        }
+
         const [request] = await db
           .insert(fieldSupervisionRequests)
           .values({
@@ -369,6 +402,7 @@ export const jobsRouter = {
             farmLocation: input.farmLocation,
             ownerName: input.ownerName,
             ownerPhone: input.ownerPhone,
+            ownerEmail: input.ownerEmail,
             requestType: input.requestType,
             description: input.description,
             preferredDate: input.preferredDate,
@@ -430,6 +464,7 @@ export const jobsRouter = {
           .select({
             ...getTableColumns(fieldSupervisionRequests),
             applicantId: poultryFarms.ownerId,
+            farmId: poultryFarms.id,
           })
           .from(fieldSupervisionRequests)
           .leftJoin(poultryFarms, eq(fieldSupervisionRequests.farmName, poultryFarms.name))
@@ -460,6 +495,7 @@ export const jobsRouter = {
           type: "job_application" as const,
           title: app.jobTitle || "طلب توظيف", // Generic title, ideally should fetch job title
           applicantName: app.applicantName,
+          applicantEmail: app.applicantEmail,
           submittedDate: app.appliedAt.toISOString(),
           status: app.status as "pending" | "approved" | "rejected",
           location: "N/A",
@@ -477,6 +513,9 @@ export const jobsRouter = {
           type: "field_supervision" as const,
           title: "طلب إشراف ميداني",
           applicantName: req.ownerName,
+          applicantEmail: req.ownerEmail,
+          farmName: req.farmName,
+          farmId: req.farmId,
           submittedDate: req.createdAt.toISOString(),
           status: req.status as "pending" | "approved" | "rejected",
           location: req.farmLocation,
@@ -526,10 +565,31 @@ export const jobsRouter = {
     .mutation(async ({ input, ctx }) => {
       try {
         const status = input.action === "approve" ? "approved" : "rejected";
-        await db
+        const [request] = await db
           .update(fieldSupervisionRequests)
           .set({ status })
-          .where(eq(fieldSupervisionRequests.id, parseInt(input.requestId)));
+          .where(eq(fieldSupervisionRequests.id, parseInt(input.requestId)))
+          .returning();
+
+        if (request) {
+          const [user] = await db.select().from(users).where(eq(users.email, request.ownerEmail));
+          if (user) {
+            const notificationTitle = input.action === "approve" ? "تم قبول طلب الإشراف" : "تم رفض طلب الإشراف";
+            const notificationMessage = `تم ${
+              input.action === "approve" ? "قبول" : "رفض"
+            } طلب الإشراف الخاص بك لمزرعة "${request.farmName}".`;
+
+            await db.insert(notifications).values({
+              userId: user.id,
+              title: notificationTitle,
+              message: notificationMessage,
+              type: input.action === "approve" ? "success" : "error",
+              data: {
+                requestId: request.id,
+              },
+            });
+          }
+        }
 
         return {
           success: true,
@@ -651,6 +711,14 @@ export const jobsRouter = {
     .mutation(async ({ input, ctx }) => {
       try {
         console.log("Submitting job application for job:", input.jobId, "by:", input.applicantName);
+
+        const user = await db.select().from(users).where(eq(users.email, input.applicantEmail));
+        if (user.length === 0) {
+          return {
+            success: false,
+            message: "المستخدم غير موجود",
+          };
+        }
 
         const [application] = await db
           .insert(jobApplications)

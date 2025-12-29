@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure } from "../../create-context";
 import { db } from "../../../db";
-import { courses, courseRegistrations } from "../../../db/schema";
+import { courses, courseRegistrations, notifications, users } from "../../../db/schema";
 import { eq, and, or, like, desc, sql, inArray } from "drizzle-orm";
 
 // Schema for course data
@@ -354,6 +354,27 @@ export const updateRegistrationStatusProcedure = protectedProcedure
             updatedAt: new Date(),
           })
           .where(eq(courses.id, registration.courseId));
+      }
+
+      // Add notification
+      const [user] = await db.select().from(users).where(eq(users.email, registration.participantEmail));
+      if (user) {
+        const notificationTitle =
+          input.status === "approved" ? "تم قبول تسجيلك في الدورة" : "تم رفض تسجيلك في الدورة";
+        const notificationMessage = `تم ${
+          input.status === "approved" ? "قبول" : "رفض"
+        } تسجيلك في دورة "${registration.courseName}".`;
+
+        await db.insert(notifications).values({
+          userId: user.id,
+          title: notificationTitle,
+          message: notificationMessage,
+          type: input.status === "approved" ? "success" : "error",
+          data: {
+            courseId: registration.courseId,
+            registrationId: registration.id,
+          },
+        });
       }
 
       return {

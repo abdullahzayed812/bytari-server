@@ -983,14 +983,20 @@ export const emailNotifications = pgTable("email_notifications", {
 // System messages table
 export const systemMessages = pgTable("system_messages", {
   id: serial("id").primaryKey(),
-  recipientId: integer("recipient_id").references(() => users.id), // null for broadcast
   senderId: integer("sender_id").references(() => users.id),
   title: text("title").notNull(),
   content: text("content").notNull(),
   type: text("type").notNull().default("info"), // 'info', 'warning', 'announcement'
   priority: text("priority").notNull().default("normal"), // 'low', 'normal', 'high', 'urgent'
-  isRead: boolean("is_read").notNull().default(false),
-  readAt: timestamp("read_at", { withTimezone: true }),
+  status: text("status").notNull().default("sent"), // 'sent', 'replied'
+  isActive: boolean("is_active").notNull().default(true),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  targetAudience: text("target_audience").notNull().default("all"),
+  targetUserIds: jsonb("target_user_ids"),
+  targetCategories: jsonb("target_categories"),
+  imageUrl: text("image_url"),
+  linkUrl: text("link_url"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1007,6 +1013,20 @@ export const systemMessageRecipients = pgTable("system_message_recipients", {
   isRead: boolean("is_read").notNull().default(false),
   readAt: timestamp("read_at", { withTimezone: true }),
   deliveredAt: timestamp("delivered_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// System message replies table
+export const systemMessageReplies = pgTable("system_message_replies", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id")
+    .notNull()
+    .references(() => systemMessages.id),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  content: text("content").notNull(),
+  isFromAdmin: boolean("is_from_admin").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -1761,7 +1781,8 @@ export const unionUsers = pgTable("union_users", {
     .references(() => users.id),
   role: unionRoleEnum("role").default("member"),
   branchId: integer("branch_id").references(() => unionBranches.id),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Job vacancies table
@@ -1809,6 +1830,7 @@ export const fieldSupervisionRequests = pgTable("field_supervision_requests", {
   farmLocation: text("farm_location").notNull(),
   ownerName: text("owner_name").notNull(),
   ownerPhone: text("owner_phone").notNull(),
+  ownerEmail: text("owner_email").notNull(),
   animalCount: integer("animal_count").notNull().default(0),
   requestType: text("request_type").notNull(), // 'routine_inspection', 'emergency', 'consultation'
   description: text("description").notNull(),

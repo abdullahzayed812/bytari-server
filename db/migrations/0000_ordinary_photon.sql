@@ -734,17 +734,34 @@ CREATE TABLE "system_message_recipients" (
 --> statement-breakpoint
 CREATE TABLE "system_messages" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"recipient_id" integer,
 	"sender_id" integer,
 	"title" text NOT NULL,
 	"content" text NOT NULL,
 	"type" text DEFAULT 'info' NOT NULL,
 	"priority" text DEFAULT 'normal' NOT NULL,
-	"is_read" boolean DEFAULT false NOT NULL,
-	"read_at" timestamp with time zone,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"sent_at" timestamp with time zone,
+	"scheduled_at" timestamp with time zone,
+	"target_audience" text DEFAULT 'all' NOT NULL,
+	"target_user_ids" jsonb,
+	"target_categories" jsonb,
+	"image_url" text,
+	"link_url" text,
+	"status" text NOT NULL DEFAULT 'sent', -- 'sent', 'replied'
 	"expires_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+
+CREATE TABLE "system_message_replies" (
+  "id" serial PRIMARY KEY,
+  "message_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "content" text NOT NULL,
+  "is_from_admin" boolean NOT NULL DEFAULT false,
+  "created_at" timestamp with time zone NOT NULL DEFAULT now()
+);
+
+
 --> statement-breakpoint
 CREATE TABLE "tips" (
 	"id" serial PRIMARY KEY NOT NULL,
@@ -1103,7 +1120,8 @@ CREATE TABLE "union_users" (
 	"role" text DEFAULT 'member',
 	"branch_id" integer,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_seen" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -1440,10 +1458,11 @@ CREATE TABLE "field_supervision_requests" (
     "farm_location" text NOT NULL,
     "owner_name" text NOT NULL,
     "owner_phone" text NOT NULL,
+		"owner_email" text NOT NULL,
     "request_type" text NOT NULL, -- 'routine_inspection', 'emergency', 'consultation'
     "description" text NOT NULL,
     "preferred_date" text NOT NULL,
-		"animalCount" INTEGER NOT NULL DEFAULT 0,
+		"animal_count" INTEGER NOT NULL DEFAULT 0,
     "status" text DEFAULT 'pending' NOT NULL, -- 'pending', 'approved', 'rejected', 'completed'
     "assigned_vet" text,
     "assigned_vet_id" integer,
@@ -1499,7 +1518,7 @@ ALTER TABLE "assignment_requests" DROP CONSTRAINT IF EXISTS "assignment_requests
 ALTER TABLE "stores" DROP CONSTRAINT IF EXISTS "stores_owner_id_users_id_fk";
 ALTER TABLE "vet_stores" DROP CONSTRAINT IF EXISTS "vet_stores_owner_id_users_id_fk";
 ALTER TABLE "system_message_recipients" DROP CONSTRAINT IF EXISTS "system_message_recipients_user_id_users_id_fk";
-ALTER TABLE "system_messages" DROP CONSTRAINT IF EXISTS "system_messages_recipient_id_users_id_fk";
+-- ALTER TABLE "system_messages" DROP CONSTRAINT IF EXISTS "system_messages_recipient_id_users_id_fk";
 ALTER TABLE "system_messages" DROP CONSTRAINT IF EXISTS "system_messages_sender_id_users_id_fk";
 ALTER TABLE "tips" DROP CONSTRAINT IF EXISTS "tips_author_id_users_id_fk";
 ALTER TABLE "user_roles" DROP CONSTRAINT IF EXISTS "user_roles_user_id_users_id_fk";
@@ -1556,7 +1575,7 @@ ALTER TABLE "assignment_requests" ADD CONSTRAINT "assignment_requests_reviewed_b
 ALTER TABLE "stores" ADD CONSTRAINT "stores_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "vet_stores" ADD CONSTRAINT "vet_stores_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "system_message_recipients" ADD CONSTRAINT "system_message_recipients_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_recipient_id_users_id_fk" FOREIGN KEY ("recipient_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_recipient_id_users_id_fk" FOREIGN KEY ("recipient_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_sender_id_users_id_fk" FOREIGN KEY ("sender_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "tips" ADD CONSTRAINT "tips_author_id_users_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1674,3 +1693,19 @@ ADD CONSTRAINT "likes_article_id_vet_magazines_id_fk"
 FOREIGN KEY ("article_id")
 REFERENCES "public"."vet_magazines"("id")
 ON DELETE CASCADE ON UPDATE CASCADE;
+
+
+
+ALTER TABLE "system_message_replies"
+ADD CONSTRAINT "system_message_replies_message_id_fk"
+FOREIGN KEY ("message_id")
+REFERENCES "system_messages" ("id")
+ON DELETE CASCADE;
+
+
+
+ALTER TABLE "system_message_replies"
+ADD CONSTRAINT "system_message_replies_user_id_fk"
+FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE CASCADE;

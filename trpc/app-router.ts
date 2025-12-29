@@ -228,13 +228,15 @@ import {
   sendMessageToUserProcedure,
 } from "./routes/admin/permissions/route";
 import {
-  sendSystemMessageProcedure,
-  getUserSystemMessagesProcedure,
-  markSystemMessageAsReadProcedure,
-  sendNotificationProcedure,
-  getAllSystemMessagesProcedure,
-  deleteSystemMessageProcedure,
-  getUnreadMessagesCountProcedure,
+  sendSystemMessage,
+  getUserSystemMessages,
+  markSystemMessageAsRead,
+  sendNotification,
+  getAllSystemMessages,
+  deleteSystemMessage,
+  getUnreadMessagesCount,
+  sendSystemMessageReply, // Add this
+  getSystemMessageReplies, // Add this
 } from "./routes/admin/messages/route";
 import {
   createAdvertisementProcedure,
@@ -673,13 +675,15 @@ export const appRouter = createTRPCRouter({
 
     // Messages and notifications
     messages: createTRPCRouter({
-      sendSystemMessage: sendSystemMessageProcedure,
-      getUserSystemMessages: getUserSystemMessagesProcedure,
-      markAsRead: markSystemMessageAsReadProcedure,
-      sendNotification: sendNotificationProcedure,
-      getAllSystemMessages: getAllSystemMessagesProcedure,
-      deleteSystemMessage: deleteSystemMessageProcedure,
-      getUnreadCount: getUnreadMessagesCountProcedure,
+      sendSystemMessage: sendSystemMessage,
+      getUserSystemMessages: getUserSystemMessages,
+      markAsRead: markSystemMessageAsRead,
+      sendNotification: sendNotification,
+      getAllSystemMessages: getAllSystemMessages,
+      deleteSystemMessage: deleteSystemMessage,
+      getUnreadCount: getUnreadMessagesCount,
+      sendReply: sendSystemMessageReply, // Add this
+      getReplies: getSystemMessageReplies, // Add this
     }),
 
     // Advertisements management
@@ -786,8 +790,10 @@ export const appRouter = createTRPCRouter({
       getJobApplications: jobsRouter.getJobApplications,
       manageJobApplication: jobsRouter.manageJobApplication,
       getAllRequests: jobsRouter.getAllRequests,
+      getRequestDetails: jobsRouter.getRequestDetails,
       getFieldSupervisionRequests: jobsRouter.getFieldSupervisionRequests,
       submitFieldSupervisionRequest: jobsRouter.submitFieldSupervisionRequest,
+      manageFieldSupervisionRequest: jobsRouter.manageFieldSupervisionRequest,
       getJobsAnalytics: jobsRouter.getJobsAnalytics,
       submitJobApplication: jobsRouter.submitJobApplication,
       submitCourseRegistration: jobsRouter.submitCourseRegistration,

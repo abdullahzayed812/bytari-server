@@ -6,30 +6,20 @@ import {
   systemMessageRecipients,
   users,
   notifications,
+  systemMessageReplies,
 } from "../../../../db";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, sql, asc } from "drizzle-orm";
 
 // Send system message
-export const sendSystemMessageProcedure = publicProcedure
+export const sendSystemMessage = publicProcedure
   .input(
     z.object({
       senderId: z.number(),
       title: z.string().min(1),
       content: z.string().min(1),
       type: z.enum(["announcement", "maintenance", "update", "warning"]),
-      targetAudience: z.enum([
-        "all",
-        "users",
-        "vets",
-        "students",
-        "clinics",
-        "stores",
-        "specific",
-        "multiple",
-      ]),
-      targetCategories: z
-        .array(z.enum(["users", "vets", "students", "clinics", "stores"]))
-        .optional(),
+      targetAudience: z.enum(["all", "users", "vets", "students", "clinics", "stores", "specific", "multiple"]),
+      targetCategories: z.array(z.enum(["users", "vets", "students", "clinics", "stores"])).optional(),
       targetUserIds: z.array(z.number()).optional(),
       priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
       scheduledAt: z.date().optional(),
@@ -50,12 +40,8 @@ export const sendSystemMessageProcedure = publicProcedure
           content: input.content,
           type: input.type,
           targetAudience: input.targetAudience,
-          targetUserIds: input.targetUserIds
-            ? JSON.stringify(input.targetUserIds)
-            : null,
-          targetCategories: input.targetCategories
-            ? JSON.stringify(input.targetCategories)
-            : null,
+          targetUserIds: input.targetUserIds || null,
+          targetCategories: input.targetCategories || null,
           priority: input.priority,
           scheduledAt: input.scheduledAt,
           sentAt: input.scheduledAt ? null : new Date(),
@@ -66,20 +52,13 @@ export const sendSystemMessageProcedure = publicProcedure
 
       // If not scheduled, send immediately
       if (!input.scheduledAt) {
-        await sendMessageToRecipients(
-          message.id,
-          input.targetAudience,
-          input.targetUserIds,
-          input.targetCategories
-        );
+        await sendMessageToRecipients(message.id, input.targetAudience, input.targetUserIds, input.targetCategories);
       }
 
       return message;
     } catch (error) {
       console.error("Error sending system message:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to send system message"
-      );
+      throw new Error(error instanceof Error ? error.message : "Failed to send system message");
     }
   });
 
@@ -93,10 +72,7 @@ async function sendMessageToRecipients(
   let recipients: { id: number }[] = [];
 
   if (targetAudience === "all") {
-    recipients = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.isActive, true));
+    recipients = await db.select({ id: users.id }).from(users).where(eq(users.isActive, true));
   } else if (targetAudience === "users") {
     recipients = await db
       .select({ id: users.id })
@@ -122,17 +98,11 @@ async function sendMessageToRecipients(
       .select({ id: users.id })
       .from(users)
       .where(and(eq(users.userType, "store"), eq(users.isActive, true)));
-  } else if (
-    targetAudience === "multiple" &&
-    targetCategories &&
-    targetCategories.length > 0
-  ) {
+  } else if (targetAudience === "multiple" && targetCategories && targetCategories.length > 0) {
     recipients = await db
       .select({ id: users.id })
       .from(users)
-      .where(
-        and(inArray(users.userType, targetCategories), eq(users.isActive, true))
-      );
+      .where(and(inArray(users.userType, targetCategories), eq(users.isActive, true)));
   } else if (targetAudience === "specific" && targetUserIds) {
     recipients = await db
       .select({ id: users.id })
@@ -153,7 +123,7 @@ async function sendMessageToRecipients(
     const notificationData = recipients.map((recipient) => ({
       userId: recipient.id,
       title: "رسالة جديدة من الإدارة",
-      content: "لديك رسالة جديدة من إدارة التطبيق",
+      message: "لديك رسالة جديدة من إدارة التطبيق",
       type: "system" as const,
       data: JSON.stringify({ messageId }),
     }));
@@ -165,7 +135,7 @@ async function sendMessageToRecipients(
 }
 
 // Get system messages for user
-export const getUserSystemMessagesProcedure = publicProcedure
+export const getUserSystemMessages = publicProcedure
   .input(
     z.object({
       userId: z.number(),
@@ -182,17 +152,14 @@ export const getUserSystemMessagesProcedure = publicProcedure
           content: systemMessages.content,
           type: systemMessages.type,
           priority: systemMessages.priority,
-          sentAt: systemMessages.sentAt,
+          createdAt: systemMessages.createdAt,
           isRead: systemMessageRecipients.isRead,
           readAt: systemMessageRecipients.readAt,
         })
         .from(systemMessageRecipients)
-        .innerJoin(
-          systemMessages,
-          eq(systemMessageRecipients.messageId, systemMessages.id)
-        )
+        .innerJoin(systemMessages, eq(systemMessageRecipients.messageId, systemMessages.id))
         .where(eq(systemMessageRecipients.userId, input.userId))
-        .orderBy(desc(systemMessages.sentAt))
+        // .orderBy(desc(systemMessages.sentAt))
         .limit(input.limit)
         .offset(input.offset);
 
@@ -204,7 +171,7 @@ export const getUserSystemMessagesProcedure = publicProcedure
   });
 
 // Mark system message as read
-export const markSystemMessageAsReadProcedure = publicProcedure
+export const markSystemMessageAsRead = publicProcedure
   .input(
     z.object({
       userId: z.number(),
@@ -220,10 +187,7 @@ export const markSystemMessageAsReadProcedure = publicProcedure
           readAt: new Date(),
         })
         .where(
-          and(
-            eq(systemMessageRecipients.userId, input.userId),
-            eq(systemMessageRecipients.messageId, input.messageId)
-          )
+          and(eq(systemMessageRecipients.userId, input.userId), eq(systemMessageRecipients.messageId, input.messageId))
         );
 
       return { success: true };
@@ -234,12 +198,12 @@ export const markSystemMessageAsReadProcedure = publicProcedure
   });
 
 // Send notification to users
-export const sendNotificationProcedure = publicProcedure
+export const sendNotification = publicProcedure
   .input(
     z.object({
       senderId: z.number(),
       title: z.string().min(1),
-      content: z.string().min(1),
+      message: z.string().min(1),
       type: z.enum(["appointment", "inquiry", "order", "system"]),
       targetUserIds: z.array(z.number()),
       data: z.record(z.string(), z.any()).optional(),
@@ -253,27 +217,22 @@ export const sendNotificationProcedure = publicProcedure
       const notificationData = input.targetUserIds.map((userId: number) => ({
         userId,
         title: input.title,
-        content: input.content,
+        message: input.message,
         type: input.type,
         data: input.data ? JSON.stringify(input.data) : null,
       }));
 
-      const notificationResults = await db
-        .insert(notifications)
-        .values(notificationData)
-        .returning();
+      const notificationResults = await db.insert(notifications).values(notificationData).returning();
 
       return notificationResults;
     } catch (error) {
       console.error("Error sending notification:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to send notification"
-      );
+      throw new Error(error instanceof Error ? error.message : "Failed to send notification");
     }
   });
 
 // Get all system messages (Admin only)
-export const getAllSystemMessagesProcedure = publicProcedure
+export const getAllSystemMessages = publicProcedure
   .input(
     z.object({
       adminId: z.number(),
@@ -295,28 +254,30 @@ export const getAllSystemMessagesProcedure = publicProcedure
           targetUserIds: systemMessages.targetUserIds,
           priority: systemMessages.priority,
           isActive: systemMessages.isActive,
+          status: systemMessages.status, // Add this
           scheduledAt: systemMessages.scheduledAt,
           sentAt: systemMessages.sentAt,
           createdAt: systemMessages.createdAt,
           senderName: users.name,
+          replyCount: sql<number>`count(${systemMessageReplies.id})`,
         })
         .from(systemMessages)
         .innerJoin(users, eq(systemMessages.senderId, users.id))
+        .leftJoin(systemMessageReplies, eq(systemMessageReplies.messageId, systemMessages.id))
+        .groupBy(systemMessages.id, users.name)
         .orderBy(desc(systemMessages.createdAt))
         .limit(input.limit)
         .offset(input.offset);
 
-      return messages;
+      return { success: true, messages };
     } catch (error) {
       console.error("Error getting all system messages:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to get system messages"
-      );
+      throw new Error(error instanceof Error ? error.message : "Failed to get system messages");
     }
   });
 
 // Delete system message (Admin only)
-export const deleteSystemMessageProcedure = publicProcedure
+export const deleteSystemMessage = publicProcedure
   .input(
     z.object({
       adminId: z.number(),
@@ -328,10 +289,7 @@ export const deleteSystemMessageProcedure = publicProcedure
       // TODO: Implement proper permission checking
 
       // Deactivate the message instead of deleting
-      await db
-        .update(systemMessages)
-        .set({ isActive: false })
-        .where(eq(systemMessages.id, input.messageId));
+      await db.update(systemMessages).set({ isActive: false }).where(eq(systemMessages.id, input.messageId));
 
       return { success: true };
     } catch (error) {
@@ -340,8 +298,71 @@ export const deleteSystemMessageProcedure = publicProcedure
     }
   });
 
+// Send a reply to a system message
+export const sendSystemMessageReply = publicProcedure
+  .input(
+    z.object({
+      messageId: z.number(),
+      userId: z.number(),
+      content: z.string().min(1),
+      isFromAdmin: z.boolean().default(false),
+    })
+  )
+  .mutation(async ({ input }: { input: any }) => {
+    try {
+      const [reply] = await db
+        .insert(systemMessageReplies)
+        .values({
+          messageId: input.messageId,
+          userId: input.userId,
+          content: input.content,
+          isFromAdmin: input.isFromAdmin,
+        })
+        .returning();
+
+      // Update the status of the parent system message to 'replied'
+      await db.update(systemMessages).set({ status: "replied" }).where(eq(systemMessages.id, input.messageId));
+
+      return reply;
+    } catch (error) {
+      console.error("Error sending system message reply:", error);
+      throw new Error("Failed to send system message reply");
+    }
+  });
+
+// Get replies for a system message
+export const getSystemMessageReplies = publicProcedure
+  .input(
+    z.object({
+      messageId: z.number(),
+    })
+  )
+  .query(async ({ input }: { input: any }) => {
+    try {
+      const replies = await db
+        .select({
+          id: systemMessageReplies.id,
+          messageId: systemMessageReplies.messageId,
+          userId: systemMessageReplies.userId,
+          content: systemMessageReplies.content,
+          isFromAdmin: systemMessageReplies.isFromAdmin,
+          createdAt: systemMessageReplies.createdAt,
+          userName: users.name, // Join with users to get replier's name
+        })
+        .from(systemMessageReplies)
+        .innerJoin(users, eq(systemMessageReplies.userId, users.id))
+        .where(eq(systemMessageReplies.messageId, input.messageId))
+        .orderBy(asc(systemMessageReplies.createdAt));
+
+      return { replies };
+    } catch (error) {
+      console.error("Error getting system message replies:", error);
+      throw new Error("Failed to get system message replies");
+    }
+  });
+
 // Get unread messages count for user
-export const getUnreadMessagesCountProcedure = publicProcedure
+export const getUnreadMessagesCount = publicProcedure
   .input(
     z.object({
       userId: z.number(),
@@ -354,10 +375,7 @@ export const getUnreadMessagesCountProcedure = publicProcedure
           count: sql`COUNT(*)`,
         })
         .from(systemMessageRecipients)
-        .innerJoin(
-          systemMessages,
-          eq(systemMessageRecipients.messageId, systemMessages.id)
-        )
+        .innerJoin(systemMessages, eq(systemMessageRecipients.messageId, systemMessages.id))
         .where(
           and(
             eq(systemMessageRecipients.userId, input.userId),

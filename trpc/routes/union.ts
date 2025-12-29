@@ -11,12 +11,13 @@ import {
   unionRoleEnum,
   unionAnnouncementTypeEnum,
   unionBranchRegionEnum,
+  notifications,
 } from "../../db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lte, desc, count } from "drizzle-orm";
 
 export const unionRouter = createTRPCRouter({
   main: createTRPCRouter({
-    get: publicProcedure.query(async ({ ctx }) => {
+    get: protectedProcedure.query(async ({ ctx }) => {
       const result = await db.select().from(unionMain).limit(1);
       if (result.length === 0) {
         // Create default main union if not exists
@@ -29,9 +30,19 @@ export const unionRouter = createTRPCRouter({
             memberCount: "0",
           })
           .returning();
-        return { success: true, union: newMain[0] };
+        return { success: true, union: { ...newMain[0], isFollowing: false } };
       }
-      return { success: true, union: result[0] };
+
+      let isFollowing = false;
+      if (ctx.user) {
+        const followStatus = await db
+          .select()
+          .from(unionFollowers)
+          .where(and(eq(unionFollowers.mainUnionId, result[0].id), eq(unionFollowers.userId, ctx.user.id)));
+        isFollowing = followStatus.length > 0;
+      }
+
+      return { success: true, union: { ...result[0], isFollowing } };
     }),
     update: protectedProcedure
       .input(
@@ -68,12 +79,37 @@ export const unionRouter = createTRPCRouter({
   }),
 
   branch: createTRPCRouter({
-    list: publicProcedure.query(async ({ ctx }) => {
-      return await db.select().from(unionBranches);
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const branches = await db.select().from(unionBranches);
+      if (!ctx?.user?.id) {
+        return branches.map((branch) => ({ ...branch, isFollowing: false }));
+      }
+
+      const followedBranches = await db
+        .select({ branchId: unionFollowers.branchId })
+        .from(unionFollowers)
+        .where(eq(unionFollowers.userId, ctx.user.id));
+      const followedBranchIds = new Set(followedBranches.map((f) => f.branchId));
+
+      return branches.map((branch) => ({
+        ...branch,
+        isFollowing: followedBranchIds.has(branch.id),
+      }));
     }),
-    get: publicProcedure.input(z.number()).query(async ({ ctx, input }) => {
+    get: protectedProcedure.input(z.number()).query(async ({ ctx, input }) => {
       const result = await db.select().from(unionBranches).where(eq(unionBranches.id, input));
-      return result[0];
+      if (result.length === 0) {
+        return null;
+      }
+      const branch = result[0];
+
+      let isFollowing = false;
+      if (ctx.user) {
+        const followStatus = await db.select().from(unionFollowers).where(and(eq(unionFollowers.branchId, branch.id), eq(unionFollowers.userId, ctx.user.id)));
+        isFollowing = followStatus.length > 0;
+      }
+
+      return { ...branch, isFollowing };
     }),
     create: protectedProcedure
       .input(
@@ -122,27 +158,59 @@ export const unionRouter = createTRPCRouter({
       await db.delete(unionBranches).where(eq(unionBranches.id, input));
       return { success: true };
     }),
-    follow: protectedProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
-      const existingFollow = await db
-        .select()
-        .from(unionFollowers)
-        .where(and(eq(unionFollowers.branchId, input), eq(unionFollowers.userId, userId)));
+  }),
 
-      if (existingFollow.length > 0) {
-        await db.delete(unionFollowers).where(eq(unionFollowers.id, existingFollow[0].id));
-        return { success: true, isFollowing: false };
-      } else {
-        await db.insert(unionFollowers).values({ userId, branchId: input });
-        return { success: true, isFollowing: true };
-      }
-    }),
+  follow: createTRPCRouter({
+    toggle: protectedProcedure
+      .input(
+        z.object({
+          branchId: z.number().optional(),
+          mainUnionId: z.number().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const userId = ctx.user.id;
+        const { branchId, mainUnionId } = input;
+
+        if (!branchId && !mainUnionId) {
+          throw new Error("Either branchId or mainUnionId must be provided");
+        }
+
+        const existingFollow = await db
+          .select()
+          .from(unionFollowers)
+          .where(
+            and(
+              eq(unionFollowers.userId, userId),
+              branchId ? eq(unionFollowers.branchId, branchId) : eq(unionFollowers.mainUnionId, mainUnionId)
+            )
+          );
+
+        if (existingFollow.length > 0) {
+          await db.delete(unionFollowers).where(eq(unionFollowers.id, existingFollow[0].id));
+          return { success: true, isFollowing: false };
+        } else {
+          await db.insert(unionFollowers).values({ userId, branchId, mainUnionId });
+          return { success: true, isFollowing: true };
+        }
+      }),
   }),
 
   announcement: createTRPCRouter({
-    list: publicProcedure.input(z.number()).query(async ({ ctx, input }) => {
-      return await db.select().from(unionAnnouncements).where(eq(unionAnnouncements.branchId, input));
-    }),
+    list: publicProcedure
+      .input(z.object({ branchId: z.number().optional(), mainUnionId: z.number().optional() }))
+      .query(async ({ ctx, input }) => {
+        if (input.branchId) {
+          return await db.select().from(unionAnnouncements).where(eq(unionAnnouncements.branchId, input.branchId));
+        }
+        if (input.mainUnionId) {
+          return await db
+            .select()
+            .from(unionAnnouncements)
+            .where(eq(unionAnnouncements.mainUnionId, input.mainUnionId));
+        }
+        return await db.select().from(unionAnnouncements);
+      }),
     get: publicProcedure.input(z.number()).query(async ({ ctx, input }) => {
       const result = await db.select().from(unionAnnouncements).where(eq(unionAnnouncements.id, input));
       return result[0];
@@ -164,6 +232,30 @@ export const unionRouter = createTRPCRouter({
       )
       .mutation(async ({ ctx, input }) => {
         const newAnnouncement = await db.insert(unionAnnouncements).values(input).returning();
+
+        // Get followers
+        const followers = await db
+          .select({ userId: unionFollowers.userId })
+          .from(unionFollowers)
+          .where(
+            input.branchId
+              ? eq(unionFollowers.branchId, input.branchId)
+              : eq(unionFollowers.mainUnionId, input.mainUnionId)
+          );
+
+        if (followers.length > 0) {
+          const followerIds = followers.map((f) => f.userId);
+          const notificationData = followerIds.map((userId) => ({
+            userId,
+            title: `إعلان جديد: ${input.title}`,
+            message: input.content.substring(0, 100),
+            type: "announcement" as const,
+            data: JSON.stringify({ announcementId: newAnnouncement[0].id }),
+          }));
+
+          await db.insert(notifications).values(notificationData);
+        }
+
         return { success: true, announcement: newAnnouncement[0] };
       }),
     update: protectedProcedure
@@ -275,40 +367,81 @@ export const unionRouter = createTRPCRouter({
 
   analytics: createTRPCRouter({
     getStats: protectedProcedure.query(async ({ ctx }) => {
-      // Real counts from DB
-      const [membersCount, branchesCount, announcementsCount] = await Promise.all([
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const [
+        membersCount,
+        newMembersCount,
+        branchesCount,
+        announcementsCount,
+        activeMembersCount,
+        topAnnouncements,
+        regionDistribution,
+      ] = await Promise.all([
         db.select({ count: count() }).from(unionUsers),
+        db.select({ count: count() }).from(unionUsers).where(gte(unionUsers.createdAt, thirtyDaysAgo)),
         db.select({ count: count() }).from(unionBranches),
         db.select({ count: count() }).from(unionAnnouncements),
+        db.select({ count: count() }).from(unionUsers).where(gte(unionUsers.lastSeen, thirtyDaysAgo)),
+        db
+          .select()
+          .from(unionAnnouncements)
+          .orderBy(desc(unionAnnouncements.isImportant), desc(unionAnnouncements.createdAt))
+          .limit(5),
+        db.select({ region: unionBranches.region, count: count() }).from(unionBranches).groupBy(unionBranches.region),
       ]);
+
+      const totalMembers = membersCount[0]?.count || 0;
+      const activityRate = totalMembers > 0 ? ((activeMembersCount[0]?.count || 0) / totalMembers) * 100 : 0;
+
+      const monthlyData = await Promise.all(
+        Array.from({ length: 6 }).map(async (_, i) => {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          const month = d.toLocaleString("default", { month: "short" });
+          const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
+          const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+
+          const [monthlyMembers, monthlyEvents] = await Promise.all([
+            db
+              .select({ count: count() })
+              .from(unionUsers)
+              .where(and(gte(unionUsers.createdAt, firstDay), lte(unionUsers.createdAt, lastDay))),
+            db
+              .select({ count: count() })
+              .from(unionAnnouncements)
+              .where(and(gte(unionAnnouncements.createdAt, firstDay), lte(unionAnnouncements.createdAt, lastDay))),
+          ]);
+
+          return {
+            month,
+            members: monthlyMembers[0]?.count || 0,
+            events: monthlyEvents[0]?.count || 0,
+          };
+        })
+      );
 
       return {
         totalMembers: {
-          value: membersCount[0]?.count.toString() || "0",
-          change: "+0",
-          changeType: "neutral"
+          value: totalMembers.toString(),
+          change: `+${newMembersCount[0]?.count || 0}`,
+          changeType: "positive",
         },
         newMembers: {
-          value: "0", // Needs 'createdAt' filtering for accurate 'new' count
-          change: "0",
-          changeType: "neutral"
+          value: (newMembersCount[0]?.count || 0).toString(),
+          change: "30d",
+          changeType: "neutral",
         },
         events: {
-          value: announcementsCount[0]?.count.toString() || "0",
+          value: (announcementsCount[0]?.count || 0).toString(),
           change: "+0",
-          changeType: "neutral"
+          changeType: "neutral",
         },
-        activityRate: { value: "100%", change: "0%", changeType: "neutral" },
-        chartData: [
-          { month: "Jan", members: 0, events: 0 },
-          { month: "Feb", members: 0, events: 0 },
-          { month: "Mar", members: 0, events: 0 },
-          { month: "Apr", members: 0, events: 0 },
-          { month: "May", members: 0, events: 0 },
-          { month: "Jun", members: 0, events: 0 },
-        ],
-        topEvents: [],
-        regionDistribution: [],
+        activityRate: { value: `${activityRate.toFixed(1)}%`, change: "30d", changeType: "neutral" },
+        chartData: monthlyData.reverse(),
+        topEvents: topAnnouncements,
+        regionDistribution: regionDistribution.map((item) => ({ ...item, label: item.region })),
       };
     }),
   }),
