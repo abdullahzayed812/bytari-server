@@ -514,18 +514,37 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Store Type Enum
+export const storeTypeEnum = pgEnum("store_type", ["veterinarian", "pet_owner"]);
+
 // Orders table
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
+  storeType: storeTypeEnum("store_type").notNull().default("pet_owner"), // 'veterinarian' or 'pet_owner'
   status: text("status").notNull().default("pending"), // 'pending', 'confirmed', 'shipped', 'delivered', 'cancelled'
   totalAmount: real("total_amount").notNull(),
   shippingAddress: jsonb("shipping_address"), // JSON data
   paymentMethod: text("payment_method"),
   paymentStatus: text("payment_status").notNull().default("pending"),
   notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Marketplace Products Table (New)
+export const marketplaceProducts = pgTable("marketplace_products", {
+  id: serial("id").primaryKey(),
+  storeType: storeTypeEnum("store_type").notNull(), // 'veterinarian' or 'pet_owner'
+  name: text("name").notNull(),
+  description: text("description"),
+  price: real("price").notNull(),
+  image: text("image"),
+  category: text("category").notNull(),
+  subcategory: text("subcategory"),
+  inStock: boolean("in_stock").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -537,8 +556,11 @@ export const orderItems = pgTable("order_items", {
     .notNull()
     .references(() => orders.id),
   productId: integer("product_id")
-    .notNull()
-    .references(() => products.id),
+    .references(() => products.id), // Legacy/Existing
+  storeProductId: integer("store_product_id")
+    .references(() => storeProducts.id), // Legacy/Existing
+  marketplaceProductId: integer("marketplace_product_id")
+    .references(() => marketplaceProducts.id), // NEW
   quantity: integer("quantity").notNull(),
   unitPrice: real("unit_price").notNull(),
   totalPrice: real("total_price").notNull(),
@@ -1190,6 +1212,27 @@ export const likesRelations = relations(likes, ({ one }) => ({
   article: one(vetMagazines, {
     fields: [likes.articleId],
     references: [vetMagazines.id],
+  }),
+}));
+
+// Relations for orders
+export const ordersRelations = relations(orders, ({ one, many }) => ({
+  user: one(users, {
+    fields: [orders.userId],
+    references: [users.id],
+  }),
+  items: many(orderItems),
+}));
+
+// Relations for order items
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderItems.orderId],
+    references: [orders.id],
+  }),
+  marketplaceProduct: one(marketplaceProducts, {
+    fields: [orderItems.marketplaceProductId],
+    references: [marketplaceProducts.id],
   }),
 }));
 

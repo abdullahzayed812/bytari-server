@@ -91,6 +91,8 @@ CREATE TYPE ai_setting_type AS ENUM (
   'consultations',
   'inquiries'
 );
+--> statement-breakpoint
+CREATE TYPE "store_type" AS ENUM ('veterinarian', 'pet_owner');
 
 -- AI settings table
 CREATE TABLE ai_settings (
@@ -482,10 +484,26 @@ CREATE TABLE "notifications" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "marketplace_products" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"store_type" "store_type" NOT NULL,
+	"name" text NOT NULL,
+	"description" text,
+	"price" real NOT NULL,
+	"image" text,
+	"category" text NOT NULL,
+	"subcategory" text,
+	"in_stock" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "order_items" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"order_id" integer NOT NULL,
-	"product_id" integer NOT NULL,
+	"product_id" integer,
+	"store_product_id" integer,
+	"marketplace_product_id" integer,
 	"quantity" integer NOT NULL,
 	"unit_price" real NOT NULL,
 	"total_price" real NOT NULL
@@ -494,6 +512,7 @@ CREATE TABLE "order_items" (
 CREATE TABLE "orders" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
+	"store_type" "store_type" DEFAULT 'pet_owner' NOT NULL,
 	"status" text DEFAULT 'pending' NOT NULL,
 	"total_amount" real NOT NULL,
 	"shipping_address" jsonb,
@@ -1510,11 +1529,6 @@ CREATE TABLE "field_supervision_requests" (
 
 
 
-
-
-
-
-
 -- Drop existing foreign key constraints
 ALTER TABLE "admin_activity_logs" DROP CONSTRAINT IF EXISTS "admin_activity_logs_admin_id_users_id_fk";
 ALTER TABLE "admin_content" DROP CONSTRAINT IF EXISTS "admin_content_created_by_users_id_fk";
@@ -1768,3 +1782,7 @@ ON UPDATE CASCADE;
 ALTER TABLE ai_settings
 ADD CONSTRAINT ai_settings_updated_by_fkey
 FOREIGN KEY (updated_by) REFERENCES users(id);
+
+ALTER TABLE "order_items" ADD CONSTRAINT "order_items_marketplace_product_id_marketplace_products_id_fk" FOREIGN KEY ("marketplace_product_id") REFERENCES "public"."marketplace_products"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "order_items" ADD CONSTRAINT "order_items_store_product_id_store_products_id_fk" FOREIGN KEY ("store_product_id") REFERENCES "public"."store_products"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "order_items" ADD CONSTRAINT "order_items_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
