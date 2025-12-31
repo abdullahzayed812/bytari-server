@@ -50,6 +50,8 @@ import {
   getAllPetsProcedure,
   getLostPetDetailsProcedure,
 } from "./routes/pets/get/route";
+import { closeAdoptionListing, closeBreedingListing } from "./routes/pets/close-listing/route";
+import { reportPetSighting, getPetSightingReports, dismissPetSightingReport, closePetSightingReport } from "./routes/pets/sighting/route";
 
 import {
   // addMedicalRecordProcedure,
@@ -270,6 +272,7 @@ import {
   getSystemStatsProcedure,
   getDetailedStatsProcedure,
   getPendingApprovalCountsProcedure,
+  getUserMessageCountsProcedure,
 } from "./routes/admin/stats/route";
 
 // Admin approvals
@@ -438,6 +441,8 @@ export const appRouter = createTRPCRouter({
     getAllForAdmin: getAllPetsForAdminProcedure,
     getLostPetDetails: getLostPetDetailsProcedure,
     getAdoptionBreedingPetDetails: getAdoptionBreedingPetDetailsProcedure,
+    closeAdoptionListing: closeAdoptionListing,
+    closeBreedingListing: closeBreedingListing,
 
     // Pet approval system
     createApprovalRequest: createPetApprovalProcedure,
@@ -478,6 +483,14 @@ export const appRouter = createTRPCRouter({
     // Follow ups
     getClinicFollowUps: getClinicFollowUpsProcedure,
     cancelFollowUps: cancelClinicFollowUpsProcedure,
+
+    // Pet Sighting Reports
+    sighting: createTRPCRouter({
+      report: reportPetSighting,
+      getReports: getPetSightingReports,
+      dismissReport: dismissPetSightingReport,
+      closeReport: closePetSightingReport,
+    }),
   }),
 
   poultryFarms: createTRPCRouter({
@@ -736,6 +749,7 @@ export const appRouter = createTRPCRouter({
       getSystemStats: getSystemStatsProcedure,
       getDetailedStats: getDetailedStatsProcedure,
       getPendingApprovalCounts: getPendingApprovalCountsProcedure,
+      getUserMessageCounts: getUserMessageCountsProcedure,
     }),
 
     // User management

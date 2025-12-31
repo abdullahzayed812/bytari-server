@@ -12,8 +12,10 @@ import {
   assignmentRequests,
   products,
   stores,
+  notifications,
+  systemMessages,
 } from "../../../../db";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, or, sql } from "drizzle-orm";
 
 export const getSystemStatsProcedure = publicProcedure
   .input(
@@ -263,6 +265,50 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         pendingVetApprovals: 5,
         pendingFieldAssignments: 3,
         total: 28,
+      };
+    }
+  });
+
+export const getUserMessageCountsProcedure = publicProcedure
+  .input(
+    z.object({
+      userId: z.number(),
+    })
+  )
+  .query(async ({ input }) => {
+    try {
+      // Unread notifications count
+      const [notificationsCount] = await db
+        .select({ count: count() })
+        .from(notifications)
+        .where(and(eq(notifications.userId, input.userId), eq(notifications.isRead, false)));
+
+      // Active system messages count (targeted or global)
+      const [systemMessagesCount] = await db
+        .select({ count: count() })
+        .from(systemMessages)
+        .where(
+          and(
+            eq(systemMessages.isActive, true),
+            or(
+              eq(systemMessages.targetAudience, "all"),
+              sql`${systemMessages.targetUserIds} @> ${JSON.stringify([input.userId])}`
+            ),
+            or(sql`${systemMessages.expiresAt} IS NULL`, sql`${systemMessages.expiresAt} > NOW()`)
+          )
+        );
+
+      return {
+        notificationsCount: notificationsCount.count || 0,
+        messagesCount: systemMessagesCount.count || 0,
+        total: (notificationsCount.count || 0) + (systemMessagesCount.count || 0),
+      };
+    } catch (error) {
+      console.error("Error fetching user message counts:", error);
+      return {
+        notifications: 0,
+        systemMessages: 0,
+        total: 0,
       };
     }
   });

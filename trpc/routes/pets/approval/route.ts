@@ -136,8 +136,8 @@ export const createPetApprovalProcedure = publicProcedure
         input.requestType === "adoption"
           ? `طلب تبني - ${input.name}`
           : input.requestType === "breeding"
-            ? `طلب تزويج - ${input.name}`
-            : `بلاغ حيوان مفقود - ${input.name}`;
+          ? `طلب تزويج - ${input.name}`
+          : `بلاغ حيوان مفقود - ${input.name}`;
 
       const [approvalRequest] = await db
         .insert(petApprovalRequests)
@@ -271,7 +271,7 @@ export const reviewPetApprovalProcedure = protectedProcedure
           reviewedBy: input.reviewerId,
           reviewedAt: new Date(),
           rejectionReason: input.rejectionReason,
-          adminNotes: input.adminNotes,
+          // adminNotes: input.adminNotes,
           updatedAt: new Date(),
         })
         .where(eq(petApprovalRequests.id, input.requestId));
@@ -523,7 +523,7 @@ export const getApprovedPetsProcedure = publicProcedure
           .where(
             and(
               eq(petApprovalRequests.status, "approved"),
-              eq(lostPets.status, "lost"),
+              // eq(lostPets.status, "lost"),
               eq(petApprovalRequests.requestType, "lost_pet") // CRITICAL: Add this filter
             )
           )
@@ -544,12 +544,14 @@ export const getApprovedPetsProcedure = publicProcedure
             breed: adoptionPets.breed,
             age: adoptionPets.age,
             image: adoptionPets.image,
+            isClosedByOwner: adoptionPets.isClosedByOwner,
             description: adoptionPets.description,
             location: adoptionPets.location,
             price: adoptionPets.price,
             ownerName: users.name,
             ownerPhone: users.phone,
             createdAt: adoptionPets.createdAt,
+            isAvailable: adoptionPets.isAvailable,
           })
           .from(adoptionPets)
           .leftJoin(petApprovalRequests, eq(adoptionPets.id, petApprovalRequests.petId))
@@ -572,12 +574,14 @@ export const getApprovedPetsProcedure = publicProcedure
             breed: breedingPets.breed,
             age: breedingPets.age,
             image: breedingPets.image,
+            isClosedByOwner: breedingPets.isClosedByOwner,
             description: breedingPets.description,
             location: breedingPets.location,
             price: breedingPets.price,
             ownerName: users.name,
             ownerPhone: users.phone,
             createdAt: breedingPets.createdAt,
+            isAvailable: breedingPets.isAvailable,
           })
           .from(breedingPets)
           .leftJoin(petApprovalRequests, eq(breedingPets.id, petApprovalRequests.petId))

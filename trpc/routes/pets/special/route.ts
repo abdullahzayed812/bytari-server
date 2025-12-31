@@ -3,6 +3,12 @@ import { publicProcedure } from '../../../create-context';
 import { db, breedingPets, adoptionPets, missingPets, approvalRequests, adminNotifications, users } from '../../../../db';
 import { eq, and } from 'drizzle-orm';
 
+const contactInfoSchema = z.object({
+  name: z.string().min(1),
+  phone: z.string().min(1),
+  email: z.string().email().optional(),
+});
+
 // Create breeding pet
 export const createBreedingPetProcedure = publicProcedure
   .input(z.object({
@@ -19,11 +25,10 @@ export const createBreedingPetProcedure = publicProcedure
     vaccinations: z.array(z.string()).optional(),
     price: z.number().min(0).optional(),
     location: z.string().min(1),
-    contactInfo: z.string().min(1),
+    contactInfo: contactInfoSchema,
     ownerId: z.number()
   }))
   .mutation(async ({ input }) => {
-    console.log('Creating breeding pet:', input);
     
     try {
       // Create the breeding pet
@@ -74,7 +79,6 @@ export const createBreedingPetProcedure = publicProcedure
         });
       }
 
-      console.log('Breeding pet created successfully:', breedingPet.id);
       return { success: true, id: breedingPet.id };
     } catch (error) {
       console.error('Error creating breeding pet:', error);
@@ -102,12 +106,11 @@ export const createAdoptionPetProcedure = publicProcedure
     goodWithPets: z.boolean().optional(),
     adoptionFee: z.number().min(0).optional(),
     location: z.string().min(1),
-    contactInfo: z.string().min(1),
+    contactInfo: contactInfoSchema,
     specialRequirements: z.string().optional(),
     ownerId: z.number()
   }))
   .mutation(async ({ input }) => {
-    console.log('Creating adoption pet:', input);
     
     try {
       // Create the adoption pet
@@ -164,7 +167,6 @@ export const createAdoptionPetProcedure = publicProcedure
         });
       }
 
-      console.log('Adoption pet created successfully:', adoptionPet.id);
       return { success: true, id: adoptionPet.id };
     } catch (error) {
       console.error('Error creating adoption pet:', error);
@@ -195,7 +197,6 @@ export const createMissingPetProcedure = publicProcedure
     ownerId: z.number()
   }))
   .mutation(async ({ input }) => {
-    console.log('Creating missing pet:', input);
     
     try {
       // Create the missing pet
@@ -250,7 +251,6 @@ export const createMissingPetProcedure = publicProcedure
         });
       }
 
-      console.log('Missing pet created successfully:', missingPet.id);
       return { success: true, id: missingPet.id };
     } catch (error) {
       console.error('Error creating missing pet:', error);
@@ -261,7 +261,6 @@ export const createMissingPetProcedure = publicProcedure
 // List approved breeding pets
 export const listBreedingPetsProcedure = publicProcedure
   .query(async () => {
-    console.log('Fetching approved breeding pets');
     
     try {
       const pets = await db.select({
@@ -282,9 +281,6 @@ export const listBreedingPetsProcedure = publicProcedure
         location: breedingPets.location,
         contactInfo: breedingPets.contactInfo,
         createdAt: breedingPets.createdAt,
-        ownerName: users.name,
-        ownerEmail: users.email,
-        ownerPhone: users.phone
       })
       .from(breedingPets)
       .leftJoin(users, eq(breedingPets.ownerId, users.id))
@@ -300,7 +296,6 @@ export const listBreedingPetsProcedure = publicProcedure
         vaccinations: pet.vaccinations ? JSON.parse(pet.vaccinations) : []
       }));
 
-      console.log(`Found ${formattedPets.length} approved breeding pets`);
       return formattedPets;
     } catch (error) {
       console.error('Error fetching breeding pets:', error);
@@ -311,7 +306,6 @@ export const listBreedingPetsProcedure = publicProcedure
 // List approved adoption pets
 export const listAdoptionPetsProcedure = publicProcedure
   .query(async () => {
-    console.log('Fetching approved adoption pets');
     
     try {
       const pets = await db.select({
@@ -337,9 +331,6 @@ export const listAdoptionPetsProcedure = publicProcedure
         contactInfo: adoptionPets.contactInfo,
         specialRequirements: adoptionPets.specialRequirements,
         createdAt: adoptionPets.createdAt,
-        ownerName: users.name,
-        ownerEmail: users.email,
-        ownerPhone: users.phone
       })
       .from(adoptionPets)
       .leftJoin(users, eq(adoptionPets.ownerId, users.id))
@@ -356,7 +347,6 @@ export const listAdoptionPetsProcedure = publicProcedure
         vaccinations: pet.vaccinations ? JSON.parse(pet.vaccinations) : []
       }));
 
-      console.log(`Found ${formattedPets.length} approved adoption pets`);
       return formattedPets;
     } catch (error) {
       console.error('Error fetching adoption pets:', error);
@@ -367,7 +357,6 @@ export const listAdoptionPetsProcedure = publicProcedure
 // List approved missing pets
 export const listMissingPetsProcedure = publicProcedure
   .query(async () => {
-    console.log('Fetching approved missing pets');
     
     try {
       const pets = await db.select({
@@ -411,7 +400,6 @@ export const listMissingPetsProcedure = publicProcedure
         lastSeenDate: pet.lastSeenDate instanceof Date ? pet.lastSeenDate.toISOString() : new Date(pet.lastSeenDate).toISOString()
       }));
 
-      console.log(`Found ${formattedPets.length} approved missing pets`);
       return formattedPets;
     } catch (error) {
       console.error('Error fetching missing pets:', error);

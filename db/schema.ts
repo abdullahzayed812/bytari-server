@@ -373,16 +373,16 @@ export const adoptionPets = pgTable("adoption_pets", {
   ownershipProof: text("ownership_proof"),
   veterinaryCertificate: text("veterinary_certificate"),
 
-  // Adoption specific fields
   description: text("description"),
   images: jsonb("images"), // JSON array of image URLs
-  contactInfo: text("contact_info"),
+  contactInfo: jsonb("contact_info"),
   location: text("location"),
   price: real("price"),
   specialRequirements: text("special_requirements"),
 
   // Status
   isAvailable: boolean("is_available").notNull().default(false), // False until approved
+  isClosedByOwner: boolean("is_closed_by_owner").notNull().default(false),
   adoptedBy: integer("adopted_by").references(() => users.id),
   adoptedAt: timestamp("adopted_at", { withTimezone: true }),
 
@@ -414,7 +414,7 @@ export const breedingPets = pgTable("breeding_pets", {
   // Breeding specific fields
   description: text("description"),
   images: jsonb("images"), // JSON array of image URLs
-  contactInfo: text("contact_info"),
+  contactInfo: jsonb("contact_info"),
   location: text("location"),
   price: real("price"),
   specialRequirements: text("special_requirements"),
@@ -426,6 +426,7 @@ export const breedingPets = pgTable("breeding_pets", {
 
   // Status
   isAvailable: boolean("is_available").notNull().default(false), // False until approved
+  isClosedByOwner: boolean("is_closed_by_owner").notNull().default(false),
 
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -455,7 +456,7 @@ export const lostPets = pgTable("lost_pets", {
   // Lost pet specific fields
   description: text("description"),
   images: jsonb("images"), // JSON array of image URLs
-  contactInfo: text("contact_info"),
+  contactInfo: jsonb("contact_info"), // Store owner's contact info here
   location: text("location"),
   lastSeenLocation: text("last_seen_location").notNull(),
   lastSeenDate: timestamp("last_seen_date", { withTimezone: true }).notNull(),
@@ -469,6 +470,26 @@ export const lostPets = pgTable("lost_pets", {
   foundBy: integer("found_by").references(() => users.id),
   foundAt: timestamp("found_at", { withTimezone: true }),
 
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Pet Sighting Reports table
+export const petSightingReports = pgTable("pet_sighting_reports", {
+  id: serial("id").primaryKey(),
+  lostPetId: integer("lost_pet_id")
+    .notNull()
+    .references(() => lostPets.id),
+  reporterId: integer("reporter_id")
+    .notNull()
+    .references(() => users.id),
+  sightingDate: timestamp("sighting_date", { withTimezone: true }).notNull().defaultNow(),
+  sightingLocation: text("sighting_location").notNull(),
+  description: text("description"),
+  contactInfo: jsonb("contact_info"), // Reporter's contact info
+  images: jsonb("images"), // Images from the sighting
+  isDismissed: boolean("is_dismissed").notNull().default(false), // By the owner
+  dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

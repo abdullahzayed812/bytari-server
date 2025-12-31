@@ -109,6 +109,7 @@ export const getLostPetDetailsProcedure = protectedProcedure
         } catch (error) {
           // If parsing fails, assume it's a plain string
           contactInfo = {
+            ownerId: pet.ownerId,
             name: pet.ownerName,
             phone: pet.ownerPhone,
             email: pet.ownerEmail,
@@ -180,7 +181,6 @@ export const getAdoptionBreedingPetDetailsProcedure = protectedProcedure
           .select({
             // Pet details
             id: adoptionPets.id,
-            ownerId: adoptionPets.ownerId,
             name: adoptionPets.name,
             type: adoptionPets.type,
             breed: adoptionPets.breed,
@@ -198,8 +198,10 @@ export const getAdoptionBreedingPetDetailsProcedure = protectedProcedure
 
             // Status
             isAvailable: adoptionPets.isAvailable,
+            isClosedByOwner: adoptionPets.isClosedByOwner,
 
             // Owner details
+            ownerId: users.id,
             ownerName: users.name,
             ownerEmail: users.email,
             ownerPhone: users.phone,
@@ -221,7 +223,6 @@ export const getAdoptionBreedingPetDetailsProcedure = protectedProcedure
           .select({
             // Pet details
             id: breedingPets.id,
-            ownerId: breedingPets.ownerId,
             name: breedingPets.name,
             type: breedingPets.type,
             breed: breedingPets.breed,
@@ -244,8 +245,10 @@ export const getAdoptionBreedingPetDetailsProcedure = protectedProcedure
 
             // Status
             isAvailable: breedingPets.isAvailable,
+            isClosedByOwner: breedingPets.isClosedByOwner,
 
             // Owner details
+            ownerId: users.id,
             ownerName: users.name,
             ownerEmail: users.email,
             ownerPhone: users.phone,
@@ -276,6 +279,7 @@ export const getAdoptionBreedingPetDetailsProcedure = protectedProcedure
         } catch (error) {
           // If parsing fails, assume it's a plain string or use owner info
           contactInfo = {
+            ownerId: pet.ownerId,
             name: pet.ownerName,
             phone: pet.ownerPhone,
             email: pet.ownerEmail,
@@ -285,6 +289,7 @@ export const getAdoptionBreedingPetDetailsProcedure = protectedProcedure
       } else {
         // Fallback to owner info
         contactInfo = {
+          ownerId: pet.ownerId,
           name: pet.ownerName,
           phone: pet.ownerPhone,
           email: pet.ownerEmail,
@@ -327,6 +332,7 @@ export const getAdoptionBreedingPetDetailsProcedure = protectedProcedure
           specialRequirements: pet.specialRequirements,
           isAvailable: pet.isAvailable,
           ownerName: pet.ownerName,
+          ownerId: pet.ownerId,
           // Breeding specific fields
           pedigree: (pet as any).pedigree,
           healthCertificates: healthCertificates,

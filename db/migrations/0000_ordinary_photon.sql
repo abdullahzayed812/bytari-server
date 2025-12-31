@@ -341,11 +341,13 @@ CREATE TABLE "adoption_pets" (
   -- Documents
   "ownership_proof" text,
   "veterinary_certificate" text,
+
+	"is_closed_by_owner" BOOLEAN NOT NULL DEFAULT FALSE,
   
   -- Adoption specific fields
   "description" text,
   "images" jsonb,
-  "contact_info" text,
+  "contact_info" jsonb,
   "location" text,
   "price" real,
   "special_requirements" text,
@@ -377,11 +379,13 @@ CREATE TABLE "breeding_pets" (
   -- Documents
   "ownership_proof" text,
   "veterinary_certificate" text,
+
+	"is_closed_by_owner" BOOLEAN NOT NULL DEFAULT FALSE,
   
   -- Breeding specific fields
   "description" text,
   "images" jsonb,
-  "contact_info" text,
+  "contact_info" jsonb,
   "location" text,
   "price" real,
   "special_requirements" text,
@@ -420,7 +424,7 @@ CREATE TABLE "lost_pets" (
   -- Lost pet specific fields
   "description" text,
   "images" jsonb,
-  "contact_info" text,
+  "contact_info" jsonb,
   "location" text,
   "last_seen_location" text NOT NULL,
   "last_seen_date" timestamp with time zone NOT NULL,
@@ -437,6 +441,28 @@ CREATE TABLE "lost_pets" (
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+
+CREATE TABLE pet_sighting_reports (
+	id SERIAL PRIMARY KEY,
+
+	lost_pet_id INTEGER NOT NULL,
+	reporter_id INTEGER NOT NULL,
+
+	sighting_date TIMESTAMPTZ NOT NULL DEFAULT now(),
+	sighting_location TEXT NOT NULL,
+	description TEXT,
+
+	contact_info JSONB,
+	images JSONB,
+
+	is_dismissed BOOLEAN NOT NULL DEFAULT false,
+	dismissed_at TIMESTAMPTZ,
+
+	created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+
 --> statement-breakpoint
 CREATE TABLE "notifications" (
 	"id" serial PRIMARY KEY NOT NULL,
@@ -1709,3 +1735,23 @@ ADD CONSTRAINT "system_message_replies_user_id_fk"
 FOREIGN KEY ("user_id")
 REFERENCES "users" ("id")
 ON DELETE CASCADE;
+
+
+
+
+ALTER TABLE pet_sighting_reports
+ADD CONSTRAINT pet_sighting_reports_lost_pet_id_lost_pets_id_fk
+FOREIGN KEY (lost_pet_id)
+REFERENCES lost_pets(id)
+ON DELETE CASCADE
+ON UPDATE CASCADE;
+
+
+
+
+ALTER TABLE pet_sighting_reports
+ADD CONSTRAINT pet_sighting_reports_reporter_id_users_id_fk
+FOREIGN KEY (reporter_id)
+REFERENCES users(id)
+ON DELETE CASCADE
+ON UPDATE CASCADE;
