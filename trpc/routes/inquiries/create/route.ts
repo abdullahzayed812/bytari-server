@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { publicProcedure } from "../../../create-context";
+import { protectedProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { inquiries } from "../../../../db/schema";
+import { inquiries, aiSettings, inquiryReplies } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 
 /* -------------------------------------------------------
@@ -54,63 +54,106 @@ async function createInquiryInDB(input: {
 }
 
 /* -------------------------------------------------------
- * 🤖 Function 2: AI Inquiry Reply Generator
+ * 🤖 Helper Function: Call External AI API
  * -----------------------------------------------------*/
-async function generateAIInquiryReply(inquiry: { id: number; category: string; content: string; title: string }) {
+async function callAI(messages: any[], maxLength: number = 1500): Promise<{
+  success: boolean;
+  response: string;
+  tokensUsed?: number;
+  processingTime?: number;
+}> {
+  const startTime = Date.now();
   try {
-    console.log("🤖 Generating AI reply for inquiry:", inquiry.id);
-
-    const aiResponse = await fetch("https://toolkit.rork.com/text/llm/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "system",
-            content:
-              "أنت مساعد ذكي متخصص في الرد على استفسارات الأطباء البيطريين والطلاب. قدم إجابات دقيقة ومهنية وعلمية حول الطب البيطري.",
-          },
-          {
-            role: "user",
-            content: `عنوان الاستفسار: ${inquiry.title}\nالفئة: ${inquiry.category}\nمحتوى الاستفسار: ${inquiry.content}\n\nيرجى تقديم رد مهني ودقيق:`,
-          },
-        ],
-      }),
+    const response = await fetch('https://toolkit.rork.com/text/llm/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
     });
 
-    if (!aiResponse.ok) throw new Error("AI API request failed");
+    if (!response.ok) {
+      console.error('❌ AI API error:', response.status, response.statusText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-    const aiData = await aiResponse.json();
-    const aiReply = aiData.completion || "عذراً، لم أتمكن من توليد إجابة مناسبة في الوقت الحالي.";
+    const data = await response.json();
+    const processingTime = Date.now() - startTime;
+    let aiResponse = data.completion || 'عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.';
+    if (aiResponse.length > maxLength) {
+      aiResponse = aiResponse.substring(0, maxLength - 3) + '...';
+    }
+    return { success: true, response: aiResponse, tokensUsed: data.tokensUsed || 0, processingTime };
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('❌ Error calling AI:', error);
+    return { success: false, response: 'عذراً، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى لاحقاً.', processingTime };
+  }
+}
 
-    // 💾 Update inquiry with AI reply and mark as answered
-    await db
-      .update(inquiries)
-      .set({
-        status: "answered",
-        content: aiReply, // Overwrite content with AI reply (or add a response column if preferred)
+/* -------------------------------------------------------
+ * 🤖 Function 2: Trigger Auto-Reply for Inquiry
+ * -----------------------------------------------------*/
+async function triggerAutoReplyInquiry(inquiry: { id: number; title: string; content: string; category: string; userId: number }) {
+  try {
+    const settings = await db.query.aiSettings.findFirst({
+      where: eq(aiSettings.type, 'inquiries'),
+    });
+
+    if (!settings?.isEnabled) {
+      console.log('AI auto-reply is disabled for inquiries');
+      return;
+    }
+
+    const messages = [
+      {
+        role: 'system',
+        content: settings.systemPrompt,
+      },
+      {
+        role: 'user',
+        content: `عنوان الاستفسار: ${inquiry.title}\nالفئة: ${inquiry.category}\nمحتوى الاستفسار: ${inquiry.content}\n\nيرجى تقديم رد مهني ودقيق:`, 
+      },
+    ];
+
+    await new Promise(resolve => setTimeout(resolve, (settings.responseDelay || 15) * 1000));
+
+    const aiResult = await callAI(messages, settings.maxResponseLength || 1500);
+
+    if (aiResult.success) {
+      await db.insert(inquiryReplies).values({
+        inquiryId: inquiry.id,
+        userId: inquiry.userId,
+        content: aiResult.response,
+        isFromAdmin: false, // AI is not an admin in this context
+        isAiGenerated: true,
+        createdAt: new Date(),
+      });
+      // Update inquiry status to "answered"
+      await db.update(inquiries).set({
+        status: 'answered',
         updatedAt: new Date(),
-      })
-      .where(eq(inquiries.id, inquiry.id));
-
-    console.log("✅ AI reply saved for inquiry:", inquiry.id);
-    return aiReply;
-  } catch (err) {
-    console.error("❌ Error generating AI reply:", err);
-    return null;
+      }).where(eq(inquiries.id, inquiry.id));
+      console.log('✅ AI auto-reply generated and saved for inquiry:', inquiry.id);
+    } else {
+      console.error('❌ Failed to generate AI auto-reply for inquiry:', inquiry.id, aiResult.response);
+    }
+  } catch (error) {
+    console.error('❌ Error in triggerAutoReplyInquiry:', error);
   }
 }
 
 /* -------------------------------------------------------
  * 🚀 TRPC Procedure
  * -----------------------------------------------------*/
-export const createInquiryProcedure = publicProcedure.input(createInquirySchema).mutation(async ({ input }) => {
+export const createInquiryProcedure = protectedProcedure.input(createInquirySchema).mutation(async ({ input }) => {
   try {
     // Step 1: Create inquiry in DB
     const inquiry = await createInquiryInDB(input);
 
-    // Step 2: Generate AI reply in the background
-    // setTimeout(() => generateAIInquiryReply(inquiry), 5000);
+    // Step 2: Trigger AI reply generation in the background
+    if (inquiry) {
+      // Do not await this, let it run in the background
+      triggerAutoReplyInquiry(inquiry).catch(err => console.error("Background AI auto-reply failed:", err));
+    }
 
     // Step 3: Respond to client immediately
     return {

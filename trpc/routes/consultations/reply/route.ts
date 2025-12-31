@@ -40,13 +40,11 @@ export const replyConsultationProcedure = publicProcedure.input(replyConsultatio
       })
       .returning();
 
-    // تحديث حالة الاستشارة
-    const newStatus = input.keepConversationOpen ? "answered" : "closed";
-
+    // تحديث حالة الاستشارة - دائماً "answered" عند الرد
     await db
       .update(consultations)
       .set({
-        status: newStatus,
+        status: "answered",
         updatedAt: new Date(),
       })
       .where(eq(consultations.id, input.consultationId));

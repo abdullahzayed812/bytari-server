@@ -7,7 +7,7 @@ import { seedUnion } from "./union.seed"; // Add this import
 // import { seedPets } from "./pets.seed";
 // import { seedApprovals } from "./approvals.seed";
 // import { seedContent } from "./content.seed";
-// import { seedAISettings } from "./ai-settings.seed";
+import { seedAISettings } from "./ai-settings.seed";
 // import { seedVetBooks } from "./vet-books.seed";
 // import { seedVetMagazines } from "./vet-magazines.seed";
 // import { seedInquiries } from "./inquiries.seed";
@@ -66,8 +66,8 @@ export async function seedDatabase() {
     // Content (advertisements, app sections)
     // await seedContent(db);
 
-    // // AI Settings
-    // await seedAISettings(db, adminData.superAdmin);
+    // AI Settings
+    await seedAISettings(db, adminData.superAdmin);
 
     // // Vet Books
     // const vetBooksData = await seedVetBooks(db, adminData.superAdmin);

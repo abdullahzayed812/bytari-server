@@ -87,18 +87,24 @@ CREATE TABLE "advertisements" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "ai_settings" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"is_enabled" boolean DEFAULT true NOT NULL,
-	"response_delay" integer DEFAULT 10,
-	"max_response_length" integer DEFAULT 1500,
-	"confidence_threshold" real DEFAULT 0.7,
-	"allowed_categories" jsonb,
-	"custom_prompts" jsonb,
-	"api_key" text,
-	"model" text DEFAULT 'gpt-3.5-turbo',
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+CREATE TYPE ai_setting_type AS ENUM (
+  'consultations',
+  'inquiries'
 );
+
+-- AI settings table
+CREATE TABLE ai_settings (
+  id serial PRIMARY KEY,
+  type ai_setting_type NOT NULL UNIQUE,
+  is_enabled boolean NOT NULL DEFAULT true,
+  system_prompt text NOT NULL,
+  response_delay integer DEFAULT 15,
+  max_response_length integer DEFAULT 1500,
+  updated_by integer,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
 --> statement-breakpoint
 CREATE TABLE "app_sections" (
 	"id" serial PRIMARY KEY NOT NULL,
@@ -320,6 +326,7 @@ CREATE TABLE "inquiry_replies" (
 	"user_id" integer NOT NULL,
 	"content" text NOT NULL,
 	"is_from_admin" boolean DEFAULT false NOT NULL,
+	"is_ai_generated" boolean DEFAULT false NOT NULL,
 	"attachments" jsonb,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -1755,3 +1762,9 @@ FOREIGN KEY (reporter_id)
 REFERENCES users(id)
 ON DELETE CASCADE
 ON UPDATE CASCADE;
+
+
+
+ALTER TABLE ai_settings
+ADD CONSTRAINT ai_settings_updated_by_fkey
+FOREIGN KEY (updated_by) REFERENCES users(id);

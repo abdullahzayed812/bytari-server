@@ -51,7 +51,12 @@ import {
   getLostPetDetailsProcedure,
 } from "./routes/pets/get/route";
 import { closeAdoptionListing, closeBreedingListing } from "./routes/pets/close-listing/route";
-import { reportPetSighting, getPetSightingReports, dismissPetSightingReport, closePetSightingReport } from "./routes/pets/sighting/route";
+import {
+  reportPetSighting,
+  getPetSightingReports,
+  dismissPetSightingReport,
+  closePetSightingReport,
+} from "./routes/pets/sighting/route";
 
 import {
   // addMedicalRecordProcedure,
@@ -843,13 +848,6 @@ export const appRouter = createTRPCRouter({
       get: getAiSettingsProcedure,
       toggle: toggleAiProcedure,
     }),
-
-    // courses: createTRPCRouter({
-    //   getAll: coursesRouter.getAll,
-    //   create: coursesRouter.create,
-    //   update: coursesRouter.update,
-    //   delete: coursesRouter.delete,
-    // }),
 
     // Field assignments management
     fieldAssignments: createTRPCRouter({

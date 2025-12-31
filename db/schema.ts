@@ -571,6 +571,7 @@ export const inquiryReplies = pgTable("inquiry_replies", {
     .references(() => users.id),
   content: text("content").notNull(),
   isFromAdmin: boolean("is_from_admin").notNull().default(false),
+  isAiGenerated: boolean("is_ai_generated").notNull().default(false),
   attachments: jsonb("attachments"), // JSON data
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1322,16 +1323,17 @@ export const petApprovalRequests = pgTable("pet_approval_requests", {
 });
 
 // AI settings table
+export const aiSettingTypeEnum = pgEnum("ai_setting_type", ["consultations", "inquiries"]);
+
 export const aiSettings = pgTable("ai_settings", {
   id: serial("id").primaryKey(),
+  type: aiSettingTypeEnum("type").notNull().unique(), // 'consultations' or 'inquiries'
   isEnabled: boolean("is_enabled").notNull().default(true),
-  responseDelay: integer("response_delay").default(10), // seconds
+  systemPrompt: text("system_prompt").notNull(),
+  responseDelay: integer("response_delay").default(15), // seconds
   maxResponseLength: integer("max_response_length").default(1500),
-  confidenceThreshold: real("confidence_threshold").default(0.7),
-  allowedCategories: jsonb("allowed_categories"), // JSON data
-  customPrompts: jsonb("custom_prompts"), // JSON data
-  apiKey: text("api_key"),
-  model: text("model").default("gpt-3.5-turbo"),
+  updatedBy: integer("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { publicProcedure } from "../../../create-context";
+import { protectedProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { consultations } from "../../../../db/schema";
+import { consultations, aiSettings, consultationReplies } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 
 /* -------------------------------------------------------
@@ -52,65 +52,108 @@ async function createConsultationInDB(input: {
 }
 
 /* -------------------------------------------------------
- * 🤖 Function 2: AI Consultation Reply Generator
+ * 🤖 Helper Function: Call External AI API
  * -----------------------------------------------------*/
-async function generateAIConsultationReply(consultation: { id: number; category: string; description: string }) {
+async function callAI(messages: any[], maxLength: number = 1500): Promise<{
+  success: boolean;
+  response: string;
+  tokensUsed?: number;
+  processingTime?: number;
+}> {
+  const startTime = Date.now();
   try {
-    console.log("🤖 Generating AI reply for consultation:", consultation.id);
-
-    const aiResponse = await fetch("https://toolkit.rork.com/text/llm/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "system",
-            content:
-              "أنت طبيب بيطري خبير ومساعد ذكي متخصص في الاستشارات البيطرية. قدم نصائح دقيقة ومهنية وشاملة حول رعاية الحيوانات الأليفة.",
-          },
-          {
-            role: "user",
-            content: `نوع الحيوان: ${consultation.category}\nالسؤال: ${consultation.description}\n\nيرجى تقديم إجابة مهنية ومفصلة.`,
-          },
-        ],
-      }),
+    const response = await fetch('https://toolkit.rork.com/text/llm/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
     });
 
-    if (!aiResponse.ok) throw new Error("AI API request failed");
+    if (!response.ok) {
+      console.error('❌ AI API error:', response.status, response.statusText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-    const aiData = await aiResponse.json();
-    const aiReply = aiData.completion || "عذراً، لم أتمكن من توليد إجابة مناسبة في الوقت الحالي.";
+    const data = await response.json();
+    const processingTime = Date.now() - startTime;
+    let aiResponse = data.completion || 'عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.';
+    if (aiResponse.length > maxLength) {
+      aiResponse = aiResponse.substring(0, maxLength - 3) + '...';
+    }
+    return { success: true, response: aiResponse, tokensUsed: data.tokensUsed || 0, processingTime };
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('❌ Error calling AI:', error);
+    return { success: false, response: 'عذراً، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى لاحقاً.', processingTime };
+  }
+}
 
-    // 💾 Update consultation with AI reply and mark as answered
-    await db
-      .update(consultations)
-      .set({
-        status: "answered",
-        symptoms: aiReply, // Temporary: use this field until you add a `response` column
+/* -------------------------------------------------------
+ * 🤖 Function 2: Trigger Auto-Reply for Consultation
+ * -----------------------------------------------------*/
+async function triggerAutoReplyConsultation(consultation: { id: number; category: string; description: string; userId: number }) {
+  try {
+    const settings = await db.query.aiSettings.findFirst({
+      where: eq(aiSettings.type, 'consultations'),
+    });
+
+    if (!settings?.isEnabled) {
+      console.log('AI auto-reply is disabled for consultations');
+      return;
+    }
+
+    const messages = [
+      {
+        role: 'system',
+        content: settings.systemPrompt,
+      },
+      {
+        role: 'user',
+        content: `نوع الحيوان: ${consultation.category}\nالسؤال: ${consultation.description}\n\nيرجى تقديم رد مفيد ومهني:`,
+      },
+    ];
+
+    await new Promise(resolve => setTimeout(resolve, (settings.responseDelay || 15) * 1000));
+
+    const aiResult = await callAI(messages, settings.maxResponseLength || 1500);
+
+    if (aiResult.success) {
+      await db.insert(consultationReplies).values({
+        consultationId: consultation.id,
+        userId: consultation.userId,
+        content: aiResult.response,
+        isFromVet: false,
+        isAiGenerated: true,
+        createdAt: new Date(),
+      });
+      // Update consultation status to "answered"
+      await db.update(consultations).set({
+        status: 'answered',
         updatedAt: new Date(),
-      })
-      .where(eq(consultations.id, consultation.id));
-
-    console.log("✅ AI reply saved for consultation:", consultation.id);
-    return aiReply;
-  } catch (err) {
-    console.error("❌ Error generating AI reply:", err);
-    return null;
+      }).where(eq(consultations.id, consultation.id));
+      console.log('✅ AI auto-reply generated and saved for consultation:', consultation.id);
+    } else {
+      console.error('❌ Failed to generate AI auto-reply for consultation:', consultation.id, aiResult.response);
+    }
+  } catch (error) {
+    console.error('❌ Error in triggerAutoReplyConsultation:', error);
   }
 }
 
 /* -------------------------------------------------------
  * 🚀 TRPC Procedure
  * -----------------------------------------------------*/
-export const createConsultationProcedure = publicProcedure
+export const createConsultationProcedure = protectedProcedure
   .input(createConsultationSchema)
   .mutation(async ({ input }) => {
     try {
       // Step 1: Create consultation in DB
       const consultation = await createConsultationInDB(input);
 
-      // Step 2: Generate AI reply in the background
-      // setTimeout(() => generateAIConsultationReply(consultation), 5000);
+      // Step 2: Trigger AI reply generation in the background
+      if (consultation) {
+        // Do not await this, let it run in the background
+        triggerAutoReplyConsultation(consultation).catch(err => console.error("Background AI auto-reply failed:", err));
+      }
 
       // Step 3: Respond to mobile client
       return {
