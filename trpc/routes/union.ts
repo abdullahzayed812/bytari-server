@@ -12,8 +12,16 @@ import {
   unionAnnouncementTypeEnum,
   unionBranchRegionEnum,
   notifications,
+  userRoles,
+  unionBranchSupervisors,
+  adminRoles,
 } from "../../db/schema";
 import { eq, and, gte, lte, desc, count } from "drizzle-orm";
+
+const assignSupervisorSchema = z.object({
+  branchId: z.number(),
+  userId: z.number(),
+});
 
 export const unionRouter = createTRPCRouter({
   main: createTRPCRouter({
@@ -105,7 +113,10 @@ export const unionRouter = createTRPCRouter({
 
       let isFollowing = false;
       if (ctx.user) {
-        const followStatus = await db.select().from(unionFollowers).where(and(eq(unionFollowers.branchId, branch.id), eq(unionFollowers.userId, ctx.user.id)));
+        const followStatus = await db
+          .select()
+          .from(unionFollowers)
+          .where(and(eq(unionFollowers.branchId, branch.id), eq(unionFollowers.userId, ctx.user.id)));
         isFollowing = followStatus.length > 0;
       }
 
@@ -157,6 +168,52 @@ export const unionRouter = createTRPCRouter({
     delete: protectedProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
       await db.delete(unionBranches).where(eq(unionBranches.id, input));
       return { success: true };
+    }),
+    assignSupervisor: protectedProcedure.input(assignSupervisorSchema).mutation(async ({ input, ctx }) => {
+      try {
+        const currentUserRoles = await db.select().from(userRoles).where(eq(userRoles.userId, ctx.user.id));
+
+        const superAdminRole = await db.query.adminRoles.findFirst({
+          where: eq(adminRoles.name, "super_admin"),
+        });
+
+        if (!superAdminRole) {
+          throw new Error("Super admin role not found.");
+        }
+
+        const isSuperAdmin = currentUserRoles.some((role) => role.roleId === superAdminRole.id);
+
+        if (!isSuperAdmin) {
+          throw new Error("Unauthorized: Only super admins can assign supervisors.");
+        }
+
+        await db.insert(unionBranchSupervisors).values({
+          branchId: input.branchId,
+          userId: input.userId,
+        });
+
+        const unionModeratorRole = await db.query.adminRoles.findFirst({
+          where: eq(adminRoles.name, "union_moderator"),
+        });
+
+        if (unionModeratorRole) {
+          await db.insert(userRoles).values({
+            userId: input.userId,
+            roleId: unionModeratorRole.id,
+            assignedBy: ctx.user.id,
+          });
+        }
+
+        return {
+          success: true,
+        };
+      } catch (error) {
+        console.error("Error assigning supervisor:", error);
+        if (error instanceof Error) {
+          throw new Error(error.message);
+        }
+        throw new Error("Failed to assign supervisor");
+      }
     }),
   }),
 

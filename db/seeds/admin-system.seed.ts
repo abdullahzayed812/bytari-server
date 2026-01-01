@@ -45,10 +45,16 @@ export async function seedAdminSystem(db) {
         description: "إدارة المحتوى والإعلانات",
         isActive: true,
       },
+      {
+        name: "union_moderator",
+        displayName: "مشرف نقابة",
+        description: "إدارة إعلانات النقابة",
+        isActive: true,
+      },
     ])
     .returning();
 
-  const [superAdminRole, vetModeratorRole, userModeratorRole, contentManagerRole] = roles;
+  const [superAdminRole, vetModeratorRole, userModeratorRole, contentManagerRole, unionModeratorRole] = roles;
 
   // ==================== ADMIN PERMISSIONS ====================
   console.log("Creating admin permissions...");
@@ -300,6 +306,15 @@ export async function seedAdminSystem(db) {
   for (const permission of permissions.filter((p) => contentPermissionNames.includes(p.name))) {
     await db.insert(rolePermissions).values({
       roleId: contentManagerRole.id,
+      permissionId: permission.id,
+    });
+  }
+
+  // Union moderator permissions
+  const unionPermissionNames = ["manage_unions", "manage_content"];
+  for (const permission of permissions.filter((p) => unionPermissionNames.includes(p.name))) {
+    await db.insert(rolePermissions).values({
+      roleId: unionModeratorRole.id,
       permissionId: permission.id,
     });
   }

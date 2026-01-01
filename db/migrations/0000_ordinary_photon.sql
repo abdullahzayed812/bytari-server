@@ -1478,7 +1478,7 @@ CREATE TABLE "job_vacancies" (
     "requirements" text NOT NULL,
     "contact_info" text NOT NULL,
     "posted_by" text NOT NULL,
-    "status" text DEFAULT 'active' NOT NULL, -- 'active', 'inactive'
+    "status" text DEFAULT 'pending' NOT NULL, -- ''pending', 'approved', 'rejected'
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -1527,6 +1527,12 @@ CREATE TABLE "field_supervision_requests" (
 );
 
 
+-- Field supervision requests table
+CREATE TABLE "union_branch_supervisors" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "branch_id" integer not null,
+  "user_id" integer not null
+);
 
 
 -- Drop existing foreign key constraints
@@ -1786,3 +1792,9 @@ FOREIGN KEY (updated_by) REFERENCES users(id);
 ALTER TABLE "order_items" ADD CONSTRAINT "order_items_marketplace_product_id_marketplace_products_id_fk" FOREIGN KEY ("marketplace_product_id") REFERENCES "public"."marketplace_products"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "order_items" ADD CONSTRAINT "order_items_store_product_id_store_products_id_fk" FOREIGN KEY ("store_product_id") REFERENCES "public"."store_products"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "order_items" ADD CONSTRAINT "order_items_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+
+
+ALTER TABLE "union_branch_supervisors" ADD CONSTRAINT "union_branch_supervisors_branch_id_union_branches_id_fk" FOREIGN KEY ("branch_id") REFERENCES "public"."union_branches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "union_branch_supervisors" ADD CONSTRAINT "union_branch_supervisors_user_id_union_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

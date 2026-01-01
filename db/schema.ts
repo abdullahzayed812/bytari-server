@@ -555,12 +555,9 @@ export const orderItems = pgTable("order_items", {
   orderId: integer("order_id")
     .notNull()
     .references(() => orders.id),
-  productId: integer("product_id")
-    .references(() => products.id), // Legacy/Existing
-  storeProductId: integer("store_product_id")
-    .references(() => storeProducts.id), // Legacy/Existing
-  marketplaceProductId: integer("marketplace_product_id")
-    .references(() => marketplaceProducts.id), // NEW
+  productId: integer("product_id").references(() => products.id), // Legacy/Existing
+  storeProductId: integer("store_product_id").references(() => storeProducts.id), // Legacy/Existing
+  marketplaceProductId: integer("marketplace_product_id").references(() => marketplaceProducts.id), // NEW
   quantity: integer("quantity").notNull(),
   unitPrice: real("unit_price").notNull(),
   totalPrice: real("total_price").notNull(),
@@ -1862,7 +1859,7 @@ export const jobVacancies = pgTable("job_vacancies", {
   requirements: text("requirements").notNull(),
   contactInfo: text("contact_info").notNull(),
   postedBy: text("posted_by").notNull(),
-  status: text("status").notNull().default("active"), // 'active', 'inactive'
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1910,6 +1907,12 @@ export const fieldSupervisionRequests = pgTable("field_supervision_requests", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const unionBranchSupervisors = pgTable("union_branch_supervisors", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull(),
+  userId: integer("user_id").notNull(),
 });
 
 export * from "drizzle-orm";

@@ -20,7 +20,7 @@ export const jobsRouter = {
         adminId: z.number(),
         limit: z.number().optional().default(50),
         offset: z.number().optional().default(0),
-        status: z.enum(["active", "inactive", "all"]).optional().default("all"),
+        status: z.enum(["pending", "approved", "rejected", "all"]).optional().default("all"),
       })
     )
     .query(async ({ input, ctx }) => {
@@ -84,24 +84,22 @@ export const jobsRouter = {
       }
     }),
 
-  // Create new job
-  createJob: protectedProcedure
+  requestJobCreation: protectedProcedure
     .input(
       z.object({
-        adminId: z.number(),
         title: z.string(),
-        description: z.string(),
+        companyName: z.string(), // New field for company name
         location: z.string(),
         jobType: z.enum(["full-time", "part-time", "contract", "internship"]),
         salary: z.string().optional(),
+        description: z.string(),
         requirements: z.string(),
         contactInfo: z.string(),
-        postedBy: z.string(),
       })
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        console.log("Creating new job:", input.title, "by admin:", input.adminId);
+        console.log("Creating new job request:", input.title, "by admin:", ctx.user.id);
 
         const [newJob] = await db
           .insert(jobVacancies)
@@ -113,24 +111,39 @@ export const jobsRouter = {
             salary: input.salary,
             requirements: input.requirements,
             contactInfo: input.contactInfo,
-            postedBy: input.postedBy,
-            status: "active",
+            postedBy: input.companyName, // Use companyName for postedBy
+            status: "pending",
           })
           .returning();
 
         return {
           success: true,
           jobId: newJob.id.toString(),
-          message: "تم إنشاء الوظيفة بنجاح",
+          message: "تم إرسال طلب إنشاء الوظيفة بنجاح",
         };
       } catch (error) {
-        console.error("Error creating job:", error);
+        console.error("Error creating job request:", error);
         return {
           success: false,
-          message: "حدث خطأ أثناء إنشاء الوظيفة",
+          message: "حدث خطأ أثناء إرسال طلب إنشاء الوظيفة",
         };
       }
     }),
+
+  approveJob: protectedProcedure.input(z.object({ jobId: z.number() })).mutation(async ({ input }) => {
+    await db.update(jobVacancies).set({ status: "active" }).where(eq(jobVacancies.id, input.jobId));
+    return { success: true };
+  }),
+
+  rejectJob: protectedProcedure.input(z.object({ jobId: z.number() })).mutation(async ({ input }) => {
+    await db.update(jobVacancies).set({ status: "rejected" }).where(eq(jobVacancies.id, input.jobId));
+    return { success: true };
+  }),
+
+  getPendingJobs: protectedProcedure.query(async () => {
+    const jobs = await db.select().from(jobVacancies).where(eq(jobVacancies.status, "pending"));
+    return jobs;
+  }),
 
   // Update job
   updateJob: protectedProcedure
@@ -145,7 +158,7 @@ export const jobsRouter = {
         salary: z.string().optional(),
         requirements: z.string().optional(),
         contactInfo: z.string().optional(),
-        status: z.enum(["active", "inactive"]).optional(),
+        status: z.enum(["approved", "rejected"]).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
