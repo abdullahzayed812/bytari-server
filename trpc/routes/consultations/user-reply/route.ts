@@ -1,61 +1,16 @@
 import { z } from "zod";
-import { protectedProcedure } from "../../../create-context"; // Changed to protectedProcedure assuming user must be logged in
-import { db, consultations, consultationResponses, notifications, aiSettings } from "../../../../db"; // Added aiSettings
+import { protectedProcedure } from "../../../create-context";
+import { db, consultations, consultationResponses, notifications, aiSettings } from "../../../../db";
 import { eq } from "drizzle-orm";
+import { callAI } from "../../../../lib/ai";
 
 const userReplyConsultationSchema = z.object({
   consultationId: z.number(),
-  userId: z.number(), // صاحب الاستشارة الأصلي
+  userId: z.number(),
   content: z.string().min(1),
   attachments: z.string().optional(),
 });
 
-/* -------------------------------------------------------
- * 🤖 Helper Function: Call External AI API (duplicated)
- * -----------------------------------------------------*/
-async function callAI(
-  messages: any[],
-  maxLength: number = 1500
-): Promise<{
-  success: boolean;
-  response: string;
-  tokensUsed?: number;
-  processingTime?: number;
-}> {
-  const startTime = Date.now();
-  try {
-    const response = await fetch("https://toolkit.rork.com/text/llm/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages }),
-    });
-
-    if (!response.ok) {
-      console.error("❌ AI API error:", response.status, response.statusText);
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const processingTime = Date.now() - startTime;
-    let aiResponse = data.completion || "عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.";
-    if (aiResponse.length > maxLength) {
-      aiResponse = aiResponse.substring(0, maxLength - 3) + "...";
-    }
-    return { success: true, response: aiResponse, tokensUsed: data.tokensUsed || 0, processingTime };
-  } catch (error) {
-    const processingTime = Date.now() - startTime;
-    console.error("❌ Error calling AI:", error);
-    return {
-      success: false,
-      response: "عذراً، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى لاحقاً.",
-      processingTime,
-    };
-  }
-}
-
-/* -------------------------------------------------------
- * 🤖 Function: Trigger Auto-Reply from User Consultation
- * -----------------------------------------------------*/
 async function triggerAutoReplyForUserConsultation(
   consultationId: number,
   originalConsultation: any,
@@ -96,13 +51,12 @@ async function triggerAutoReplyForUserConsultation(
     if (aiResult.success) {
       await db.insert(consultationResponses).values({
         consultationId: consultationId,
-        userId: originalConsultation.userId, // Associate with the original user
+        userId: originalConsultation.userId,
         content: aiResult.response,
         isFromVet: false,
         isAiGenerated: true,
         createdAt: new Date(),
       });
-      // Update consultation status to "answered"
       await db
         .update(consultations)
         .set({
@@ -111,6 +65,16 @@ async function triggerAutoReplyForUserConsultation(
         })
         .where(eq(consultations.id, consultationId));
       console.log("✅ AI auto-reply generated and saved for user consultation reply:", consultationId);
+
+      await db.insert(notifications).values({
+        userId: originalConsultation.userId,
+        title: "🤖 رد آلي على استشارتك",
+        message: `تمت إضافة رد آلي على استشارتك رقم ${consultationId}. يمكنك الاطلاع عليه الآن.`,
+        type: "consultation",
+        data: JSON.stringify({
+          consultationId: consultationId,
+        }),
+      });
     } else {
       console.error(
         "❌ Failed to generate AI auto-reply for user consultation reply:",
@@ -123,11 +87,10 @@ async function triggerAutoReplyForUserConsultation(
   }
 }
 
-export const userReplyConsultationProcedure = protectedProcedure // Changed to protectedProcedure
+export const userReplyConsultationProcedure = protectedProcedure
   .input(userReplyConsultationSchema)
-  .mutation(async ({ input }: { input: z.infer<typeof userReplyConsultationSchema> }) => {
+  .mutation(async ({ input }) => {
     try {
-      // التحقق من وجود الاستشارة
       const consultation = await db
         .select()
         .from(consultations)
@@ -140,18 +103,14 @@ export const userReplyConsultationProcedure = protectedProcedure // Changed to p
 
       const currentConsultation = consultation[0];
 
-      // التحقق من أن المستخدم هو صاحب الاستشارة الأصلي
       if (currentConsultation.userId !== input.userId) {
         throw new Error("Unauthorized: You can only reply to your own consultations");
       }
 
-      // التحقق من أن المحادثة مفتوحة للرد
       if (currentConsultation.status === "closed") {
-        // Fixed typo stauts -> status
         throw new Error("المحادثة مغلقة ولا يمكن الرد عليها. تم إغلاق المحادثة من قبل المشرف.");
       }
 
-      // إضافة الرد
       const [newResponse] = await db
         .insert(consultationResponses)
         .values({
@@ -159,31 +118,25 @@ export const userReplyConsultationProcedure = protectedProcedure // Changed to p
           userId: input.userId,
           content: input.content,
           attachments: input.attachments,
-          isFromVet: false, // User reply, not from vet/admin
-          isAiGenerated: false, // User reply is not AI generated
+          isFromVet: false,
+          isAiGenerated: false,
           createdAt: new Date(),
         })
         .returning();
 
-      // تحديث حالة الاستشارة إلى "في الانتظار" لأن المستخدم رد
       await db
         .update(consultations)
         .set({
-          status: "pending", // العودة إلى حالة الانتظار لرد المشرف
+          status: "pending",
           updatedAt: new Date(),
         })
         .where(eq(consultations.id, input.consultationId));
 
-      // Trigger AI auto-reply for the user's reply in the background
       triggerAutoReplyForUserConsultation(input.consultationId, currentConsultation, input.content).catch((err) =>
         console.error("Background AI auto-reply for user consultation reply failed:", err)
       );
 
-      // إرسال إشعار للمشرف المختص
-      // (This part might need to be adjusted based on who should be notified when a user replies and AI auto-responds)
-      // For now, if there's a moderatorId, notify them that the user replied.
       if (currentConsultation.moderatorId) {
-        // Assuming consultation might have a moderatorId
         await db.insert(notifications).values({
           userId: currentConsultation.moderatorId,
           title: "رد جديد على استشارة",
