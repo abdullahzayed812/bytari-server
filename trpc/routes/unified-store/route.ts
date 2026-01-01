@@ -8,41 +8,44 @@ const StoreTypeEnum = z.enum(["veterinarian", "pet_owner"]);
 
 const VET_CATEGORIES = [
     {
-        id: "medicine",
+        id: "pharmaceuticals",
         name: "أدوية",
         subcategories: [
             { id: "antibiotics", name: "مضادات حيوية" },
-            { id: "painkillers", name: "مسكنات" },
-            { id: "vitamins", name: "فيتامينات" },
+            { id: "anti_inflammatory", name: "مضادات التهاب" },
+            { id: "vaccines", name: "لقاحات" },
+            { id: "anesthetics", name: "مخدرات" },
+            { id: "dermatology", name: "أدوية جلدية" },
             { id: "other", name: "أخرى" },
         ],
     },
     {
-        id: "equipment",
+        id: "medical_equipment",
         name: "معدات طبية",
         subcategories: [
             { id: "surgical", name: "أدوات جراحية" },
             { id: "diagnostic", name: "أدوات تشخيص" },
-            { id: "lab", name: "معدات مختبر" },
+            { id: "furniture", name: "أثاث عيادات" },
+            { id: "sterilization", name: "تعقيم" },
             { id: "other", name: "أخرى" },
         ],
     },
     {
-        id: "vaccines",
-        name: "لقاحات",
+        id: "lab_supplies",
+        name: "مستلزمات مختبر",
         subcategories: [
-            { id: "dogs", name: "لقاحات كلاب" },
-            { id: "cats", name: "لقاحات قطط" },
-            { id: "livestock", name: "لقاحات مواشي" },
-            { id: "poultry", name: "لقاحات دواجن" },
+            { id: "test_kits", name: "أطقم اختبار" },
+            { id: "equipment", name: "مجاهر وأجهزة طرد مركزي" },
+            { id: "consumables", name: "مستهلكات" },
         ],
     },
     {
-        id: "supplements",
-        name: "مكملات غذائية",
+        id: "nutrition_supplements",
+        name: "تغذية ومكملات",
         subcategories: [
+            { id: "therapeutic", name: "حميات علاجية" },
             { id: "growth", name: "محفزات نمو" },
-            { id: "immunity", name: "رافعات مناعة" },
+            { id: "vitamins", name: "فيتامينات" },
             { id: "other", name: "أخرى" },
         ],
     },
@@ -54,9 +57,10 @@ const PET_OWNER_CATEGORIES = [
         name: "قطط",
         subcategories: [
             { id: "food", name: "طعام" },
-            { id: "accessories", name: "إكسسوارات" },
-            { id: "care", name: "عناية" },
+            { id: "litter", name: "رمل ومستلزمات" },
             { id: "toys", name: "ألعاب" },
+            { id: "care", name: "صحة وعناية" },
+            { id: "beds", name: "أسرة وحقائب" },
         ],
     },
     {
@@ -64,9 +68,10 @@ const PET_OWNER_CATEGORIES = [
         name: "كلاب",
         subcategories: [
             { id: "food", name: "طعام" },
-            { id: "accessories", name: "إكسسوارات" },
-            { id: "care", name: "عناية" },
+            { id: "leashes", name: "أطواق ومقاود" },
             { id: "toys", name: "ألعاب" },
+            { id: "care", name: "صحة وعناية" },
+            { id: "beds", name: "أسرة وتدريب" },
         ],
     },
     {
@@ -74,7 +79,7 @@ const PET_OWNER_CATEGORIES = [
         name: "طيور",
         subcategories: [
             { id: "food", name: "طعام" },
-            { id: "cages", name: "أقفاص" },
+            { id: "cages", name: "أقفاص ومجاثم" },
             { id: "accessories", name: "إكسسوارات" },
         ],
     },
@@ -83,8 +88,8 @@ const PET_OWNER_CATEGORIES = [
         name: "أسماك",
         subcategories: [
             { id: "food", name: "طعام" },
-            { id: "tanks", name: "أحواض" },
-            { id: "accessories", name: "إكسسوارات" },
+            { id: "tanks", name: "أحواض وديكور" },
+            { id: "filters", name: "فلاتر ومضخات" },
         ],
     },
     {
@@ -93,7 +98,16 @@ const PET_OWNER_CATEGORIES = [
         subcategories: [
             { id: "food", name: "أعلاف" },
             { id: "equipment", name: "معدات" },
-            { id: "supplements", name: "مكملات" },
+            { id: "health", name: "صحة" },
+        ],
+    },
+    {
+        id: "small_animals",
+        name: "حيوانات صغيرة",
+        subcategories: [
+            { id: "food", name: "طعام" },
+            { id: "cages", name: "أقفاص وفرش" },
+            { id: "accessories", name: "إكسسوارات" },
         ],
     },
 ];

@@ -296,6 +296,15 @@ import { veterinarianApprovalsRouter } from "./routes/admin/veterinarian-approva
 // Jobs management
 import { jobsRouter } from "./routes/admin/jobs/route";
 
+// Admin sections management
+import {
+  listSectionsProcedure,
+  createSectionProcedure,
+  updateSectionProcedure,
+  deleteSectionProcedure,
+  reorderSectionsProcedure,
+} from "./routes/admin/sections/route";
+
 // Admin notifications
 import {
   getAdminNotificationsProcedure,
@@ -738,7 +747,11 @@ export const appRouter = createTRPCRouter({
       updateTip: updateTipProcedure,
 
       // Sections
-      updateSection: updateAppSectionProcedure,
+      listSections: listSectionsProcedure,
+      createSection: createSectionProcedure,
+      updateSection: updateSectionProcedure,
+      deleteSection: deleteSectionProcedure,
+      reorderSections: reorderSectionsProcedure,
 
       // Statistics
       getStatistics: getContentStatisticsProcedure,

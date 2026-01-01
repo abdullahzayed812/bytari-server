@@ -16,6 +16,7 @@ import { seedAISettings } from "./ai-settings.seed";
 // import { seedProducts } from "./products.seed";
 // import { seedWarehouses } from "./warehouses.seed";
 // import { seedPoultryFarms } from "./poultry-farms.seed";
+import { seedSections } from "./sections.seed";
 import { cleanDatabase } from "./helpers";
 
 export async function seedDatabase() {
@@ -68,6 +69,9 @@ export async function seedDatabase() {
 
     // AI Settings
     await seedAISettings(db, adminData.superAdmin);
+
+    // App Sections
+    await seedSections(db);
 
     // // Vet Books
     // const vetBooksData = await seedVetBooks(db, adminData.superAdmin);
@@ -141,6 +145,4 @@ export async function seedDatabase() {
 }
 
 // Run if called directly
-if (import.meta.main) {
-  seedDatabase();
-}
+seedDatabase();

@@ -1,0 +1,193 @@
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { appSections } from "../schema";
+import { logStep } from "./helpers";
+
+export async function seedSections(db: NodePgDatabase<any>) {
+    console.log("📱 Seeding app sections...");
+
+    const sectionsData = [
+        // Pet Owner Sections
+        {
+            name: "consultations",
+            title: "الاستشارات",
+            icon: "MessageCircle",
+            color: "#10B981",
+            route: "/consultation",
+            userType: "pet_owner",
+            order: 1,
+            isSystem: true,
+        },
+        {
+            name: "appointments",
+            title: "المواعيد",
+            icon: "Calendar",
+            color: "#3B82F6",
+            route: "/appointments",
+            userType: "pet_owner",
+            order: 2,
+            isSystem: true,
+        },
+        {
+            name: "clinics",
+            title: "العيادات",
+            icon: "Hospital",
+            color: "#0EA5E9",
+            route: "/clinics-list",
+            userType: "pet_owner",
+            order: 3,
+            isSystem: true,
+        },
+        {
+            name: "tips",
+            title: "أفضل النصائح",
+            icon: "Lightbulb",
+            color: "#F59E0B",
+            route: "/tips-list",
+            userType: "pet_owner",
+            order: 4,
+            isSystem: true,
+        },
+        {
+            name: "lost-pets",
+            title: "الحيوانات المفقودة",
+            icon: "Heart",
+            color: "#EF4444",
+            route: "/lost-pets-list",
+            userType: "pet_owner",
+            order: 5,
+            isSystem: true,
+        },
+        {
+            name: "reminders",
+            title: "التذكيرات",
+            icon: "Bell",
+            color: "#F59E0B",
+            route: "/reminders",
+            userType: "pet_owner",
+            order: 6,
+            isSystem: true,
+        },
+        {
+            name: "premium",
+            title: "العضوية المميزة",
+            icon: "Award",
+            color: "#10B981",
+            route: "/premium-subscription",
+            userType: "pet_owner",
+            order: 7,
+            isActive: false,
+            isSystem: true,
+        },
+        {
+            name: "settings",
+            title: "الإعدادات",
+            icon: "Settings",
+            color: "#6B7280",
+            route: "/settings",
+            userType: "all",
+            order: 8,
+            isSystem: true,
+        },
+        {
+            name: "contact-us",
+            title: "تواصل معنا",
+            icon: "Phone",
+            color: "#10B981",
+            route: "/contact-us",
+            userType: "all",
+            order: 9,
+            isSystem: true,
+        },
+
+        // Veterinarian Sections
+        {
+            name: "inquiries",
+            title: "الاستفسارات",
+            icon: "MessageCircle",
+            color: "#10B981",
+            route: "inquiries",
+            userType: "veterinarian",
+            order: 1,
+            isSystem: true,
+        },
+        {
+            name: "magazine",
+            title: "المجلة البيطرية",
+            icon: "FileText",
+            color: "#8B5CF6",
+            route: "/vet-magazine",
+            userType: "veterinarian",
+            order: 2,
+            isSystem: true,
+        },
+        {
+            name: "books",
+            title: "الكتب البيطرية",
+            icon: "BookOpen",
+            color: "#F59E0B",
+            route: "/vet-books",
+            userType: "veterinarian",
+            order: 3,
+            isSystem: true,
+        },
+        {
+            name: "union",
+            title: "نقابة الأطباء البيطريين",
+            icon: "Users",
+            color: "#EF4444",
+            route: "/vet-union",
+            userType: "veterinarian",
+            order: 4,
+            isSystem: true,
+        },
+        {
+            name: "hospitals",
+            title: "المستشفيات البيطرية العراقية",
+            icon: "Hospital",
+            color: "#0EA5E9",
+            route: "/vet-hospitals",
+            userType: "veterinarian",
+            order: 5,
+            isSystem: true,
+        },
+        {
+            name: "offices",
+            title: "المذاخر البيطرية",
+            icon: "Building2",
+            color: "#6B7280",
+            route: "/vet-stores-list",
+            userType: "veterinarian",
+            order: 6,
+            isSystem: true,
+        },
+        {
+            name: "job-vacancies",
+            title: "الوظائف الشاغرة",
+            icon: "Briefcase",
+            color: "#DC2626",
+            route: "/job-vacancies",
+            userType: "veterinarian",
+            order: 7,
+            isSystem: true,
+        },
+        {
+            name: "courses-seminars",
+            title: "دورات وندوات",
+            icon: "UserCheck",
+            color: "#059669",
+            route: "/courses-seminars",
+            userType: "veterinarian",
+            order: 8,
+            isSystem: true,
+        },
+    ];
+
+    for (const section of sectionsData) {
+        await db.insert(appSections).values(section).onConflictDoUpdate({
+            target: appSections.name,
+            set: section,
+        });
+    }
+
+    logStep(`Seeded ${sectionsData.length} app sections\n`);
+}

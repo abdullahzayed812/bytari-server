@@ -498,7 +498,7 @@ export const petSightingReports = pgTable("pet_sighting_reports", {
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   storeId: integer("store_id").references(() => stores.id, { onDelete: "cascade" }),
-  vetStoreId: integer("vet_store_id").references(() => vetStores.id, { onDelete: "cascade" }),
+  // vetStoreId: integer("vet_store_id").references(() => vetStores.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   price: real("price").notNull(),
@@ -1092,13 +1092,14 @@ export const appSections = pgTable("app_sections", {
   name: text("name").notNull().unique(),
   title: text("title").notNull(),
   description: text("description"),
-  icon: text("icon"),
-  color: text("color"),
-  route: text("route"),
+  icon: text("icon").notNull(),
+  color: text("color").notNull(),
+  route: text("route").notNull(),
   isActive: boolean("is_active").notNull().default(true),
-  order: integer("order").default(0),
+  order: integer("order").notNull().default(0),
   userType: text("user_type").notNull().default("all"), // 'all', 'user', 'vet', 'admin'
   requiredRole: text("required_role"), // Optional role requirement
+  isSystem: boolean("is_system").notNull().default(false),
   metadata: jsonb("metadata"), // JSON data for additional config
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1914,5 +1915,7 @@ export const unionBranchSupervisors = pgTable("union_branch_supervisors", {
   branchId: integer("branch_id").notNull(),
   userId: integer("user_id").notNull(),
 });
+
+// App sections table
 
 export * from "drizzle-orm";

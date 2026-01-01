@@ -242,6 +242,16 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         .from(veterinarians)
         .where(eq(veterinarians.isVerified, false));
 
+      // Get pending inquiries and consultations
+      const [pendingInquiriesCount] = await db
+        .select({ count: count() })
+        .from(inquiries)
+        .where(eq(inquiries.status, "pending"));
+      const [pendingConsultationsCount] = await db
+        .select({ count: count() })
+        .from(consultations)
+        .where(eq(consultations.status, "pending"));
+
       // Mock field assignments count (replace with actual query when table is ready)
       const pendingFieldAssignments = 3;
 
@@ -249,11 +259,15 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         pendingApprovals: pendingApprovalsCount.count || 0,
         pendingPetApprovals: pendingPetApprovalsCount.count || 0,
         pendingVetApprovals: pendingVetApprovalsCount.count || 0,
+        pendingInquiries: pendingInquiriesCount.count || 0,
+        pendingConsultations: pendingConsultationsCount.count || 0,
         pendingFieldAssignments: pendingFieldAssignments,
         total:
           (pendingApprovalsCount.count || 0) +
           (pendingPetApprovalsCount.count || 0) +
           (pendingVetApprovalsCount.count || 0) +
+          (pendingInquiriesCount.count || 0) +
+          (pendingConsultationsCount.count || 0) +
           pendingFieldAssignments,
       };
     } catch (error) {
@@ -263,8 +277,10 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         pendingApprovals: 8,
         pendingPetApprovals: 12,
         pendingVetApprovals: 5,
+        pendingInquiries: 4,
+        pendingConsultations: 6,
         pendingFieldAssignments: 3,
-        total: 28,
+        total: 38,
       };
     }
   });

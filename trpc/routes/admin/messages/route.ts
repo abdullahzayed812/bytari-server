@@ -8,7 +8,7 @@ import {
   notifications,
   systemMessageReplies,
 } from "../../../../db";
-import { eq, and, desc, inArray, sql, asc } from "drizzle-orm";
+import { eq, and, desc, inArray, sql, asc, exists } from "drizzle-orm";
 
 // Send system message
 export const sendSystemMessage = publicProcedure
@@ -390,3 +390,56 @@ export const getUnreadMessagesCount = publicProcedure
       return { count: 0 }; // Return default value instead of throwing
     }
   });
+
+// Helper function to send welcome message to a specific user
+export async function sendWelcomeMessageToUser(userId: number, userType: string) {
+  try {
+    // Check if user already has a welcome message
+    const [existing] = await db
+      .select({ id: systemMessageRecipients.id })
+      .from(systemMessageRecipients)
+      .innerJoin(systemMessages, eq(systemMessageRecipients.messageId, systemMessages.id))
+      .where(and(eq(systemMessageRecipients.userId, userId), eq(systemMessages.type, "announcement"), eq(systemMessages.title, "مرحباً بك في بيتاري!")))
+      .limit(1);
+
+    if (existing) return;
+
+    const title = "مرحباً بك في بيتاري!";
+    const content =
+      userType === "veterinarian"
+        ? "مرحباً بك دكتور في تطبيق بيتاري. يمكنك الآن إدارة عيادتك، متابعة الحالات المرضية، والتواصل مع أصحاب الحيوانات الأليفة بكل سهولة."
+        : "مرحباً بك في تطبيق بيتاري. يمكنك الآن إضافة حيواناتك الأليفة، حجز المواعيد في العيادات، والحصول على استشارات طبية فورية.";
+
+    // Create system message
+    const [message] = await db
+      .insert(systemMessages)
+      .values({
+        senderId: 1, // System/Admin ID
+        title,
+        content,
+        type: "announcement",
+        targetAudience: "specific",
+        targetUserIds: [userId],
+        priority: "high",
+        sentAt: new Date(),
+      })
+      .returning();
+
+    // Create recipient record
+    await db.insert(systemMessageRecipients).values({
+      messageId: message.id,
+      userId,
+    });
+
+    // Create notification
+    await db.insert(notifications).values({
+      userId,
+      title,
+      message: "لديك رسالة ترحيبية جديدة",
+      type: "system",
+      data: JSON.stringify({ messageId: message.id, isWelcome: true }),
+    });
+  } catch (error) {
+    console.error("Error sending welcome message:", error);
+  }
+}

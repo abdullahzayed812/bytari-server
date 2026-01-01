@@ -109,21 +109,21 @@ CREATE TABLE ai_settings (
 
 --> statement-breakpoint
 CREATE TABLE "app_sections" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"name" text NOT NULL,
-	"title" text NOT NULL,
-	"description" text,
-	"icon" text,
-	"color" text,
-	"route" text,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"order" integer DEFAULT 0,
-	"user_type" text DEFAULT 'all' NOT NULL,
-	"required_role" text,
-	"metadata" jsonb,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "app_sections_name_unique" UNIQUE("name")
+	  "id" serial PRIMARY KEY NOT NULL,
+  "name" text NOT NULL UNIQUE,
+  "title" text NOT NULL,
+  "description" text,
+  "icon" text NOT NULL,
+  "color" text NOT NULL,
+  "route" text NOT NULL,
+  "is_active" boolean DEFAULT true NOT NULL,
+  "order" integer DEFAULT 0 NOT NULL,
+  "user_type" text DEFAULT 'all' NOT NULL,
+  "required_role" text,
+  "is_system" boolean DEFAULT false NOT NULL,
+  "metadata" jsonb,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "appointments" (

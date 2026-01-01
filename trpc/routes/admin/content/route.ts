@@ -461,57 +461,6 @@ export const updateTipProcedure = publicProcedure
     }
   });
 
-// Manage App Sections
-export const updateAppSectionProcedure = publicProcedure
-  .input(
-    z.object({
-      adminId: z.number(),
-      sectionId: z.number(),
-      title: z.string().optional(),
-      description: z.string().optional(),
-      icon: z.string().optional(),
-      color: z.string().optional(),
-      route: z.string().optional(),
-      isActive: z.boolean().optional(),
-      order: z.number().optional(),
-    })
-  )
-  .mutation(async ({ input }: { input: any }) => {
-    try {
-      // TODO: Implement proper permission checking
-
-      const { adminId, sectionId, ...updateData } = input;
-
-      // Update section
-      const [updatedSection] = await db
-        .update(appSections)
-        .set({
-          ...updateData,
-          updatedAt: new Date(),
-        })
-        .where(eq(appSections.id, sectionId))
-        .returning();
-
-      if (!updatedSection) {
-        throw new Error("Section not found");
-      }
-
-      // Log activity
-      await db.insert(adminActivityLogs).values({
-        adminId,
-        action: "update",
-        resource: "app_section",
-        resourceId: sectionId,
-        details: JSON.stringify(updateData),
-      });
-
-      return updatedSection;
-    } catch (error) {
-      console.error("Error updating app section:", error);
-      throw new Error(error instanceof Error ? error.message : "Failed to update app section");
-    }
-  });
-
 // Get content statistics
 export const getContentStatisticsProcedure = publicProcedure
   .input(

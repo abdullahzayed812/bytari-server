@@ -11,6 +11,7 @@ import {
   JWTPayload,
 } from "../../../lib/auth";
 import { AuthenticationError, ValidationError, ConflictError, NotFoundError } from "../../../lib/errors";
+import { sendWelcomeMessageToUser } from "../admin/messages/route";
 
 // Input validation schemas
 const registerSchema = z.object({
@@ -48,12 +49,6 @@ const resetPasswordSchema = z.object({
 export const registerProcedure = publicProcedure.input(registerSchema).mutation(async ({ input }) => {
   try {
     const { email, password, name, phone, userType } = input;
-
-    // Validate password strength
-    // const passwordValidation = validatePassword(password);
-    // if (!passwordValidation.valid) {
-    //   throw new ValidationError(passwordValidation.message);
-    // }
 
     // Check if user already exists
     const [existingUser] = await db
@@ -106,6 +101,18 @@ export const registerProcedure = publicProcedure.input(registerSchema).mutation(
     }
     console.error("Registration error:", error);
     throw new ValidationError("Failed to register user");
+  } finally {
+    // Send welcome message in background
+    if (input?.email) {
+      const [user] = await db
+        .select({ id: users.id, userType: users.userType })
+        .from(users)
+        .where(eq(users.email, input.email.toLowerCase()))
+        .limit(1);
+      if (user) {
+        sendWelcomeMessageToUser(user.id, user.userType).catch(console.error);
+      }
+    }
   }
 });
 
@@ -131,13 +138,11 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
       .limit(1);
 
     if (!user) {
-      // throw new AuthenticationError("Invalid email or password");
       return { success: false, message: "Invalid email or password" };
     }
 
     // Check if user is active
     if (!user.isActive) {
-      // throw new AuthenticationError("Account is inactive. Please contact support.");
       return { success: false, message: "Account is inactive. Please contact support." };
     }
 
@@ -190,7 +195,6 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
 
       const permissionNames = permissionsData.map((p) => p.permissionName);
 
-      // Build the complex moderatorPermissions object
       moderatorPermissions = {
         userManagement: permissionNames.includes("manage_users"),
         generalMessages: permissionNames.includes("send_notifications"),
@@ -233,16 +237,6 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
     // Return user data (without password)
     const { password: _, ...userWithoutPassword } = user;
 
-    console.log("Current user: ", {
-      ...userWithoutPassword,
-      accountType: user.userType,
-      licenseVerified: isVerifiedVet,
-      hasAdminAccess,
-      isSuperAdmin,
-      isModerator,
-      moderatorPermissions,
-    });
-
     return {
       success: true,
       message: "Login successful",
@@ -264,6 +258,18 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
     }
     console.error("Login error:", error);
     throw new AuthenticationError("Login failed");
+  } finally {
+    // Send welcome message if not already sent
+    if (input?.email) {
+      const [user] = await db
+        .select({ id: users.id, userType: users.userType })
+        .from(users)
+        .where(eq(users.email, input.email.toLowerCase()))
+        .limit(1);
+      if (user) {
+        sendWelcomeMessageToUser(user.id, user.userType).catch(console.error);
+      }
+    }
   }
 });
 
@@ -420,9 +426,6 @@ export const changePasswordProcedure = protectedProcedure
 
 // Logout (client-side token removal, server-side we could implement token blacklisting)
 export const logoutProcedure = protectedProcedure.mutation(async ({ ctx }) => {
-  // In a full implementation, you might want to blacklist the token
-  // For now, we'll just return success and rely on client-side token removal
-
   return {
     success: true,
     message: "Logout successful",

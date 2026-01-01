@@ -13,6 +13,7 @@ export interface JWTPayload {
   userId: number;
   email: string;
   userType: string;
+  roles?: string[];
   iat?: number;
   exp?: number;
 }
@@ -52,8 +53,8 @@ export function generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): s
  */
 export function generateRefreshToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
   return jwt.sign(
-    { ...payload, type: 'refresh' }, 
-    JWT_SECRET, 
+    { ...payload, type: 'refresh' },
+    JWT_SECRET,
     {
       expiresIn: REFRESH_TOKEN_EXPIRES_IN,
       issuer: 'veterinary-backend',
@@ -81,7 +82,7 @@ export function verifyToken(token: string): JWTPayload {
       issuer: 'veterinary-backend',
       audience: 'veterinary-app'
     }) as JWTPayload;
-    
+
     return decoded;
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
@@ -99,12 +100,12 @@ export function verifyToken(token: string): JWTPayload {
  */
 export function extractTokenFromHeader(authHeader: string | null): string | null {
   if (!authHeader) return null;
-  
+
   const parts = authHeader.split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') {
     return null;
   }
-  
+
   return parts[1];
 }
 
@@ -117,16 +118,16 @@ export function refreshAccessToken(refreshToken: string): string {
       issuer: 'veterinary-backend',
       audience: 'veterinary-app'
     }) as JWTPayload & { type?: string };
-    
+
     // Ensure it's a refresh token
     if (decoded.type !== 'refresh') {
       throw new Error('Invalid refresh token');
     }
-    
+
     // Generate new access token
     const { type, iat, exp, ...payload } = decoded;
     return generateAccessToken(payload);
-    
+
   } catch (error) {
     throw new Error('Invalid refresh token');
   }
@@ -139,19 +140,19 @@ export function validatePassword(password: string): { valid: boolean; message?: 
   if (password.length < 8) {
     return { valid: false, message: 'Password must be at least 8 characters long' };
   }
-  
+
   if (!/(?=.*[a-z])/.test(password)) {
     return { valid: false, message: 'Password must contain at least one lowercase letter' };
   }
-  
+
   if (!/(?=.*[A-Z])/.test(password)) {
     return { valid: false, message: 'Password must contain at least one uppercase letter' };
   }
-  
+
   if (!/(?=.*\d)/.test(password)) {
     return { valid: false, message: 'Password must contain at least one number' };
   }
-  
+
   return { valid: true };
 }
 
