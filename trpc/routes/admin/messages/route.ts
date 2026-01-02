@@ -399,16 +399,22 @@ export async function sendWelcomeMessageToUser(userId: number, userType: string)
       .select({ id: systemMessageRecipients.id })
       .from(systemMessageRecipients)
       .innerJoin(systemMessages, eq(systemMessageRecipients.messageId, systemMessages.id))
-      .where(and(eq(systemMessageRecipients.userId, userId), eq(systemMessages.type, "announcement"), eq(systemMessages.title, "مرحباً بك في بيتاري!")))
+      .where(
+        and(
+          eq(systemMessageRecipients.userId, userId),
+          eq(systemMessages.type, "announcement"),
+          eq(systemMessages.title, "مرحباً بك في تطبيق بيطري!")
+        )
+      )
       .limit(1);
 
     if (existing) return;
 
-    const title = "مرحباً بك في بيتاري!";
+    const title = "مرحباً بك في تطبيق بيطري!";
     const content =
       userType === "veterinarian"
-        ? "مرحباً بك دكتور في تطبيق بيتاري. يمكنك الآن إدارة عيادتك، متابعة الحالات المرضية، والتواصل مع أصحاب الحيوانات الأليفة بكل سهولة."
-        : "مرحباً بك في تطبيق بيتاري. يمكنك الآن إضافة حيواناتك الأليفة، حجز المواعيد في العيادات، والحصول على استشارات طبية فورية.";
+        ? "مرحباً بك دكتور في تطبيق تطبيق بيطري. يمكنك الآن إدارة عيادتك، متابعة الحالات المرضية، والتواصل مع أصحاب الحيوانات الأليفة بكل سهولة."
+        : "مرحباً بك في تطبيق تطبيق بيطري. يمكنك الآن إضافة حيواناتك الأليفة، حجز المواعيد في العيادات، والحصول على استشارات طبية فورية.";
 
     // Create system message
     const [message] = await db

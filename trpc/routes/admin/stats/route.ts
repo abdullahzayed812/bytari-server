@@ -14,6 +14,7 @@ import {
   stores,
   notifications,
   systemMessages,
+  systemMessageRecipients,
 } from "../../../../db";
 import { and, count, eq, or, sql } from "drizzle-orm";
 
@@ -285,7 +286,7 @@ export const getPendingApprovalCountsProcedure = publicProcedure
     }
   });
 
-export const getUserMessageCountsProcedure = publicProcedure
+export const getUserMessageNotificationCountsProcedure = publicProcedure
   .input(
     z.object({
       userId: z.number(),
@@ -302,15 +303,13 @@ export const getUserMessageCountsProcedure = publicProcedure
       // Active system messages count (targeted or global)
       const [systemMessagesCount] = await db
         .select({ count: count() })
-        .from(systemMessages)
+        .from(systemMessageRecipients)
+        .innerJoin(systemMessages, eq(systemMessageRecipients.messageId, systemMessages.id))
         .where(
           and(
-            eq(systemMessages.isActive, true),
-            or(
-              eq(systemMessages.targetAudience, "all"),
-              sql`${systemMessages.targetUserIds} @> ${JSON.stringify([input.userId])}`
-            ),
-            or(sql`${systemMessages.expiresAt} IS NULL`, sql`${systemMessages.expiresAt} > NOW()`)
+            eq(systemMessageRecipients.userId, input.userId),
+            eq(systemMessageRecipients.isRead, false),
+            eq(systemMessages.isActive, true)
           )
         );
 

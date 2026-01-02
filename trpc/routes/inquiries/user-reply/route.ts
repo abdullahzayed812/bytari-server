@@ -66,8 +66,8 @@ async function triggerAutoReplyForUserInquiry(inquiryId: number, originalInquiry
 
       await db.insert(notifications).values({
         userId: originalInquiry.userId,
-        title: "🤖 رد آلي على استفسارك",
-        message: `تمت إضافة رد آلي على استفسارك رقم ${inquiryId}. يمكنك الاطلاع عليه الآن.`,
+        title: "🤖 تم الرد على استفسارك",
+        message: `تم الرد على استفسارك رقم ${inquiryId}. يمكنك الاطلاع عليه الآن.`,
         type: "inquiry",
         data: JSON.stringify({
           inquiryId: inquiryId,

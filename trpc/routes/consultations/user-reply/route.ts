@@ -68,8 +68,8 @@ async function triggerAutoReplyForUserConsultation(
 
       await db.insert(notifications).values({
         userId: originalConsultation.userId,
-        title: "🤖 رد آلي على استشارتك",
-        message: `تمت إضافة رد آلي على استشارتك رقم ${consultationId}. يمكنك الاطلاع عليه الآن.`,
+        title: "🤖 تم الرد على استشارتك",
+        message: `تمت إضافة رد على استشارتك رقم ${consultationId}. يمكنك الاطلاع عليه الآن.`,
         type: "consultation",
         data: JSON.stringify({
           consultationId: consultationId,
@@ -136,9 +136,9 @@ export const userReplyConsultationProcedure = protectedProcedure
         console.error("Background AI auto-reply for user consultation reply failed:", err)
       );
 
-      if (currentConsultation.moderatorId) {
+      if (currentConsultation?.moderatorId) {
         await db.insert(notifications).values({
-          userId: currentConsultation.moderatorId,
+          userId: currentConsultation?.moderatorId,
           title: "رد جديد على استشارة",
           message: `تم إضافة رد جديد على استشارة رقم ${input.consultationId} تم تعيينها لك من قبل المستخدم.`,
           type: "consultation",

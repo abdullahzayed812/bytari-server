@@ -264,7 +264,6 @@ import {
   updateVetMagazineProcedure,
   createTipProcedure,
   updateTipProcedure,
-  updateAppSectionProcedure,
   getContentStatisticsProcedure,
   getVetStoresForHomeProcedure,
   updateStoreHomeVisibilityProcedure,
@@ -277,7 +276,7 @@ import {
   getSystemStatsProcedure,
   getDetailedStatsProcedure,
   getPendingApprovalCountsProcedure,
-  getUserMessageCountsProcedure,
+  getUserMessageNotificationCountsProcedure,
 } from "./routes/admin/stats/route";
 
 // Admin approvals
@@ -771,7 +770,7 @@ export const appRouter = createTRPCRouter({
       getSystemStats: getSystemStatsProcedure,
       getDetailedStats: getDetailedStatsProcedure,
       getPendingApprovalCounts: getPendingApprovalCountsProcedure,
-      getUserMessageCounts: getUserMessageCountsProcedure,
+      getUserMessageNotificationCounts: getUserMessageNotificationCountsProcedure,
     }),
 
     // User management
