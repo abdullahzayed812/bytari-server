@@ -15,6 +15,8 @@ import {
   userRoles,
   unionBranchSupervisors,
   adminRoles,
+  adminPermissions,
+  rolePermissions,
 } from "../../db/schema";
 import { eq, and, gte, lte, desc, count } from "drizzle-orm";
 
@@ -171,20 +173,25 @@ export const unionRouter = createTRPCRouter({
     }),
     assignSupervisor: protectedProcedure.input(assignSupervisorSchema).mutation(async ({ input, ctx }) => {
       try {
-        const currentUserRoles = await db.select().from(userRoles).where(eq(userRoles.userId, ctx.user.id));
+        const permissionsData = await db
+          .select({
+            permissionName: adminPermissions.name,
+          })
+          .from(rolePermissions)
+          .innerJoin(adminPermissions, eq(rolePermissions.permissionId, adminPermissions.id))
+          .innerJoin(userRoles, eq(rolePermissions.roleId, userRoles.roleId))
+          .where(and(eq(userRoles.userId, ctx.user.id), eq(adminPermissions.isActive, true)));
 
+        const hasManageUnions = permissionsData.some((p) => p.permissionName === "manage_unions");
+
+        const currentUserRoles = await db.select().from(userRoles).where(eq(userRoles.userId, ctx.user.id));
         const superAdminRole = await db.query.adminRoles.findFirst({
           where: eq(adminRoles.name, "super_admin"),
         });
+        const isSuperAdmin = superAdminRole && currentUserRoles.some((role) => role.roleId === superAdminRole.id);
 
-        if (!superAdminRole) {
-          throw new Error("Super admin role not found.");
-        }
-
-        const isSuperAdmin = currentUserRoles.some((role) => role.roleId === superAdminRole.id);
-
-        if (!isSuperAdmin) {
-          throw new Error("Unauthorized: Only super admins can assign supervisors.");
+        if (!isSuperAdmin && !hasManageUnions) {
+          throw new Error("Unauthorized: You don't have permission to manage unions.");
         }
 
         await db.insert(unionBranchSupervisors).values({
@@ -192,15 +199,33 @@ export const unionRouter = createTRPCRouter({
           userId: input.userId,
         });
 
-        const unionModeratorRole = await db.query.adminRoles.findFirst({
-          where: eq(adminRoles.name, "union_moderator"),
+        const unionBranchSupervisorRole = await db.query.adminRoles.findFirst({
+          where: eq(adminRoles.name, "union_branch_supervisor"),
         });
 
-        if (unionModeratorRole) {
+        if (unionBranchSupervisorRole) {
           await db.insert(userRoles).values({
             userId: input.userId,
-            roleId: unionModeratorRole.id,
+            roleId: unionBranchSupervisorRole.id,
             assignedBy: ctx.user.id,
+          });
+        }
+
+        // Send notification to the new supervisor
+        const [branch] = await db
+          .select({ name: unionBranches.name })
+          .from(unionBranches)
+          .where(eq(unionBranches.id, input.branchId));
+
+        if (branch) {
+          await db.insert(notifications).values({
+            userId: input.userId,
+            title: "تم تعيينك كمشرف",
+            message: `لقد تم تعيينك كمشرف على فرع نقابة ${branch.name}.`,
+            type: "union_supervisor_assignment",
+            data: JSON.stringify({
+              branchId: input.branchId,
+            }),
           });
         }
 

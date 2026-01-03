@@ -20,7 +20,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(), // Hashed password
   name: text("name").notNull(),
   phone: text("phone"),
-  userType: text("user_type").notNull().default("pet_owner"), // 'user', 'vet', 'admin'
+  userType: text("user_type").notNull().default("pet_owner"), // 'pet_owner', 'veterinarian', 'admin'
   avatar: text("avatar"),
   isActive: boolean("is_active").notNull().default(true),
   emailVerified: boolean("email_verified").notNull().default(false),

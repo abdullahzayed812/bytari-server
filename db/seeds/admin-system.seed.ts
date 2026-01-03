@@ -51,10 +51,23 @@ export async function seedAdminSystem(db) {
         description: "إدارة إعلانات النقابة",
         isActive: true,
       },
+      {
+        name: "union_branch_supervisor",
+        displayName: "مشرف فرع نقابة",
+        description: "إدارة فرع نقابة معين",
+        isActive: true,
+      },
     ])
     .returning();
 
-  const [superAdminRole, vetModeratorRole, userModeratorRole, contentManagerRole, unionModeratorRole] = roles;
+  const [
+    superAdminRole,
+    vetModeratorRole,
+    userModeratorRole,
+    contentManagerRole,
+    unionModeratorRole,
+    unionBranchSupervisorRole,
+  ] = roles;
 
   // ==================== ADMIN PERMISSIONS ====================
   console.log("Creating admin permissions...");
@@ -113,6 +126,12 @@ export async function seedAdminSystem(db) {
         name: "manage_unions",
         displayName: "إدارة النقابات",
         description: "إدارة النقابات البيطرية",
+        category: "unions",
+      },
+      {
+        name: "manage_union_branch",
+        displayName: "إدارة فرع النقابة",
+        description: "إدارة فرع نقابة معين",
         category: "unions",
       },
       {
@@ -315,6 +334,15 @@ export async function seedAdminSystem(db) {
   for (const permission of permissions.filter((p) => unionPermissionNames.includes(p.name))) {
     await db.insert(rolePermissions).values({
       roleId: unionModeratorRole.id,
+      permissionId: permission.id,
+    });
+  }
+
+  // Union branch supervisor permissions
+  const unionBranchSupervisorPermissionNames = ["manage_union_branch"];
+  for (const permission of permissions.filter((p) => unionBranchSupervisorPermissionNames.includes(p.name))) {
+    await db.insert(rolePermissions).values({
+      roleId: unionBranchSupervisorRole.id,
       permissionId: permission.id,
     });
   }

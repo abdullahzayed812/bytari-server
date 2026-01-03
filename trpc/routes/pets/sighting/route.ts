@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { db, petSightingReports, lostPets, users } from "../../../../db";
+import { db, petSightingReports, lostPets, users, notifications } from "../../../../db";
 import { eq, and } from "drizzle-orm";
 
 // Report a lost pet sighting
@@ -34,6 +34,25 @@ export const reportPetSighting = publicProcedure
           images: input.images,
         })
         .returning();
+
+      // Send notification to pet owner
+      const [lostPet] = await db
+        .select({ ownerId: lostPets.ownerId, name: lostPets.name })
+        .from(lostPets)
+        .where(eq(lostPets.id, input.lostPetId));
+
+      if (lostPet && lostPet.ownerId) {
+        await db.insert(notifications).values({
+          userId: lostPet.ownerId,
+          title: `بلاغ جديد عن حيوانك المفقود`,
+          message: `تم الإبلاغ عن مشاهدة حيوانك المفقود "${lostPet.name}".`,
+          type: "lost_pet_sighting",
+          data: JSON.stringify({
+            lostPetId: input.lostPetId,
+            reportId: report.id,
+          }),
+        });
+      }
 
       return report;
     } catch (error) {
@@ -119,7 +138,7 @@ export const dismissPetSightingReport = publicProcedure
       await db
         .update(lostPets)
         .set({
-          status: 'found',
+          status: "found",
           foundAt: new Date(),
           foundBy: input.ownerId,
         })
@@ -173,7 +192,7 @@ export const closePetSightingReport = publicProcedure
       await db
         .update(lostPets)
         .set({
-          status: 'closed',
+          status: "closed",
           foundAt: new Date(),
           foundBy: input.ownerId,
         })

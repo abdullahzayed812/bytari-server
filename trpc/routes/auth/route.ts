@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure } from "../../create-context";
-import { db, users, veterinarians, userRoles, adminRoles, rolePermissions, adminPermissions } from "../../../db";
+import {
+  db,
+  users,
+  veterinarians,
+  userRoles,
+  adminRoles,
+  rolePermissions,
+  adminPermissions,
+  unionBranchSupervisors,
+} from "../../../db";
 import { eq, and } from "drizzle-orm";
 import {
   hashPassword,
@@ -163,6 +172,13 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
 
     const roles = userRoleData.map((r) => r.roleName);
 
+    // Fetch supervised branch IDs
+    const supervisedBranches = await db
+      .select({ branchId: unionBranchSupervisors.branchId })
+      .from(unionBranchSupervisors)
+      .where(eq(unionBranchSupervisors.userId, user.id));
+    const supervisedBranchIds = supervisedBranches.map((b) => b.branchId);
+
     // Determine permissions
     const isSuperAdmin = roles.includes("super_admin");
 
@@ -203,7 +219,8 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
         superPermissions: isSuperAdmin,
         advertisements: permissionNames.includes("manage_ads"),
         homePageManagement: permissionNames.includes("manage_content"),
-        unionManagement: permissionNames.includes("manage_union"),
+        unionManagement: permissionNames.includes("manage_unions"),
+        unionBranchManagement: permissionNames.includes("manage_union_branch"),
         hospitalsManagement: permissionNames.includes("manage_hospitals"),
         coursesManagement: permissionNames.includes("manage_courses"),
         approvals: permissionNames.some((p) => p.startsWith("manage_") && p.endsWith("_approvals")),
@@ -212,12 +229,12 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
         clinics: permissionNames.includes("manage_clinics"),
         products: permissionNames.includes("manage_products"),
         content: permissionNames.includes("manage_content"),
-        sections: ["stores", "clinics", "pets", "tips", "articles", "books"].filter((section) =>
+        sections: ["stores", "clinics", "pets", "tips", "articles", "books", "unions"].filter((section) =>
           permissionNames.includes(`manage_${section}`)
         ),
         storeManagement: {
-          vetStores: permissionNames.includes("manage_vet_stores"),
-          petOwnerStores: permissionNames.includes("manage_user_stores"),
+          vetStores: permissionNames.includes("manage_vet_stores") || permissionNames.includes("manage_stores"),
+          petOwnerStores: permissionNames.includes("manage_user_stores") || permissionNames.includes("manage_stores"),
         },
         approvalsSubPermissions: permissionNames.filter((p) => p.startsWith("manage_") && p.endsWith("_approvals")),
         storeManagementSubPermissions: ["manage_vet_stores", "manage_user_stores"].filter((p) =>
@@ -248,7 +265,9 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
         isSuperAdmin,
         isModerator,
         moderatorPermissions,
+        roles,
         avatar: user?.avatar || "",
+        supervisedBranchIds,
       },
       tokens,
     };
