@@ -12,15 +12,15 @@ const transporter = nodemailer.createTransport({
   port: 465,
   secure: true,
   auth: {
-    user: process.env.EMAIL_USER || "baytariapp@gmail.com",
-    pass: process.env.EMAIL_PASS || "zuh123456zuh",
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
 export async function sendEmail(options: EmailOptions) {
   try {
     const info = await transporter.sendMail({
-      from: `"Bytari App" <${process.env.EMAIL_USER || "baytariapp@gmail.com"}>`,
+      from: `"Bytari App" <${process.env.EMAIL_USER}>`,
       to: options.to,
       subject: options.subject,
       text: options.text,
