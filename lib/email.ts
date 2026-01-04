@@ -20,12 +20,14 @@ const transporter = nodemailer.createTransport({
 export async function sendEmail(options: EmailOptions) {
   try {
     const info = await transporter.sendMail({
-      from: `"Bytari App" <${process.env.EMAIL_USER}>`,
+      from: `"Bytari App" <${process.env.EMAIL_USER || "baytariapp@gmail.com"}>`,
       to: options.to,
       subject: options.subject,
       text: options.text,
       html: options.html,
     });
+
+    console.log({ options });
 
     console.log("Message sent: %s", info.messageId);
     return info;

@@ -17,7 +17,6 @@ import {
   generateAuthTokens,
   refreshAccessToken,
   validatePassword,
-  JWTPayload,
 } from "../../../lib/auth";
 import { AuthenticationError, ValidationError, ConflictError, NotFoundError } from "../../../lib/errors";
 import { sendWelcomeMessageToUser } from "../admin/messages/route";
@@ -29,6 +28,7 @@ const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   phone: z.string().optional(),
   userType: z.enum(["pet_owner", "veterinarian"]).default("pet_owner"),
+  avatar: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -57,7 +57,7 @@ const resetPasswordSchema = z.object({
 // User registration
 export const registerProcedure = publicProcedure.input(registerSchema).mutation(async ({ input }) => {
   try {
-    const { email, password, name, phone, userType } = input;
+    const { email, password, name, phone, userType, avatar } = input;
 
     // Check if user already exists
     const [existingUser] = await db
@@ -82,6 +82,7 @@ export const registerProcedure = publicProcedure.input(registerSchema).mutation(
         name,
         phone,
         userType,
+        avatar,
         isActive: true,
       })
       .returning({

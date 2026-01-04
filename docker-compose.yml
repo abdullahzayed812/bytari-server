@@ -21,6 +21,8 @@ services:
   backend:
     build: .
     container_name: veterinary-api
+    env_file:
+      - .env
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-veterinary_app}
