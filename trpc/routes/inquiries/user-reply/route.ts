@@ -107,7 +107,7 @@ export const userReplyInquiryProcedure = protectedProcedure
           inquiryId: input.inquiryId,
           userId: input.userId,
           content: input.content,
-          attachments: input.attachments,
+          attachments: input.attachments ? JSON.parse(input.attachments) : null,
           isFromAdmin: false,
           isAiGenerated: false,
           createdAt: new Date(),

@@ -117,7 +117,7 @@ export const userReplyConsultationProcedure = protectedProcedure
           consultationId: input.consultationId,
           userId: input.userId,
           content: input.content,
-          attachments: input.attachments,
+          attachments: input.attachments ? JSON.parse(input.attachments) : null,
           isFromVet: false,
           isAiGenerated: false,
           createdAt: new Date(),

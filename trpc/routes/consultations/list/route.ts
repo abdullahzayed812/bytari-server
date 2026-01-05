@@ -25,11 +25,11 @@ export const getConsultationsListProcedure = publicProcedure
       }
 
       if (petType) {
-        conditions.push(eq(consultations.petType, petType));
+        conditions.push(eq(consultations.category, petType));
       }
 
       if (priority) {
-        conditions.push(eq(consultations.priority, priority));
+        conditions.push(eq(consultations.urgencyLevel, priority));
       }
 
       // Fetch consultations with user info

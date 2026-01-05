@@ -212,6 +212,7 @@ CREATE TABLE "consultations" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"pet_id" integer,
+	"moderator_id" integer,
 	"title" text NOT NULL,
 	"description" text NOT NULL,
 	"symptoms" text,
@@ -312,6 +313,7 @@ CREATE TABLE "field_assignments" (
 CREATE TABLE "inquiries" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
+	"moderator_id" integer,
 	"title" text NOT NULL,
 	"content" text NOT NULL,
 	"category" text NOT NULL,
@@ -1798,3 +1800,7 @@ ALTER TABLE "order_items" ADD CONSTRAINT "order_items_product_id_products_id_fk"
 ALTER TABLE "union_branch_supervisors" ADD CONSTRAINT "union_branch_supervisors_branch_id_union_branches_id_fk" FOREIGN KEY ("branch_id") REFERENCES "public"."union_branches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "union_branch_supervisors" ADD CONSTRAINT "union_branch_supervisors_user_id_union_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "consultations" ADD CONSTRAINT "consultations_moderator_id_users_id_fk" FOREIGN KEY ("moderator_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_moderator_id_users_id_fk" FOREIGN KEY ("moderator_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;

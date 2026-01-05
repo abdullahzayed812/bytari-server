@@ -569,6 +569,7 @@ export const inquiries = pgTable("inquiries", {
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
+  moderatorId: integer("moderator_id").references(() => users.id),
   title: text("title").notNull(),
   content: text("content").notNull(),
   category: text("category").notNull(),
@@ -604,6 +605,7 @@ export const consultations = pgTable("consultations", {
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
+  moderatorId: integer("moderator_id").references(() => users.id),
   petId: integer("pet_id").references(() => pets.id),
   title: text("title").notNull(),
   description: text("description").notNull(),

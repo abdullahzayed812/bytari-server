@@ -27,8 +27,6 @@ export async function sendEmail(options: EmailOptions) {
       html: options.html,
     });
 
-    console.log({ options });
-
     console.log("Message sent: %s", info.messageId);
     return info;
   } catch (error) {

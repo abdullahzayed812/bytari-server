@@ -31,7 +31,7 @@ export const replyInquiryProcedure = publicProcedure
           inquiryId: input.inquiryId,
           userId: input.responderId,
           content: input.content,
-          attachments: input.attachments,
+          attachments: input.attachments ? JSON.parse(input.attachments) : null,
           // isOfficial: true,
           // keepConversationOpen: input.keepConversationOpen,
         })

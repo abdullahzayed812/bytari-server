@@ -138,9 +138,9 @@ export const veterinarianApprovalsRouter = {
           // Send email to user
           await sendEmail({
             to: app.email,
-            subject: "تم الموافقة على طلب تسجيلك في تطبيق بيتاري",
-            text: `مرحباً ${app.name},\n\nيسعدنا إعلامك بأنه قد تمت الموافقة على طلب تسجيلك كطبيب بيطري في تطبيق بيتاري. يمكنك الآن تسجيل الدخول إلى حسابك والاستفادة من جميع الميزات المتاحة.\n\nفريق بيتاري`,
-            html: `<p>مرحباً ${app.name},</p><p>يسعدنا إعلامك بأنه قد تمت الموافقة على طلب تسجيلك كطبيب بيطري في تطبيق بيتاري. يمكنك الآن تسجيل الدخول إلى حسابك والاستفادة من جميع الميزات المتاحة.</p><p>فريق بيتاري</p>`,
+            subject: "تم الموافقة على طلب تسجيلك في تطبيق بيطري",
+            text: `مرحباً ${app.name},\n\nيسعدنا إعلامك بأنه قد تمت الموافقة على طلب تسجيلك كطبيب بيطري في تطبيق بيطري. يمكنك الآن تسجيل الدخول إلى حسابك والاستفادة من جميع الميزات المتاحة.\n\nفريق بيطري`,
+            html: `<p>مرحباً ${app.name},</p><p>يسعدنا إعلامك بأنه قد تمت الموافقة على طلب تسجيلك كطبيب بيطري في تطبيق بيطري. يمكنك الآن تسجيل الدخول إلى حسابك والاستفادة من جميع الميزات المتاحة.</p><p>فريق بيطري</p>`,
           });
 
           return {
@@ -234,13 +234,17 @@ export const veterinarianApprovalsRouter = {
           // Send email to user
           await sendEmail({
             to: app.email,
-            subject: "بخصوص طلب تسجيلك في تطبيق بيتاري",
-            text: `مرحباً ${app.name},\n\nنأسف لإعلامك بأنه قد تم رفض طلب تسجيلك كطبيب بيطري في تطبيق بيتاري.\n\nالسبب: ${
+            subject: "بخصوص طلب تسجيلك في تطبيق بيطري",
+            text: `مرحباً ${
+              app.name
+            },\n\nنأسف لإعلامك بأنه قد تم رفض طلب تسجيلك كطبيب بيطري في تطبيق بيطري.\n\nالسبب: ${
               input.rejectionReason || "لم يتم تحديد سبب."
-            }\n\nإذا كان لديك أي استفسار، يمكنك التواصل معنا.\n\nفريق بيتاري`,
-            html: `<p>مرحباً ${app.name},</p><p>نأسف لإعلامك بأنه قد تم رفض طلب تسجيلك كطبيب بيطري في تطبيق بيتاري.</p><p><b>السبب:</b> ${
+            }\n\nإذا كان لديك أي استفسار، يمكنك التواصل معنا.\n\nفريق بيطري`,
+            html: `<p>مرحباً ${
+              app.name
+            },</p><p>نأسف لإعلامك بأنه قد تم رفض طلب تسجيلك كطبيب بيطري في تطبيق بيطري.</p><p><b>السبب:</b> ${
               input.rejectionReason || "لم يتم تحديد سبب."
-            }</p><p>إذا كان لديك أي استفسار، يمكنك التواصل معنا.</p><p>فريق بيتاري</p>`,
+            }</p><p>إذا كان لديك أي استفسار، يمكنك التواصل معنا.</p><p>فريق بيطري</p>`,
           });
 
           return {
@@ -328,6 +332,7 @@ export const veterinarianApprovalsRouter = {
         province: z.string(),
         gender: z.enum(["male", "female"]),
         veterinarianType: z.enum(["student", "veterinarian"]),
+        avatar: z.string().optional(),
         password: z.string().min(6),
         idFrontImage: z.string().optional(),
         idBackImage: z.string().optional(),
@@ -358,6 +363,7 @@ export const veterinarianApprovalsRouter = {
             phone: input.phone,
             password: hashedPassword,
             userType: "veterinarian",
+            avatar: input.avatar,
             isActive: false,
             createdAt: new Date(),
             updatedAt: new Date(),

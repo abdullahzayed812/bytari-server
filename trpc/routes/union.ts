@@ -17,12 +17,13 @@ import {
   adminRoles,
   adminPermissions,
   rolePermissions,
+  users,
 } from "../../db/schema";
 import { eq, and, gte, lte, desc, count } from "drizzle-orm";
 
 const assignSupervisorSchema = z.object({
   branchId: z.number(),
-  userId: z.number(),
+  email: z.string().email(),
 });
 
 export const unionRouter = createTRPCRouter({
@@ -194,9 +195,16 @@ export const unionRouter = createTRPCRouter({
           throw new Error("Unauthorized: You don't have permission to manage unions.");
         }
 
+        const userToAssign = await db.select().from(users).where(eq(users.email, input.email));
+
+        if (userToAssign.length === 0) {
+          throw new Error("User not found");
+        }
+        const userId = userToAssign[0].id;
+
         await db.insert(unionBranchSupervisors).values({
           branchId: input.branchId,
-          userId: input.userId,
+          userId: userId,
         });
 
         const unionBranchSupervisorRole = await db.query.adminRoles.findFirst({
@@ -205,7 +213,7 @@ export const unionRouter = createTRPCRouter({
 
         if (unionBranchSupervisorRole) {
           await db.insert(userRoles).values({
-            userId: input.userId,
+            userId: userId,
             roleId: unionBranchSupervisorRole.id,
             assignedBy: ctx.user.id,
           });
@@ -219,7 +227,7 @@ export const unionRouter = createTRPCRouter({
 
         if (branch) {
           await db.insert(notifications).values({
-            userId: input.userId,
+            userId: userId,
             title: "تم تعيينك كمشرف",
             message: `لقد تم تعيينك كمشرف على فرع نقابة ${branch.name}.`,
             type: "union_supervisor_assignment",
@@ -332,7 +340,11 @@ export const unionRouter = createTRPCRouter({
             title: `إعلان جديد: ${input.title}`,
             message: input.content.substring(0, 100),
             type: "announcement" as const,
-            data: JSON.stringify({ announcementId: newAnnouncement[0].id }),
+            data: JSON.stringify({
+              announcementId: newAnnouncement[0].id,
+              branchId: input.branchId,
+              mainUnionId: input.mainUnionId,
+            }),
           }));
 
           await db.insert(notifications).values(notificationData);
@@ -559,6 +571,13 @@ export const unionRouter = createTRPCRouter({
     delete: protectedProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
       await db.delete(unionUsers).where(eq(unionUsers.id, input));
       return { success: true };
+    }),
+    getUserByEmail: protectedProcedure.input(z.string().email()).query(async ({ ctx, input }) => {
+      const user = await db.select().from(users).where(eq(users.email, input));
+      if (user.length === 0) {
+        throw new Error("User not found");
+      }
+      return user[0];
     }),
   }),
 });
