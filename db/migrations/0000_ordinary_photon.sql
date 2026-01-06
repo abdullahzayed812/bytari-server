@@ -745,6 +745,15 @@ CREATE TABLE "stores" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+
+-- Hospital Followers table
+CREATE TABLE "store_followers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"store_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
 --> statement-breakpoint
 CREATE TABLE "vet_stores" (
   "id" serial PRIMARY KEY NOT NULL,
@@ -1711,6 +1720,9 @@ ALTER TABLE "field_supervision_requests"
 -- ALTER TABLE "vet_stores" ADD COLUMN "images" jsonb;
 -- ALTER TABLE "vet_stores" ADD COLUMN "services" jsonb;
 
+ALTER TABLE "store_followers" ADD CONSTRAINT "store_followers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "store_followers" ADD CONSTRAINT "store_followers_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "stores"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- FK → users
 ALTER TABLE "comments" 

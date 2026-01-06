@@ -128,6 +128,11 @@ import {
   updateStorePermissionsProcedure,
   updateStoreWorkingHoursProcedure,
 } from "./routes/stores/settings/route";
+import { followStoreProcedure } from "./routes/stores/follow/route";
+import { unfollowStoreProcedure } from "./routes/stores/unfollow/route";
+import { getStoreFollowersProcedure } from "./routes/stores/getFollowers/route";
+import { getStoreFollowerCountProcedure } from "./routes/stores/getFollowerCount/route";
+import { isFollowingStoreProcedure } from "./routes/stores/isFollowing/route";
 
 // Clinic routes
 import {
@@ -566,6 +571,11 @@ export const appRouter = createTRPCRouter({
     getUserApprovedStores: getUserApprovedStoresProcedure,
     update: updateStoreProcedure,
     delete: deleteStoreProcedure,
+    follow: followStoreProcedure,
+    unfollow: unfollowStoreProcedure,
+    getFollowers: getStoreFollowersProcedure,
+    getFollowerCount: getStoreFollowerCountProcedure,
+    isFollowing: isFollowingStoreProcedure,
 
     products: createTRPCRouter({
       get: getStoreProductProcedure,

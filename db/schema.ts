@@ -695,6 +695,17 @@ export const stores = pgTable("stores", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const storeFollowers = pgTable("store_followers", {
+  id: serial("id").primaryKey(),
+  storeId: integer("store_id")
+    .notNull()
+    .references(() => stores.id),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Store Staff Table - Similar to clinic_staff
 export const storeStaff = pgTable("store_staff", {
   id: serial("id").primaryKey(),
