@@ -32,10 +32,12 @@ import {
 import {
   // getPetProfileProcedure,
   updatePetProfileProcedure,
-  deletePetProcedure,
+  deletePetProcedure as adminDeletePetProcedure,
   searchPetsProcedure,
 } from "./routes/admin/pets/route";
 import { createPetProcedure } from "./routes/pets/create/route";
+import { updatePetProcedure } from "./routes/pets/update/route";
+import { deletePetProcedure } from "./routes/pets/delete/route";
 import { getUserPetsProcedure, getAllPetsForAdminProcedure } from "./routes/pets/ownership/route";
 import {
   createPetApprovalProcedure,
@@ -458,6 +460,8 @@ export const appRouter = createTRPCRouter({
 
   pets: createTRPCRouter({
     create: createPetProcedure,
+    update: updatePetProcedure,
+    delete: deletePetProcedure,
     getProfile: getPetProfileProcedure,
     getUserPets: getUserPetsProcedure,
     getAllForAdmin: getAllPetsForAdminProcedure,
@@ -797,7 +801,7 @@ export const appRouter = createTRPCRouter({
     // Pet management
     pets: createTRPCRouter({
       updateProfile: updatePetProfileProcedure,
-      delete: deletePetProcedure,
+      delete: adminDeletePetProcedure,
       search: searchPetsProcedure,
       // Pet approval management
       getPendingApprovals: getPendingPetApprovalsProcedure,

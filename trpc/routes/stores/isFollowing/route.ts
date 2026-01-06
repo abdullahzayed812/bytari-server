@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
 import { db, storeFollowers } from "../../../../db";
@@ -8,22 +7,17 @@ export const isFollowingStoreProcedure = protectedProcedure
   .input(
     z.object({
       storeId: z.number(),
+      userId: z.number(),
     })
   )
   .query(async ({ input, ctx }) => {
     try {
-      const userId = ctx.user.id;
-      const { storeId } = input;
+      const { storeId, userId } = input;
 
       const existingFollow = await db
         .select()
         .from(storeFollowers)
-        .where(
-          and(
-            eq(storeFollowers.storeId, storeId),
-            eq(storeFollowers.userId, userId)
-          )
-        );
+        .where(and(eq(storeFollowers.storeId, storeId), eq(storeFollowers.userId, userId)));
 
       return {
         success: true,
