@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { approvalRequests, db, products, stores, storeStaff, veterinarians } from "../../../../db";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { approvalRequests, db, products, storeFollowers, stores, storeStaff, veterinarians } from "../../../../db";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
 export const listStoresProcedure = publicProcedure
   .input(
@@ -142,15 +142,24 @@ export const getUserApprovedStoresProcedure = publicProcedure
         };
       }
 
-      // Fetch store details
-      const userStores = await db
-        .select()
+      // Fetch store details along with counts
+      const storesWithAggregates = await db
+        .select({
+          store: stores, // Select all fields from the stores table
+          totalProducts: sql<number>`count(DISTINCT ${products.id})`.as("totalProducts"), // Count products
+          followers: sql<number>`count(DISTINCT ${storeFollowers.userId})`.as("followers"), // Count followers
+          // totalSales is already directly in the stores table, no need for aggregation here if it's updated separately
+        })
         .from(stores)
-        .where(and(eq(stores.isActive, true), inArray(stores.id, allStoreIds)));
+        .leftJoin(products, eq(stores.id, products.storeId)) // Left join with products
+        .leftJoin(storeFollowers, eq(stores.id, storeFollowers.storeId)) // Left join with storeFollowers
+        .where(and(eq(stores.isActive, true), inArray(stores.id, allStoreIds)))
+        .groupBy(stores.id) // Group by store ID to get aggregates per store
+        .orderBy(desc(stores.createdAt)); // Or whatever appropriate order
 
       return {
         success: true,
-        stores: userStores.map((store: any) => {
+        stores: storesWithAggregates.map(({ store, totalProducts, followers }: any) => {
           const isOwned = ownedStoreIds.includes(store.id);
           const isAssigned = assignedStoreIds.includes(store.id);
           const assignment = assignmentDetails.get(store.id);
@@ -163,6 +172,9 @@ export const getUserApprovedStoresProcedure = publicProcedure
 
           return {
             ...store,
+            totalProducts, // Add totalProducts
+            followers, // Add followers
+            // totalSales is already part of 'store' object, no need to add separately
             ...(isOwned && { needsRenewal, daysRemaining }),
             images: store.images ? (typeof store.images === "string" ? JSON.parse(store.images) : store.images) : [],
             isOwned,
@@ -170,11 +182,11 @@ export const getUserApprovedStoresProcedure = publicProcedure
             // Include assignment details if it's an assigned store
             ...(isAssigned && assignment
               ? {
-                role: assignment.role,
-                assignedAt: assignment.assignedAt,
-                staffStatus: assignment.status,
-                staffNotes: assignment.notes,
-              }
+                  role: assignment.role,
+                  assignedAt: assignment.assignedAt,
+                  staffStatus: assignment.status,
+                  staffNotes: assignment.notes,
+                }
               : {}),
           };
         }),
@@ -283,11 +295,11 @@ export const getUserStoresProcedure = publicProcedure
             // assignment details (if employee)
             ...(isAssigned && assignment
               ? {
-                role: assignment.role,
-                assignedAt: assignment.assignedAt,
-                staffStatus: assignment.status,
-                staffNotes: assignment.notes,
-              }
+                  role: assignment.role,
+                  assignedAt: assignment.assignedAt,
+                  staffStatus: assignment.status,
+                  staffNotes: assignment.notes,
+                }
               : {}),
           };
         })

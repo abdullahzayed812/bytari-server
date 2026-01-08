@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { adminProcedure, protectedProcedure, publicProcedure } from "../../../create-context";
-import { db, clinics, approvalRequests, users, veterinarians, vetPermissions, clinicStaff } from "../../../../db";
+import {
+  db,
+  clinics,
+  approvalRequests,
+  users,
+  veterinarians,
+  vetPermissions,
+  clinicStaff,
+  clinicStats,
+} from "../../../../db";
 import { eq, and, inArray } from "drizzle-orm";
 
 // ============== GET USER CLINICS (UPDATED) ==============
@@ -193,15 +202,21 @@ export const getUserApprovedClinicsProcedure = publicProcedure
         };
       }
 
-      // Fetch clinic details
-      const userClinics = await db
-        .select()
+      // Fetch clinic details along with stats
+      const clinicsWithStats = await db
+        .select({
+          clinic: clinics, // Select all fields from the clinics table
+          totalAnimals: clinicStats.totalAnimals,
+          activePatients: clinicStats.activePatients,
+          completedTreatments: clinicStats.completedTreatments,
+        })
         .from(clinics)
+        .leftJoin(clinicStats, eq(clinics.id, clinicStats.clinicId)) // Left join with clinicStats
         .where(and(eq(clinics.isActive, true), inArray(clinics.id, allClinicIds)));
 
       return {
         success: true,
-        clinics: userClinics.map((clinic: any) => {
+        clinics: clinicsWithStats.map(({ clinic, totalAnimals, activePatients, completedTreatments }: any) => {
           const isOwned = ownedClinicIds.includes(clinic.id);
           const isAssigned = assignedClinicIds.includes(clinic.id);
 
@@ -213,6 +228,9 @@ export const getUserApprovedClinicsProcedure = publicProcedure
 
           return {
             ...clinic,
+            totalAnimals: totalAnimals || 0, // Add with default 0 if null from left join
+            activePatients: activePatients || 0, // Add with default 0 if null
+            completedTreatments: completedTreatments || 0, // Add with default 0 if null
             ...(isOwned && { needsRenewal, daysRemaining }),
             isOwned,
             isAssigned,
