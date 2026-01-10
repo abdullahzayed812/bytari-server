@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, desc, and, or, gt, isNull, sql } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, pets, users, clinics, clinicAccessRequests, approvedClinicAccess, veterinarians } from "../../../../db";
+import { db, pets, users, clinics, clinicAccessRequests, approvedClinicAccess, veterinarians, notifications } from "../../../../db";
 
 // Vet requests access to pet
 export const requestClinicAccessProcedure = protectedProcedure
@@ -80,12 +80,14 @@ export const requestClinicAccessProcedure = protectedProcedure
         })
         .returning();
 
-      // TODO: Send notification to pet owner
-      // await sendNotificationToOwner(pet.ownerId, {
-      //   title: "طلب صلاحية وصول عيادة",
-      //   message: `العيادة تطلب صلاحية الوصول إلى حيوانك ${pet.name}`,
-      //   data: { requestId: accessRequest.id, petId: input.petId }
-      // });
+      // Send notification to pet owner
+      await db.insert(notifications).values({
+        userId: pet.ownerId,
+        title: "طلب صلاحية وصول عيادة",
+        message: `العيادة تطلب صلاحية الوصول إلى حيوانك ${pet.name}`,
+        type: "clinic_access_request",
+        data: { requestId: accessRequest.id, petId: input.petId },
+      });
 
       return {
         success: true,
@@ -196,11 +198,31 @@ export const approveClinicAccessProcedure = protectedProcedure
         })
         .returning();
 
-      // TODO: Send notification to clinic
-      // await sendNotificationToClinic(accessRequest.request.clinicId, {
-      //   title: "تمت الموافقة على طلب الصلاحية",
-      //   message: `تمت الموافقة على طلب الصلاحية للحيوان ${accessRequest.request.petId}`,
-      // });
+      // Send notification to clinic
+      const clinic = await db.query.clinics.findFirst({
+        where: eq(clinics.id, accessRequest.request.clinicId),
+      });
+
+      if (clinic) {
+        // Find all vets in the clinic
+        const clinicVets = await db
+          .select({ id: users.id })
+          .from(users)
+          .leftJoin(veterinarians, eq(veterinarians.userId, users.id))
+          .leftJoin(clinicStaff, eq(clinicStaff.veterinarianId, veterinarians.id))
+          .where(eq(clinicStaff.clinicId, clinic.id));
+
+        // Send notification to all vets in the clinic
+        for (const vet of clinicVets) {
+          await db.insert(notifications).values({
+            userId: vet.id,
+            title: "تمت الموافقة على طلب الصلاحية",
+            message: `تمت الموافقة على طلب الصلاحية للحيوان ${accessRequest.request.petId}`,
+            type: "clinic_access_approved",
+            data: { requestId: accessRequest.request.id, petId: accessRequest.request.petId },
+          });
+        }
+      }
 
       return {
         success: true,

@@ -414,10 +414,14 @@ import { getVetStoreByIdProcedure } from "./routes/vet-stores/getById/route";
 import { addVetStoreProductProcedure } from "./routes/vet-stores/products/create/route";
 import { listVetStoreProductsProcedure } from "./routes/vet-stores/products/list/route";
 import { unifiedStoreRouter } from "./routes/unified-store/route";
+import { reviewsRouter } from "./routes/reviews/route";
 
 export const appRouter = createTRPCRouter({
   // Unified Store Router
   unifiedStore: createTRPCRouter(unifiedStoreRouter),
+
+  reviews: reviewsRouter,
+
 
   // ... existing routes ...
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, desc, and, lt } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, petReminders, pets, users } from "../../../../db";
+import { db, petReminders, pets, users, notifications } from "../../../../db";
 
 // Get all reminders for a clinic
 export const getClinicRemindersProcedure = protectedProcedure
@@ -184,6 +184,20 @@ export const createReminderProcedure = protectedProcedure
           updatedAt: new Date(),
         })
         .returning();
+
+      // Send notification to pet owner
+      const pet = await db.query.pets.findFirst({
+        where: eq(pets.id, input.petId),
+      });
+      if (pet) {
+        await db.insert(notifications).values({
+          userId: pet.ownerId,
+          title: "تم إضافة تذكير جديد",
+          message: `تم إضافة تذكير جديد لحيوانك ${pet.name}: ${input.title}`,
+          type: "new_reminder",
+          data: { reminderId: newReminder.id, petId: input.petId },
+        });
+      }
 
       return {
         success: true,

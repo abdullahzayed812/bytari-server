@@ -1546,6 +1546,19 @@ CREATE TABLE "union_branch_supervisors" (
 );
 
 
+--> statement-breakpoint
+CREATE TABLE "reviews" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"clinic_id" integer,
+	"store_id" integer,
+	"rating" real NOT NULL,
+	"comment" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
 -- Drop existing foreign key constraints
 ALTER TABLE "admin_activity_logs" DROP CONSTRAINT IF EXISTS "admin_activity_logs_admin_id_users_id_fk";
 ALTER TABLE "admin_content" DROP CONSTRAINT IF EXISTS "admin_content_created_by_users_id_fk";
@@ -1816,3 +1829,10 @@ ALTER TABLE "union_branch_supervisors" ADD CONSTRAINT "union_branch_supervisors_
 ALTER TABLE "consultations" ADD CONSTRAINT "consultations_moderator_id_users_id_fk" FOREIGN KEY ("moderator_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_moderator_id_users_id_fk" FOREIGN KEY ("moderator_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+
+--> statement-breakpoint
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE no action ON UPDATE no action;

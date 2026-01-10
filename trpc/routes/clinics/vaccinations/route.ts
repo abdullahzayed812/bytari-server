@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, desc, and, lt } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, vaccinations, pets, users } from "../../../../db";
+import { db, vaccinations, pets, users, notifications } from "../../../../db";
 
 // Status enum for validation
 const VaccinationStatus = z.enum(["scheduled", "completed", "cancelled", "overdue"]);
@@ -192,6 +192,20 @@ export const createVaccinationProcedure = protectedProcedure
           updatedAt: new Date(),
         })
         .returning();
+
+      // Send notification to pet owner
+      const pet = await db.query.pets.findFirst({
+        where: eq(pets.id, input.petId),
+      });
+      if (pet) {
+        await db.insert(notifications).values({
+          userId: pet.ownerId,
+          title: "تم إضافة تطعيم جديد",
+          message: `تم إضافة تطعيم جديد لحيوانك ${pet.name}`,
+          type: "new_vaccination",
+          data: { vaccinationId: newVaccination.id, petId: input.petId },
+        });
+      }
 
       return {
         success: true,

@@ -1929,6 +1929,23 @@ export const unionBranchSupervisors = pgTable("union_branch_supervisors", {
   userId: integer("user_id").notNull(),
 });
 
+export const reviews = pgTable("reviews", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  clinicId: integer("clinic_id").references(() => clinics.id),
+  storeId: integer("store_id").references(() => stores.id),
+  rating: real("rating").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // App sections table
 
 export * from "drizzle-orm";

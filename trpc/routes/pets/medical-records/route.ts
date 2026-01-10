@@ -11,6 +11,7 @@ import {
   petReminders,
   treatmentCards,
   followUpRequests,
+  notifications,
 } from "../../../../db";
 
 // Get pet profile with all related data
@@ -145,6 +146,20 @@ export const createTreatmentCardProcedure = protectedProcedure
         })
         .returning();
 
+      // Send notification to pet owner
+      const pet = await db.query.pets.findFirst({
+        where: eq(pets.id, input.petId),
+      });
+      if (pet) {
+        await db.insert(notifications).values({
+          userId: pet.ownerId,
+          title: "تم إضافة بطاقة علاج جديدة",
+          message: `تم إضافة بطاقة علاج جديدة لحيوانك ${pet.name}`,
+          type: "new_treatment_card",
+          data: { treatmentCardId: treatmentCard.id, petId: input.petId },
+        });
+      }
+
       return {
         success: true,
         treatmentCard,
@@ -180,6 +195,20 @@ export const createFollowUpRequestProcedure = protectedProcedure
           status: "pending",
         })
         .returning();
+
+      // Send notification to pet owner
+      const pet = await db.query.pets.findFirst({
+        where: eq(pets.id, input.petId),
+      });
+      if (pet) {
+        await db.insert(notifications).values({
+          userId: pet.ownerId,
+          title: "تم إنشاء طلب متابعة جديد",
+          message: `تم إنشاء طلب متابعة جديد لحيوانك ${pet.name}`,
+          type: "new_follow_up_request",
+          data: { followUpRequestId: followUpRequest.id, petId: input.petId },
+        });
+      }
 
       return {
         success: true,
