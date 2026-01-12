@@ -78,6 +78,7 @@ import {
 import {
   approveMedicalActionProcedure,
   getMyMedicalRequestsProcedure,
+  getPendingMedicalActionsCountProcedure,
   getPendingMedicalActionsProcedure,
   rejectMedicalActionProcedure,
   requestAddMedicalRecordProcedure,
