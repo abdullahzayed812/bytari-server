@@ -34,6 +34,29 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const userAddresses = pgTable("user_addresses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  address: text("address").notNull(),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
+  user: one(users, {
+    fields: [userAddresses.userId],
+    references: [users.id],
+  }),
+}));
+
+
 // Pets table
 export const pets = pgTable("pets", {
   id: serial("id").primaryKey(),
@@ -548,6 +571,31 @@ export const marketplaceProducts = pgTable("marketplace_products", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Cart Items Table
+export const userCartItems = pgTable("user_cart_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  marketplaceProductId: integer("marketplace_product_id")
+    .notNull()
+    .references(() => marketplaceProducts.id, { onDelete: "cascade" }),
+  quantity: integer("quantity").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userCartItemsRelations = relations(userCartItems, ({ one }) => ({
+  user: one(users, {
+    fields: [userCartItems.userId],
+    references: [users.id],
+  }),
+  marketplaceProduct: one(marketplaceProducts, {
+    fields: [userCartItems.marketplaceProductId],
+    references: [marketplaceProducts.id],
+  }),
+}));
 
 // Order items table
 export const orderItems = pgTable("order_items", {
@@ -1679,7 +1727,7 @@ export const veterinarianApprovals = pgTable("veterinarian_approvals", {
   adminNotes: text("admin_notes"),
   submittedAt: timestamp("submitted_at").notNull().defaultNow(), // Changed to timestamp
   createdAt: timestamp("created_at").notNull().defaultNow(), // Changed to timestamp
-  updatedAt: timestamp("updated_at").notNull().defaultNow(), // Changed to timestamp
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(), // Changed to timestamp
 });
 
 // Clinic stats table

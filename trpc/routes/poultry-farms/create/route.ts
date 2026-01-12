@@ -7,9 +7,7 @@ const createPoultryFarmSchema = z.object({
   // Required fields
   name: z.string().min(1, "اسم الحقل مطلوب"),
   location: z.string().min(1, "الموقع مطلوب"),
-  farmType: z.enum(["broiler", "layer", "breeder", "mixed"], {
-    errorMap: () => ({ message: "نوع المزرعة مطلوب" }),
-  }),
+  farmType: z.enum(["broiler", "layer", "breeder", "mixed"]),
   ownerId: z.number().int().positive(),
 
   // Optional fields

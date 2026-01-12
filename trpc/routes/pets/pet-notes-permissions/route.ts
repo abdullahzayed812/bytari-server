@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
 import {
   db,
@@ -11,6 +11,7 @@ import {
   pendingMedicalActions,
   users,
   veterinarians,
+  notifications,
 } from "../../../../db";
 
 // ============================================
@@ -46,6 +47,18 @@ export const requestAddMedicalRecordProcedure = protectedProcedure
           status: "pending",
         })
         .returning();
+
+      // Notify pet owner
+      const [pet] = await db.select({ ownerId: pets.ownerId, name: pets.name }).from(pets).where(eq(pets.id, input.petId));
+      if (pet && pet.ownerId) {
+        await db.insert(notifications).values({
+          userId: pet.ownerId,
+          title: "طلب سجل طبي جديد",
+          message: `تم تقديم طلب لإضافة سجل طبي لحيوانك الأليف "${pet.name}".`,
+          type: "medical_action_request",
+          data: JSON.stringify({ petId: input.petId, requestId: request.id }),
+        });
+      }
 
       return {
         success: true,
@@ -89,6 +102,18 @@ export const requestAddVaccinationProcedure = protectedProcedure
           status: "pending",
         })
         .returning();
+
+      // Notify pet owner
+      const [pet] = await db.select({ ownerId: pets.ownerId, name: pets.name }).from(pets).where(eq(pets.id, input.petId));
+      if (pet && pet.ownerId) {
+        await db.insert(notifications).values({
+          userId: pet.ownerId,
+          title: "طلب تطعيم جديد",
+          message: `تم تقديم طلب لإضافة تطعيم لحيوانك الأليف "${pet.name}".`,
+          type: "medical_action_request",
+          data: JSON.stringify({ petId: input.petId, requestId: request.id }),
+        });
+      }
 
       return {
         success: true,
@@ -134,6 +159,18 @@ export const requestAddReminderProcedure = protectedProcedure
           status: "pending",
         })
         .returning();
+
+      // Notify pet owner
+      const [pet] = await db.select({ ownerId: pets.ownerId, name: pets.name }).from(pets).where(eq(pets.id, input.petId));
+      if (pet && pet.ownerId) {
+        await db.insert(notifications).values({
+          userId: pet.ownerId,
+          title: "طلب تذكير جديد",
+          message: `تم تقديم طلب لإضافة تذكير لحيوانك الأليف "${pet.name}".`,
+          type: "medical_action_request",
+          data: JSON.stringify({ petId: input.petId, requestId: request.id }),
+        });
+      }
 
       return {
         success: true,
@@ -376,5 +413,29 @@ export const getMyMedicalRequestsProcedure = protectedProcedure
     } catch (error) {
       console.error("Error fetching my medical requests:", error);
       throw new Error("فشل في جلب الطلبات");
+    }
+  });
+  
+export const getPendingMedicalActionsCountProcedure = protectedProcedure
+  .input(z.object({ petId: z.number() }))
+  .query(async ({ input, ctx }) => {
+    try {
+      const [result] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(pendingMedicalActions)
+        .where(
+          and(
+            eq(pendingMedicalActions.petId, input.petId),
+            eq(pendingMedicalActions.status, "pending")
+          )
+        );
+
+      return {
+        success: true,
+        count: result.count,
+      };
+    } catch (error) {
+      console.error("Error fetching pending medical actions count:", error);
+      throw new Error("Failed to fetch pending medical actions count");
     }
   });

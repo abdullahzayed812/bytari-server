@@ -6,16 +6,12 @@ import { eq, sql } from "drizzle-orm";
 export const updateOrderStatusProcedure = publicProcedure
   .input(
     z.object({
-      adminId: z.number(),
       orderId: z.number(),
       status: z.enum(["pending", "confirmed", "preparing", "shipped", "delivered", "cancelled"]),
     })
   )
   .mutation(async ({ input }) => {
     try {
-      console.log("Updating order status:", input);
-
-      // Update the order status
       await db
         .update(orders)
         .set({
@@ -23,8 +19,6 @@ export const updateOrderStatusProcedure = publicProcedure
           updatedAt: sql`(unixepoch())`,
         })
         .where(eq(orders.id, input.orderId));
-
-      console.log(`Order ${input.orderId} status updated to ${input.status}`);
 
       return {
         success: true,

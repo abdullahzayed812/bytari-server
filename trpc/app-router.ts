@@ -415,6 +415,8 @@ import { addVetStoreProductProcedure } from "./routes/vet-stores/products/create
 import { listVetStoreProductsProcedure } from "./routes/vet-stores/products/list/route";
 import { unifiedStoreRouter } from "./routes/unified-store/route";
 import { reviewsRouter } from "./routes/reviews/route";
+import { addressRouter } from "./routes/address/route";
+import { cartRouter } from "./routes/cart/route";
 
 export const appRouter = createTRPCRouter({
   // Unified Store Router
@@ -422,8 +424,9 @@ export const appRouter = createTRPCRouter({
 
   reviews: reviewsRouter,
 
+  addresses: addressRouter,
 
-  // ... existing routes ...
+  cart: createTRPCRouter(cartRouter),
 
   // Vet Store routes
   vetStores: createTRPCRouter({
@@ -506,6 +509,7 @@ export const appRouter = createTRPCRouter({
     getPendingMedicalActions: getPendingMedicalActionsProcedure,
     approveMedicalAction: approveMedicalActionProcedure,
     rejectMedicalAction: rejectMedicalActionProcedure,
+    getPendingMedicalActionsCount: getPendingMedicalActionsCountProcedure,
 
     // Vet request tracking
     getMyMedicalRequests: getMyMedicalRequestsProcedure,

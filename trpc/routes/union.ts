@@ -321,7 +321,17 @@ export const unionRouter = createTRPCRouter({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const newAnnouncement = await db.insert(unionAnnouncements).values(input).returning();
+        const { title, branchId, mainUnionId, ...restOfInput } = input;
+
+        const newAnnouncement = await db
+          .insert(unionAnnouncements)
+          .values({
+            title,
+            branchId,
+            mainUnionId,
+            ...restOfInput,
+          })
+          .returning();
 
         // Get followers
         const followers = await db
@@ -333,11 +343,32 @@ export const unionRouter = createTRPCRouter({
               : eq(unionFollowers.mainUnionId, input.mainUnionId)
           );
 
+        let unionName = "";
+
+        if (branchId) {
+          const branch = await db.query.unionBranches.findFirst({
+            where: eq(unionBranches.id, branchId),
+            columns: { name: true },
+          });
+          if (branch) {
+            unionName = branch.name;
+          }
+        } else if (mainUnionId) {
+          const main = await db.query.unionMain.findFirst({
+            columns: { name: true },
+          });
+          if (main) {
+            unionName = main.name;
+          }
+        }
+
+        const newTitle = `إعلان جديد من ${unionName}: ${title}`;
+
         if (followers.length > 0) {
           const followerIds = followers.map((f) => f.userId);
           const notificationData = followerIds.map((userId) => ({
             userId,
-            title: `إعلان جديد: ${input.title}`,
+            title: newTitle,
             message: input.content.substring(0, 100),
             type: "announcement" as const,
             data: JSON.stringify({

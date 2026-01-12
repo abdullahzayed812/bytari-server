@@ -1,7 +1,17 @@
 import { z } from "zod";
 import { eq, desc, and, or, gt, isNull, sql } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, pets, users, clinics, clinicAccessRequests, approvedClinicAccess, veterinarians, notifications } from "../../../../db";
+import {
+  db,
+  pets,
+  users,
+  clinics,
+  clinicAccessRequests,
+  approvedClinicAccess,
+  veterinarians,
+  notifications,
+  clinicStaff,
+} from "../../../../db";
 
 // Vet requests access to pet
 export const requestClinicAccessProcedure = protectedProcedure
