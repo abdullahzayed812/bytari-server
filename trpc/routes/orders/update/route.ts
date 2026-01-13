@@ -16,7 +16,7 @@ export const updateOrderStatusProcedure = publicProcedure
         .update(orders)
         .set({
           status: input.status,
-          updatedAt: sql`(unixepoch())`,
+          updatedAt: new Date(),
         })
         .where(eq(orders.id, input.orderId));
 

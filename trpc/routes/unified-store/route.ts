@@ -101,15 +101,15 @@ const PET_OWNER_CATEGORIES = [
       { id: "health", name: "صحة" },
     ],
   },
-  {
-    id: "small_animals",
-    name: "حيوانات صغيرة",
-    subcategories: [
-      { id: "food", name: "طعام" },
-      { id: "cages", name: "أقفاص وفرش" },
-      { id: "accessories", name: "إكسسوارات" },
-    ],
-  },
+  // {
+  //   id: "small_animals",
+  //   name: "حيوانات صغيرة",
+  //   subcategories: [
+  //     { id: "food", name: "طعام" },
+  //     { id: "cages", name: "أقفاص وفرش" },
+  //     { id: "accessories", name: "إكسسوارات" },
+  //   ],
+  // },
 ];
 
 export const unifiedStoreRouter = {
