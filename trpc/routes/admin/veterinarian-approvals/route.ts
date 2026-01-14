@@ -396,18 +396,18 @@ export const veterinarianApprovalsRouter = {
           .returning();
 
         // 🆕 Create approval request record
-        await db.insert(approvalRequests).values({
-          requestType: "vet_registration",
-          requesterId: userId,
-          resourceId: newApplication.id,
-          title: `طلب تسجيل طبيب بيطري - ${input.name}`,
-          description: `طلب تسجيل كطبيب بيطري من ${input.city}, ${input.province}`,
-          identityImages: JSON.stringify([input.idFrontImage, input.idBackImage].filter(Boolean)),
-          status: "pending",
-          priority: "normal",
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        });
+        // await db.insert(approvalRequests).values({
+        //   requestType: "vet_registration",
+        //   requesterId: userId,
+        //   resourceId: newApplication.id,
+        //   title: `طلب تسجيل طبيب بيطري - ${input.name}`,
+        //   description: `طلب تسجيل كطبيب بيطري من ${input.city}, ${input.province}`,
+        //   identityImages: JSON.stringify([input.idFrontImage, input.idBackImage].filter(Boolean)),
+        //   status: "pending",
+        //   priority: "normal",
+        //   createdAt: timestamp,
+        //   updatedAt: timestamp,
+        // });
 
         // 📨 Notify admins
         const adminUsers = await db.select().from(users).where(eq(users.userType, "admin"));
