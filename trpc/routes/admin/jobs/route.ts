@@ -476,11 +476,11 @@ export const jobsRouter = {
         const supervisionRequests = await db
           .select({
             ...getTableColumns(fieldSupervisionRequests),
-            applicantId: poultryFarms.ownerId,
-            farmId: poultryFarms.id,
+            applicantId: users.id,
+            // farmId: poultryFarms.id,
           })
           .from(fieldSupervisionRequests)
-          .leftJoin(poultryFarms, eq(fieldSupervisionRequests.farmName, poultryFarms.name))
+          .leftJoin(users, eq(fieldSupervisionRequests.ownerEmail, users.email))
           .orderBy(desc(fieldSupervisionRequests.createdAt))
           .limit(input.limit);
 
@@ -587,10 +587,8 @@ export const jobsRouter = {
         if (request) {
           const [user] = await db.select().from(users).where(eq(users.email, request.ownerEmail));
           if (user) {
-            const notificationTitle = input.action === "approve" ? "تم قبول طلب الإشراف" : "تم رفض طلب الإشراف";
-            const notificationMessage = `تم ${
-              input.action === "approve" ? "قبول" : "رفض"
-            } طلب الإشراف الخاص بك لمزرعة "${request.farmName}".`;
+            const notificationTitle = input.action === "approve" ? "تم قبول طلب" : "تم رفض طلب";
+            const notificationMessage = `تم ${input.action === "approve" ? "قبول" : "رفض"} طلب الوظيفة الخاص بك`;
 
             await db.insert(notifications).values({
               userId: user.id,

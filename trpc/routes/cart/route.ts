@@ -5,24 +5,23 @@ import { userCartItems, marketplaceProducts } from "../../../db/schema";
 import { eq, and } from "drizzle-orm";
 
 export const cartRouter = {
-  getCart: protectedProcedure.query(async ({ ctx }) => {
-    const cartItems = await db.query.userCartItems.findMany({
-      where: eq(userCartItems.userId, ctx.user.id),
-      with: {
-        marketplaceProduct: true,
-      },
-    });
+  getCart: protectedProcedure.input(z.object({ userId: z.number() })).query(async ({ ctx, input }) => {
+    const cartItems = await db
+      .select()
+      .from(userCartItems)
+      .where(eq(userCartItems.userId, input.userId))
+      .innerJoin(marketplaceProducts, eq(userCartItems.marketplaceProductId, marketplaceProducts.id));
 
     return cartItems.map((item) => ({
-      productId: item.marketplaceProduct.id,
+      productId: item.marketplace_products.id,
       product: {
-        id: item.marketplaceProduct.id,
-        name: item.marketplaceProduct.name,
-        description: item.marketplaceProduct.description,
-        price: item.marketplaceProduct.price,
-        image: item.marketplaceProduct.image,
+        id: item.marketplace_products.id,
+        name: item.marketplace_products.name,
+        description: item.marketplace_products.description,
+        price: item.marketplace_products.price,
+        image: item.marketplace_products.image,
       },
-      quantity: item.quantity,
+      quantity: item.user_cart_items.quantity,
     }));
   }),
 
@@ -31,17 +30,14 @@ export const cartRouter = {
       z.object({
         productId: z.number(),
         quantity: z.number().min(1).default(1),
+        userId: z.number(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { productId, quantity } = input;
-      const userId = ctx.user.id;
+      const { userId, productId, quantity } = input;
 
       const existingCartItem = await db.query.userCartItems.findFirst({
-        where: and(
-          eq(userCartItems.userId, userId),
-          eq(userCartItems.marketplaceProductId, productId)
-        ),
+        where: and(eq(userCartItems.userId, userId), eq(userCartItems.marketplaceProductId, productId)),
       });
 
       if (existingCartItem) {
@@ -64,19 +60,12 @@ export const cartRouter = {
       }
     }),
 
-  removeFromCart: protectedProcedure
-    .input(z.object({ productId: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      await db
-        .delete(userCartItems)
-        .where(
-          and(
-            eq(userCartItems.userId, ctx.user.id),
-            eq(userCartItems.marketplaceProductId, input.productId)
-          )
-        );
-      return { success: true };
-    }),
+  removeFromCart: protectedProcedure.input(z.object({ productId: z.number() })).mutation(async ({ ctx, input }) => {
+    await db
+      .delete(userCartItems)
+      .where(and(eq(userCartItems.userId, ctx.user.id), eq(userCartItems.marketplaceProductId, input.productId)));
+    return { success: true };
+  }),
 
   updateQuantity: protectedProcedure
     .input(
@@ -92,23 +81,13 @@ export const cartRouter = {
       if (quantity === 0) {
         await db
           .delete(userCartItems)
-          .where(
-            and(
-              eq(userCartItems.userId, userId),
-              eq(userCartItems.marketplaceProductId, productId)
-            )
-          );
+          .where(and(eq(userCartItems.userId, userId), eq(userCartItems.marketplaceProductId, productId)));
         return { success: true };
       } else {
         const [updatedItem] = await db
           .update(userCartItems)
           .set({ quantity })
-          .where(
-            and(
-              eq(userCartItems.userId, userId),
-              eq(userCartItems.marketplaceProductId, productId)
-            )
-          )
+          .where(and(eq(userCartItems.userId, userId), eq(userCartItems.marketplaceProductId, productId)))
           .returning();
         return updatedItem;
       }
