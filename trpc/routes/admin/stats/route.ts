@@ -15,6 +15,11 @@ import {
   notifications,
   systemMessages,
   systemMessageRecipients,
+  veterinarianApprovals,
+  courseRegistrations,
+  jobVacancies,
+  jobApplications,
+  fieldSupervisionRequests,
 } from "../../../../db";
 import { and, count, eq, or, sql } from "drizzle-orm";
 
@@ -240,8 +245,12 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         .where(eq(petApprovalRequests.status, "pending"));
       const [pendingVetApprovalsCount] = await db
         .select({ count: count() })
-        .from(veterinarians)
-        .where(eq(veterinarians.isVerified, false));
+        .from(veterinarianApprovals)
+        .where(eq(veterinarianApprovals.status, "pending"));
+      const [pendingCoursesCount] = await db
+        .select({ count: count() })
+        .from(courseRegistrations)
+        .where(eq(courseRegistrations.status, "pending"));
 
       // Get pending inquiries and consultations
       const [pendingInquiriesCount] = await db
@@ -253,6 +262,22 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         .from(consultations)
         .where(eq(consultations.status, "pending"));
 
+      // jobs
+      const [pendingJobVacanciessCount] = await db
+        .select({ count: count() })
+        .from(jobVacancies)
+        .where(eq(jobVacancies.status, "pending"));
+
+      const [pendingJobApplicationsCount] = await db
+        .select({ count: count() })
+        .from(jobApplications)
+        .where(eq(jobApplications.status, "pending"));
+
+      const [pendingFieldSupervisionsCount] = await db
+        .select({ count: count() })
+        .from(fieldSupervisionRequests)
+        .where(eq(fieldSupervisionRequests.status, "pending"));
+
       // Mock field assignments count (replace with actual query when table is ready)
       const pendingFieldAssignments = 3;
 
@@ -262,7 +287,12 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         pendingVetApprovals: pendingVetApprovalsCount.count || 0,
         pendingInquiries: pendingInquiriesCount.count || 0,
         pendingConsultations: pendingConsultationsCount.count || 0,
+        pendingCourses: pendingCoursesCount.count || 0,
         pendingFieldAssignments: pendingFieldAssignments,
+        pendingJobs:
+          pendingJobVacanciessCount.count + pendingJobApplicationsCount.count + pendingFieldSupervisionsCount.count ||
+          0,
+
         total:
           (pendingApprovalsCount.count || 0) +
           (pendingPetApprovalsCount.count || 0) +
