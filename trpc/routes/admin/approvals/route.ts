@@ -142,9 +142,8 @@ export const getPendingApprovalsProcedure = publicProcedure
           requesterId: clinic.ownerId,
           resourceId: clinic.id,
           title: `طلب تجديد اشتراك عيادة ${clinic.name}`,
-          description: `انتهت صلاحية تفعيل العيادة في ${
-            clinic.activationEndDate ? new Date(clinic.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
-          }`,
+          description: `انتهت صلاحية تفعيل العيادة في ${clinic.activationEndDate ? new Date(clinic.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
+            }`,
           documents: null,
           licenseImages: clinic.images ? JSON.stringify(clinic.images) : null,
           identityImages: null,
@@ -188,9 +187,8 @@ export const getPendingApprovalsProcedure = publicProcedure
           requesterId: store.ownerId,
           resourceId: store.id,
           title: `طلب تجديد اشتراك مخزن ${store.name}`,
-          description: `انتهت صلاحية تفعيل المخزن في ${
-            store.activationEndDate ? new Date(store.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
-          }`,
+          description: `انتهت صلاحية تفعيل المخزن في ${store.activationEndDate ? new Date(store.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"
+            }`,
           documents: null,
           licenseImages: store.licenseImage ? JSON.stringify([store.licenseImage]) : null,
           identityImages: store.identityImage ? JSON.stringify([store.identityImage]) : null,
@@ -308,35 +306,55 @@ export const approveRequestProcedure = publicProcedure
       let requesterId = 0;
       let title = "";
 
-      // Handle regular approval requests
-      const [regularRequest] = await db
-        .select()
-        .from(approvalRequests)
-        .where(eq(approvalRequests.id, input.requestId))
-        .limit(1);
+      if (isRenewalRequest) {
+        // Handle virtual renewal requests
+        if (input.requestId >= 20000) {
+          // Store renewal
+          resourceId = input.requestId - 20000;
+          const [store] = await db.select().from(stores).where(eq(stores.id, resourceId)).limit(1);
+          if (!store) throw new Error("Store not found for renewal");
+          requestType = "store_renewal";
+          requesterId = store.ownerId;
+          title = `تجديد اشتراك مخزن ${store.name}`;
+        } else {
+          // Clinic renewal
+          resourceId = input.requestId - 10000;
+          const [clinic] = await db.select().from(clinics).where(eq(clinics.id, resourceId)).limit(1);
+          if (!clinic) throw new Error("Clinic not found for renewal");
+          requestType = "clinic_renewal";
+          requesterId = clinic.id; // Assuming ownerId is same as clinic ID or handled elsewhere
+          title = `تجديد اشتراك عيادة ${clinic.name}`;
+        }
+      } else {
+        // Handle regular approval requests
+        const [regularRequest] = await db
+          .select()
+          .from(approvalRequests)
+          .where(eq(approvalRequests.id, input.requestId))
+          .limit(1);
 
-      if (!regularRequest) {
-        throw new Error("Approval request not found");
+        if (!regularRequest) {
+          throw new Error("Approval request not found");
+        }
+
+        request = regularRequest;
+        requestType = request.requestType;
+        resourceId = request.resourceId;
+        requesterId = request.requesterId;
+        title = request.title;
+
+        // Update the request status
+        await db
+          .update(approvalRequests)
+          .set({
+            status: "approved",
+            reviewedBy: input.adminId,
+            reviewedAt: Math.floor(Date.now() / 1000),
+            adminNotes: input.adminNotes,
+            updatedAt: Math.floor(Date.now() / 1000),
+          })
+          .where(eq(approvalRequests.id, input.requestId));
       }
-
-      request = regularRequest;
-      requestType = request.requestType;
-      resourceId = request.resourceId;
-      requesterId = request.requesterId;
-      title = request.title;
-
-      // Update the request status
-      await db
-        .update(approvalRequests)
-        .set({
-          status: "approved",
-          reviewedBy: input.adminId,
-          reviewedAt: Math.floor(Date.now() / 1000),
-          adminNotes: input.adminNotes,
-          updatedAt: Math.floor(Date.now() / 1000),
-        })
-        .where(eq(approvalRequests.id, input.requestId));
-      // }
 
       // Calculate activation dates
 
@@ -413,35 +431,56 @@ export const rejectRequestProcedure = publicProcedure
       let requesterId = 0;
       let title = "";
 
-      // Fetch the request (same as approve)
-      const [regularRequest] = await db
-        .select()
-        .from(approvalRequests)
-        .where(eq(approvalRequests.id, input.requestId))
-        .limit(1);
+      if (isRenewalRequest) {
+        // Handle virtual renewal requests
+        if (input.requestId >= 20000) {
+          // Store renewal
+          resourceId = input.requestId - 20000;
+          const [store] = await db.select().from(stores).where(eq(stores.id, resourceId)).limit(1);
+          if (!store) throw new Error("Store not found for renewal");
+          requestType = "store_renewal";
+          requesterId = store.ownerId;
+          title = `تجديد اشتراك مخزن ${store.name}`;
+        } else {
+          // Clinic renewal
+          resourceId = input.requestId - 10000;
+          const [clinic] = await db.select().from(clinics).where(eq(clinics.id, resourceId)).limit(1);
+          if (!clinic) throw new Error("Clinic not found for renewal");
+          requestType = "clinic_renewal";
+          requesterId = clinic.id;
+          title = `تجديد اشتراك عيادة ${clinic.name}`;
+        }
+      } else {
+        // Fetch the request (same as approve)
+        const [regularRequest] = await db
+          .select()
+          .from(approvalRequests)
+          .where(eq(approvalRequests.id, input.requestId))
+          .limit(1);
 
-      if (!regularRequest) {
-        throw new Error("Approval request not found");
+        if (!regularRequest) {
+          throw new Error("Approval request not found");
+        }
+
+        request = regularRequest;
+        requestType = request.requestType;
+        resourceId = request.resourceId;
+        requesterId = request.requesterId;
+        title = request.title;
+
+        // Update the request status to rejected
+        await db
+          .update(approvalRequests)
+          .set({
+            status: "rejected",
+            reviewedBy: input.adminId,
+            reviewedAt: Math.floor(Date.now() / 1000),
+            rejectionReason: input.rejectionReason,
+            adminNotes: input.adminNotes,
+            updatedAt: Math.floor(Date.now() / 1000),
+          })
+          .where(eq(approvalRequests.id, input.requestId));
       }
-
-      request = regularRequest;
-      requestType = request.requestType;
-      resourceId = request.resourceId;
-      requesterId = request.requesterId;
-      title = request.title;
-
-      // Update the request status to rejected
-      await db
-        .update(approvalRequests)
-        .set({
-          status: "rejected",
-          reviewedBy: input.adminId,
-          reviewedAt: Math.floor(Date.now() / 1000),
-          rejectionReason: input.rejectionReason,
-          adminNotes: input.adminNotes,
-          updatedAt: Math.floor(Date.now() / 1000),
-        })
-        .where(eq(approvalRequests.id, input.requestId));
 
       // Handle resource-specific rejection logic
       if (requestType === "vet_registration") {

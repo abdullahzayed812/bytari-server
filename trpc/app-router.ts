@@ -373,6 +373,7 @@ import {
 
 import { getPoultryFarmDetailsProcedure, listPoultryFarmsProcedure } from "../trpc/routes/poultry-farms/list/route";
 import { createPoultryFarmProcedure } from "../trpc/routes/poultry-farms/create/route";
+import { deletePoultryFarmProcedure } from "../trpc/routes/poultry-farms/delete/route";
 import {
   fieldAssignmentsRouter,
   getAvailableSupervisors,
@@ -534,6 +535,7 @@ export const appRouter = createTRPCRouter({
 
     list: listPoultryFarmsProcedure,
     create: createPoultryFarmProcedure,
+    delete: deletePoultryFarmProcedure,
     getDetails: getPoultryFarmDetailsProcedure,
   }),
 
