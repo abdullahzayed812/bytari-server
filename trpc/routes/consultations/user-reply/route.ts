@@ -68,7 +68,7 @@ async function triggerAutoReplyForUserConsultation(
 
       await db.insert(notifications).values({
         userId: originalConsultation.userId,
-        title: "🤖 تم الرد على استشارتك",
+        title: "تم الرد على استشارتك",
         message: `تمت إضافة رد على استشارتك رقم ${consultationId}. يمكنك الاطلاع عليه الآن.`,
         type: "consultation",
         data: JSON.stringify({

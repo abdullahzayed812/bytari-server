@@ -430,58 +430,58 @@ export async function seedAdminSystem(db) {
   console.log("Creating admin users...");
   const adminPassword = await hashPassword("admin123");
 
-  const admins = await db
-    .insert(users)
-    .values([
-      {
-        email: "admin@petapp.com",
-        name: "مشرف اختبار",
-        phone: "+964770000002",
-        password: adminPassword,
-        userType: "admin",
-        isActive: true,
-      },
-      {
-        email: "vet.moderator@petapp.com",
-        name: "د. أحمد محمد - مشرف الأطباء",
-        phone: "+964770000003",
-        password: adminPassword,
-        userType: "admin",
-        isActive: true,
-      },
-      {
-        email: "user.moderator@petapp.com",
-        name: "سارة علي - مشرف المستخدمين",
-        phone: "+964770000004",
-        password: adminPassword,
-        userType: "admin",
-        isActive: true,
-      },
-      {
-        email: "content.manager@petapp.com",
-        name: "محمد حسن - مدير المحتوى",
-        phone: "+964770000005",
-        password: adminPassword,
-        userType: "admin",
-        isActive: true,
-      },
-    ])
-    .returning();
+  // const admins = await db
+  //   .insert(users)
+  //   .values([
+  //     {
+  //       email: "admin@petapp.com",
+  //       name: "مشرف اختبار",
+  //       phone: "+964770000002",
+  //       password: adminPassword,
+  //       userType: "admin",
+  //       isActive: true,
+  //     },
+  //     {
+  //       email: "vet.moderator@petapp.com",
+  //       name: "د. أحمد محمد - مشرف الأطباء",
+  //       phone: "+964770000003",
+  //       password: adminPassword,
+  //       userType: "admin",
+  //       isActive: true,
+  //     },
+  //     {
+  //       email: "user.moderator@petapp.com",
+  //       name: "سارة علي - مشرف المستخدمين",
+  //       phone: "+964770000004",
+  //       password: adminPassword,
+  //       userType: "admin",
+  //       isActive: true,
+  //     },
+  //     {
+  //       email: "content.manager@petapp.com",
+  //       name: "محمد حسن - مدير المحتوى",
+  //       phone: "+964770000005",
+  //       password: adminPassword,
+  //       userType: "admin",
+  //       isActive: true,
+  //     },
+  //   ])
+  //   .returning();
 
-  const testAdminUser = admins[0];
-  const vetModeratorUser = admins[1];
-  const userModeratorUser = admins[2];
-  const contentManagerUser = admins[3];
+  // const testAdminUser = admins[0];
+  // const vetModeratorUser = admins[1];
+  // const userModeratorUser = admins[2];
+  // const contentManagerUser = admins[3];
 
   // ==================== ASSIGN ROLES ====================
   console.log("Assigning roles to admin users...");
   await db.insert(userRoles).values([
     { userId: mainSuperAdmin.id, roleId: superAdminRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
     { userId: backupSuperAdmin.id, roleId: superAdminRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
-    { userId: testAdminUser.id, roleId: contentManagerRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
-    { userId: vetModeratorUser.id, roleId: vetModeratorRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
-    { userId: userModeratorUser.id, roleId: userModeratorRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
-    { userId: contentManagerUser.id, roleId: contentManagerRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
+    // { userId: testAdminUser.id, roleId: contentManagerRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
+    // { userId: vetModeratorUser.id, roleId: vetModeratorRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
+    // { userId: userModeratorUser.id, roleId: userModeratorRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
+    // { userId: contentManagerUser.id, roleId: contentManagerRole.id, assignedBy: mainSuperAdmin.id, isActive: true },
   ]);
 
   // ==================== ADMIN NOTIFICATIONS ====================
@@ -503,10 +503,10 @@ export async function seedAdminSystem(db) {
     admins: {
       main: mainSuperAdmin,
       backup: backupSuperAdmin,
-      test: testAdminUser,
-      vetModerator: vetModeratorUser,
-      userModerator: userModeratorUser,
-      contentManager: contentManagerUser,
+      // test: testAdminUser,
+      // vetModerator: vetModeratorUser,
+      // userModerator: userModeratorUser,
+      // contentManager: contentManagerUser,
     },
   };
 }

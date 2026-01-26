@@ -1,7 +1,7 @@
 import { db } from "..";
 import { seedAdminSystem } from "./admin-system.seed";
-import { seedUsers } from "./users.seed";
-import { seedUnion } from "./union.seed"; // Add this import
+// import { seedUsers } from "./users.seed";
+// import { seedUnion } from "./union.seed";
 // import { seedClinics } from "./clinics.seed";
 // import { seedStores } from "./stores.seed";
 // import { seedPets } from "./pets.seed";
@@ -33,10 +33,10 @@ export async function seedDatabase() {
     const adminData = await seedAdminSystem(db);
 
     // Regular users (users, vets)
-    const userData = await seedUsers(db);
+    // const userData = await seedUsers(db);
 
     // Union data (main union, branches, announcements)
-    const unionData = await seedUnion(db);
+    // const unionData = await seedUnion(db);
 
     // Inquiries
     // const inquiryData = await seedInquiries(
@@ -120,10 +120,10 @@ export async function seedDatabase() {
     console.log("  - vet1@example.com to vet8@example.com");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     console.log("📊 Database Statistics:");
-    console.log(
-      `  - Total Users: ${userData.regularUsers.length + userData.vets.length + Object.keys(adminData.admins).length}`
-    );
-    console.log(`  - Union Branches: ${unionData.branches.length}`);
+    //console.log(
+    //  `  - Total Users: ${userData.regularUsers.length + userData.vets.length + Object.keys(adminData.admins).length}`
+    //);
+    // console.log(`  - Union Branches: ${unionData.branches.length}`);
     console.log(`  - Union Announcements: 7`);
     // console.log(`  - Clinics: ${clinicData.length}`);
     // console.log(`  - Vet Stores: ${storeData.length}`);
