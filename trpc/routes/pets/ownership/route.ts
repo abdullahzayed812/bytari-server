@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-import { eq, desc } from "drizzle-orm";
-import { db, pets, poultryFarms, users } from "../../../../db";
+import { eq, desc, sql } from "drizzle-orm";
+import { db, pets, poultryFarms, users, lostPets, adoptionPets, breedingPets } from "../../../../db";
 
 /* ------------------------ Input Schemas ------------------------ */
 const getUserPetsSchema = z.object({
@@ -54,29 +54,101 @@ export const getAllPetsForAdminProcedure = protectedProcedure
         throw new Error("غير مصرح: صلاحيات المدير مطلوبة");
       }
 
-      const allPets = await db
+      // 1. Get Owned Pets
+      const ownedPets = await db
         .select({
           id: pets.id,
           name: pets.name,
           type: pets.type,
           breed: pets.breed,
           age: pets.age,
-          weight: pets.weight,
-          color: pets.color,
           gender: pets.gender,
           image: pets.image,
-          medicalHistory: pets.medicalHistory,
-          vaccinations: pets.vaccinations,
-          isLost: pets.isLost,
+          status: sql<string>`'active'`, // Default status for owned pets
           createdAt: pets.createdAt,
-          updatedAt: pets.updatedAt,
-          ownerId: pets.ownerId,
           ownerName: users.name,
           ownerEmail: users.email,
+          category: sql<string>`'owned'`,
+          isLost: pets.isLost,
+          isForBreeding: sql<boolean>`false`,
+          reportCount: sql<number>`0`, // Placeholder
         })
         .from(pets)
-        .leftJoin(users, eq(users.id, pets.ownerId))
-        .orderBy(desc(pets.createdAt));
+        .leftJoin(users, eq(users.id, pets.ownerId));
+
+      // 2. Get Lost Pets
+      const lostPetsList = await db
+        .select({
+          id: lostPets.id,
+          name: lostPets.name,
+          type: lostPets.type,
+          breed: lostPets.breed,
+          age: lostPets.age,
+          gender: lostPets.gender,
+          image: lostPets.image,
+          status: lostPets.status,
+          createdAt: lostPets.createdAt,
+          ownerName: users.name,
+          ownerEmail: users.email,
+          category: sql<string>`'lost'`,
+          isLost: sql<boolean>`true`,
+          isForBreeding: sql<boolean>`false`,
+          reportCount: sql<number>`0`,
+        })
+        .from(lostPets)
+        .leftJoin(users, eq(users.id, lostPets.ownerId));
+
+      // 3. Get Adoption Pets
+      const adoptionPetsList = await db
+        .select({
+          id: adoptionPets.id,
+          name: adoptionPets.name,
+          type: adoptionPets.type,
+          breed: adoptionPets.breed,
+          age: adoptionPets.age,
+          gender: adoptionPets.gender,
+          image: adoptionPets.image,
+          status: sql<string>`CASE WHEN ${adoptionPets.isAvailable} THEN 'active' ELSE 'inactive' END`,
+          createdAt: adoptionPets.createdAt,
+          ownerName: users.name,
+          ownerEmail: users.email,
+          category: sql<string>`'adoption'`,
+          isLost: sql<boolean>`false`,
+          isForBreeding: sql<boolean>`false`,
+          reportCount: sql<number>`0`,
+        })
+        .from(adoptionPets)
+        .leftJoin(users, eq(users.id, adoptionPets.ownerId));
+
+      // 4. Get Breeding Pets
+      const breedingPetsList = await db
+        .select({
+          id: breedingPets.id,
+          name: breedingPets.name,
+          type: breedingPets.type,
+          breed: breedingPets.breed,
+          age: breedingPets.age,
+          gender: breedingPets.gender,
+          image: breedingPets.image,
+          status: sql<string>`CASE WHEN ${breedingPets.isAvailable} THEN 'active' ELSE 'inactive' END`,
+          createdAt: breedingPets.createdAt,
+          ownerName: users.name,
+          ownerEmail: users.email,
+          category: sql<string>`'breeding'`,
+          isLost: sql<boolean>`false`,
+          isForBreeding: sql<boolean>`true`,
+          reportCount: sql<number>`0`,
+        })
+        .from(breedingPets)
+        .leftJoin(users, eq(users.id, breedingPets.ownerId));
+
+      // Combine all results
+      const allPets = [
+        ...ownedPets,
+        ...lostPetsList,
+        ...adoptionPetsList,
+        ...breedingPetsList
+      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       return {
         success: true,
