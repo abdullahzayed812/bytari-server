@@ -164,7 +164,7 @@ ${input.attachments ? "ملاحظة: تم إرفاق صور/فيديو مع ال
           consultationId: input.consultationId,
           userId: input.userId, // Associate with the user who initiated the consultation, or a generic AI user ID
           content: aiResult.response,
-          isFromVet: false, // AI is not a vet in this context
+          isFromAdmin: false, // AI is not a vet in this context
           isAiGenerated: true,
           createdAt: new Date(),
         })

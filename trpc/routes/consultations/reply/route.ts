@@ -8,7 +8,7 @@ const replyConsultationSchema = z.object({
   responderId: z.number(), // المشرف المجيب
   content: z.string().min(1, "يجب إدخال محتوى الرد"),
   attachments: z.string().optional(),
-  isFromVet: z.boolean().default(true), // هل الرد من طبيب بيطري
+  // isFromVet: z.boolean().default(true), // هل الرد من طبيب بيطري
   keepConversationOpen: z.boolean().default(false), // هل يبقى المحادثة مفتوحة للرد
 });
 
@@ -35,7 +35,7 @@ export const replyConsultationProcedure = publicProcedure.input(replyConsultatio
         userId: input.responderId,
         content: input.content,
         attachments: input.attachments ? JSON.parse(input.attachments) : null,
-        isFromVet: input.isFromVet,
+        isFromAdmin: true,
         isAiGenerated: false,
       })
       .returning();

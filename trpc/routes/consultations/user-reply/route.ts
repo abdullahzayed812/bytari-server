@@ -53,7 +53,7 @@ async function triggerAutoReplyForUserConsultation(
         consultationId: consultationId,
         userId: originalConsultation.userId,
         content: aiResult.response,
-        isFromVet: false,
+        isFromAdmin: false,
         isAiGenerated: true,
         createdAt: new Date(),
       });
@@ -118,7 +118,7 @@ export const userReplyConsultationProcedure = protectedProcedure
           userId: input.userId,
           content: input.content,
           attachments: input.attachments ? JSON.parse(input.attachments) : null,
-          isFromVet: false,
+          isFromAdmin: false,
           isAiGenerated: false,
           createdAt: new Date(),
         })

@@ -29,10 +29,10 @@ async function createConsultationInDB(input: {
     input.priority === "urgent"
       ? "emergency"
       : input.priority === "high"
-      ? "high"
-      : input.priority === "low"
-      ? "low"
-      : "medium";
+        ? "high"
+        : input.priority === "low"
+          ? "low"
+          : "medium";
 
   const [consultation] = await db
     .insert(consultations)
@@ -121,7 +121,7 @@ async function triggerAutoReplyConsultation(consultation: { id: number; category
         consultationId: consultation.id,
         userId: consultation.userId,
         content: aiResult.response,
-        isFromVet: false,
+        isFromAdmin: false,
         isAiGenerated: true,
         createdAt: new Date(),
       });

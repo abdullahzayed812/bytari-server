@@ -32,7 +32,8 @@ export const replyInquiryProcedure = publicProcedure
           userId: input.responderId,
           content: input.content,
           attachments: input.attachments ? JSON.parse(input.attachments) : null,
-          // isOfficial: true,
+          isFromAdmin: true,
+          isAiGenerated: false,
           // keepConversationOpen: input.keepConversationOpen,
         })
         .returning();

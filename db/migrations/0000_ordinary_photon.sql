@@ -202,7 +202,7 @@ CREATE TABLE "consultation_replies" (
 	"consultation_id" integer NOT NULL,
 	"user_id" integer NOT NULL,
 	"content" text NOT NULL,
-	"is_from_vet" boolean DEFAULT false NOT NULL,
+	"is_from_admin" boolean DEFAULT false NOT NULL,
 	"is_ai_generated" boolean DEFAULT false NOT NULL,
 	"attachments" jsonb,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL

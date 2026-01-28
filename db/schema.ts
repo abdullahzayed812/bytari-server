@@ -676,7 +676,7 @@ export const consultationReplies = pgTable("consultation_replies", {
     .notNull()
     .references(() => users.id),
   content: text("content").notNull(),
-  isFromVet: boolean("is_from_vet").notNull().default(false),
+  isFromAdmin: boolean("is_from_admin").notNull().default(false),
   isAiGenerated: boolean("is_ai_generated").notNull().default(false),
   attachments: jsonb("attachments"), // JSON data
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
