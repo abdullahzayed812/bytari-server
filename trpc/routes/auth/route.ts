@@ -89,6 +89,7 @@ export const registerProcedure = publicProcedure.input(registerSchema).mutation(
         id: users.id,
         email: users.email,
         name: users.name,
+        avatar: users.avatar,
         userType: users.userType,
       });
 
