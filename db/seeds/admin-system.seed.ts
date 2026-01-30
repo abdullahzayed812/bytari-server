@@ -399,7 +399,7 @@ export async function seedAdminSystem(db) {
   // ==================== SUPER ADMIN USERS ====================
   console.log("Creating super admin users...");
   const superAdminPassword = await hashPassword("zuh000123000321zuh");
-  const backupAdminPassword = await hashPassword("superadmin123");
+  const backupAdminPassword = await hashPassword("zuh0012300zuh");
 
   const superAdmins = await db
     .insert(users)

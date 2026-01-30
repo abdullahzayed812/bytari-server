@@ -104,20 +104,6 @@ export async function seedDatabase() {
 
     // Success message
     console.log("\n✅ Database seeding completed successfully!\n");
-    console.log("🔑 Login Credentials:");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("Super Admin:");
-    console.log("  Email: zuhairalrawi0@gmail.com");
-    console.log("  Password: zuh000123000321zuh");
-    console.log("\nAdmin Users (password: admin123):");
-    console.log("  - admin@petapp.com");
-    console.log("  - vet.moderator@petapp.com");
-    console.log("  - user.moderator@petapp.com");
-    console.log("  - content.manager@petapp.com");
-    console.log("\nRegular Users (password: user123):");
-    console.log("  - user1@example.com to user15@example.com");
-    console.log("\nVeterinarians (password: vet123):");
-    console.log("  - vet1@example.com to vet8@example.com");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     console.log("📊 Database Statistics:");
     //console.log(
