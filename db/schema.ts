@@ -1951,8 +1951,8 @@ export const jobApplications = pgTable("job_applications", {
 // Field supervision requests table
 export const fieldSupervisionRequests = pgTable("field_supervision_requests", {
   id: serial("id").primaryKey(),
-  farmName: text("farm_name").notNull(),
-  farmLocation: text("farm_location").notNull(),
+  farmName: text("farm_name").default(""),
+  farmLocation: text("farm_location").default(""),
   ownerName: text("owner_name").notNull(),
   ownerPhone: text("owner_phone").notNull(),
   ownerEmail: text("owner_email").notNull(),

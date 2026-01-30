@@ -1517,8 +1517,8 @@ CREATE TABLE "job_applications" (
 -- Field supervision requests table
 CREATE TABLE "field_supervision_requests" (
     "id" serial PRIMARY KEY NOT NULL,
-    "farm_name" text NOT NULL,
-    "farm_location" text NOT NULL,
+    "farm_name" text DEFAULT '',
+    "farm_location" text DEFAULT '',
     "owner_name" text NOT NULL,
     "owner_phone" text NOT NULL,
 		"owner_email" text NOT NULL,

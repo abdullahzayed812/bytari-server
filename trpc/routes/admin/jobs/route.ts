@@ -306,9 +306,8 @@ export const jobsRouter = {
           if (user) {
             const [job] = await db.select().from(jobVacancies).where(eq(jobVacancies.id, application.jobId));
             const notificationTitle = input.action === "approve" ? "تم قبول طلب التوظيف" : "تم رفض طلب التوظيف";
-            const notificationMessage = `تم ${input.action === "approve" ? "قبول" : "رفض"} طلبك لوظيفة "${
-              job?.title
-            }".`;
+            const notificationMessage = `تم ${input.action === "approve" ? "قبول" : "رفض"} طلبك لوظيفة "${job?.title
+              }".`;
 
             await db.insert(notifications).values({
               userId: user.id,
@@ -386,8 +385,8 @@ export const jobsRouter = {
   submitFieldSupervisionRequest: publicProcedure
     .input(
       z.object({
-        farmName: z.string(),
-        farmLocation: z.string(),
+        farmName: z.string().optional(),
+        farmLocation: z.string().optional(),
         ownerName: z.string(),
         ownerPhone: z.string(),
         ownerEmail: z.string().email(),
