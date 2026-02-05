@@ -364,7 +364,7 @@ export const createTipProcedure = publicProcedure
     z.object({
       adminId: z.number(),
       title: z.string().min(1),
-      content: z.string().min(1),
+      content: z.string().optional(),
       category: z.string(),
       tags: z.array(z.string()).optional(),
       images: z.array(z.string()).optional(),
@@ -435,11 +435,7 @@ export const updateTipProcedure = publicProcedure
       };
 
       // Update tip
-      const [updatedTip] = await db
-        .update(tips)
-        .set(updatePayload)
-        .where(eq(tips.id, tipId))
-        .returning();
+      const [updatedTip] = await db.update(tips).set(updatePayload).where(eq(tips.id, tipId)).returning();
 
       if (!updatedTip) {
         throw new Error("Tip not found");

@@ -830,7 +830,7 @@ CREATE TABLE "tips" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"author_id" integer,
 	"title" text NOT NULL,
-	"content" text NOT NULL,
+	"content" text,
 	"summary" text,
 	"category" text NOT NULL,
 	"tags" jsonb,

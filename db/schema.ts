@@ -56,7 +56,6 @@ export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
   }),
 }));
 
-
 // Pets table
 export const pets = pgTable("pets", {
   id: serial("id").primaryKey(),
@@ -930,7 +929,7 @@ export const tips = pgTable("tips", {
   id: serial("id").primaryKey(),
   authorId: integer("author_id").references(() => users.id),
   title: text("title").notNull(),
-  content: text("content").notNull(),
+  content: text("content"),
   summary: text("summary"),
   category: text("category").notNull(),
   tags: jsonb("tags"), // JSON data
@@ -1986,12 +1985,8 @@ export const reviews = pgTable("reviews", {
   storeId: integer("store_id").references(() => stores.id),
   rating: real("rating").notNull(),
   comment: text("comment"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // App sections table
