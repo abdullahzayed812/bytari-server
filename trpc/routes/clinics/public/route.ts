@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { db, clinics } from "../../../../db";
-import { eq, and, like, or } from "drizzle-orm";
+import { db, clinics, approvalRequests, users } from "../../../../db";
+import { eq, and, like, or, inArray } from "drizzle-orm";
 
 export const getActiveClinicsListProcedure = publicProcedure
   .input(
@@ -49,18 +49,69 @@ export const getActiveClinicsListProcedure = publicProcedure
         return !needsRenewal; // Exclude clinics that need renewal
       });
 
+      // Fetch approval requests for these clinics to get identity and license images
+      const clinicIds = filteredClinics.map((clinic: any) => clinic.id);
+
+      let approvalData: any[] = [];
+      let userIds: number[] = [];
+
+      if (clinicIds.length > 0) {
+        approvalData = await db
+          .select()
+          .from(approvalRequests)
+          .where(and(eq(approvalRequests.requestType, "clinic_activation"), eq(approvalRequests.status, "approved")));
+
+        // Collect unique user IDs from approval requests
+        userIds = [...new Set(approvalData.map((approval: any) => approval.requesterId))];
+      }
+
+      // Fetch user data (owner name and email)
+      let userData: any[] = [];
+      if (userIds.length > 0) {
+        userData = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+          })
+          .from(users)
+          .where(inArray(users.id, userIds));
+      }
+
+      // Create maps for efficient lookup
+      const approvalMap = new Map();
+      approvalData.forEach((approval: any) => {
+        if (clinicIds.includes(approval.resourceId)) {
+          approvalMap.set(approval.resourceId, approval);
+        }
+      });
+
+      const userMap = new Map();
+      userData.forEach((user: any) => {
+        userMap.set(user.id, user);
+      });
+
       return {
         success: true,
-        clinics: filteredClinics.map((clinic: any) => ({
-          ...clinic,
-          workingHours: clinic.workingHours,
-          services: clinic.services,
-          images: typeof clinic.images === "string" ? JSON.parse(clinic.images) : clinic.images ?? [],
-          createdAt:
-            typeof clinic.createdAt === "number" ? new Date(clinic.createdAt * 1000).toISOString() : clinic.createdAt,
-          updatedAt:
-            typeof clinic.updatedAt === "number" ? new Date(clinic.updatedAt * 1000).toISOString() : clinic.updatedAt,
-        })),
+        clinics: filteredClinics.map((clinic: any) => {
+          const approval = approvalMap.get(clinic.id);
+          const owner = approval ? userMap.get(approval.requesterId) : null;
+
+          return {
+            ...clinic,
+            workingHours: clinic.workingHours,
+            services: clinic.services,
+            images: typeof clinic.images === "string" ? JSON.parse(clinic.images) : clinic.images ?? [],
+            identityImages: approval?.identityImages || null,
+            licenseImages: approval?.licenseImages || null,
+            ownerName: owner?.name || "غير متوفر",
+            ownerEmail: owner?.email || "غير متوفر",
+            createdAt:
+              typeof clinic.createdAt === "number" ? new Date(clinic.createdAt * 1000).toISOString() : clinic.createdAt,
+            updatedAt:
+              typeof clinic.updatedAt === "number" ? new Date(clinic.updatedAt * 1000).toISOString() : clinic.updatedAt,
+          };
+        }),
         total: filteredClinics.length,
       };
     } catch (error) {

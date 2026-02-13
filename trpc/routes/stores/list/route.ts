@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { approvalRequests, db, products, storeFollowers, stores, storeStaff, veterinarians } from "../../../../db";
+import {
+  approvalRequests,
+  db,
+  products,
+  storeFollowers,
+  stores,
+  storeStaff,
+  users,
+  veterinarians,
+} from "../../../../db";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
 export const listStoresProcedure = publicProcedure
@@ -60,13 +69,64 @@ export const listActiveStoresProcedure = publicProcedure
         return !needsRenewal; // Exclude stores that need renewal
       });
 
+      // Fetch approval requests for these stores to get identity and license images
+      const storeIds = filteredStores.map((store: any) => store.id);
+
+      let approvalData: any[] = [];
+      let userIds: number[] = [];
+
+      if (storeIds.length > 0) {
+        approvalData = await db
+          .select()
+          .from(approvalRequests)
+          .where(and(eq(approvalRequests.requestType, "store_activation"), eq(approvalRequests.status, "approved")));
+
+        // Collect unique user IDs from approval requests
+        userIds = [...new Set(approvalData.map((approval: any) => approval.requesterId))];
+      }
+
+      // Fetch user data (owner name and email)
+      let userData: any[] = [];
+      if (userIds.length > 0) {
+        userData = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+          })
+          .from(users)
+          .where(inArray(users.id, userIds));
+      }
+
+      // Create maps for efficient lookup
+      const approvalMap = new Map();
+      approvalData.forEach((approval: any) => {
+        if (storeIds.includes(approval.resourceId)) {
+          approvalMap.set(approval.resourceId, approval);
+        }
+      });
+
+      const userMap = new Map();
+      userData.forEach((user: any) => {
+        userMap.set(user.id, user);
+      });
+
       return {
         success: true,
-        stores: filteredStores.map((store: any) => ({
-          ...store,
-          images: store.images ? JSON.parse(store.images) : [],
-          workingHours: store.workingHours,
-        })),
+        stores: filteredStores.map((store: any) => {
+          const approval = approvalMap.get(store.id);
+          const owner = approval ? userMap.get(approval.requesterId) : null;
+
+          return {
+            ...store,
+            images: store.images ? JSON.parse(store.images) : [],
+            workingHours: store.workingHours,
+            identityImages: approval?.identityImages || null,
+            licenseImages: approval?.licenseImages || null,
+            ownerName: owner?.name || "غير متوفر",
+            ownerEmail: owner?.email || "غير متوفر",
+          };
+        }),
       };
     } catch (error) {
       console.error("Error fetching stores:", error);
