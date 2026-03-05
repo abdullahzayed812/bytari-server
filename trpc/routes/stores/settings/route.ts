@@ -84,7 +84,6 @@ export const updateStoreBasicInfoProcedure = protectedProcedure
   )
   .mutation(async ({ input }) => {
     try {
-
       const updateData = {
         name: input.name,
         address: input.address,
@@ -100,7 +99,6 @@ export const updateStoreBasicInfoProcedure = protectedProcedure
       if (input.images !== undefined) {
         updateData.images = JSON.stringify(input.images);
       }
-
 
       const [updatedStore] = await db
         .update(stores)
@@ -317,8 +315,8 @@ export const addStoreStaffProcedure = protectedProcedure
       // Send notification
       await db.insert(notifications).values({
         userId: user.id,
-        title: "تمت إضافتك كطبيب في عيادة",
-        message: `تمت إضافتك إلى عيادة ${store?.name || "عيادة جديدة"} كعضو في الفريق الطبي.`,
+        title: "تمت إضافتك كطبيب في مكتب",
+        message: `تمت إضافتك إلى مكتب ${store?.name || "مكتب جديدة"} كعضو في الفريق الطبي.`,
         type: "vet_added",
         data: {
           storeId: input.storeId,

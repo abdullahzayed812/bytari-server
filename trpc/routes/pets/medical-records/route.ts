@@ -18,7 +18,7 @@ import {
 export const getPetProfileProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
     })
   )
   .query(async ({ input }) => {
@@ -118,7 +118,7 @@ export const getPetProfileProcedure = protectedProcedure
 export const createTreatmentCardProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       clinicId: z.number(),
       medications: z.array(
         z.object({
@@ -175,7 +175,7 @@ export const createTreatmentCardProcedure = protectedProcedure
 export const createFollowUpRequestProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       clinicId: z.number(),
       reason: z.string().min(1),
       notes: z.string().optional(),
@@ -288,7 +288,7 @@ export const deleteReminderProcedure = protectedProcedure
 export const updatePetProcedure = protectedProcedure
   .input(
     z.object({
-      id: z.number(),
+      id: z.string(),
       name: z.string().min(1),
       type: z.string().min(1),
       breed: z.string().optional(),

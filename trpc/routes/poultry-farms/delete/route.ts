@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure } from "../../../create-context";
+import { adminProcedure, publicProcedure } from "../../../create-context";
 import { db } from "../../../../db";
 import { poultryFarms } from "../../../../db/schema";
 import { eq, and } from "drizzle-orm";
@@ -43,4 +43,23 @@ export const deletePoultryFarmProcedure = publicProcedure
             }
             throw new Error("فشل في حذف حقل الدواجن");
         }
+    });
+
+// Admin delete - no ownership check required
+export const adminDeletePoultryFarmProcedure = adminProcedure
+    .input(z.object({ farmId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+        const result = await db
+            .delete(poultryFarms)
+            .where(eq(poultryFarms.id, input.farmId))
+            .returning();
+
+        if (result.length === 0) {
+            throw new Error("حقل الدواجن غير موجود");
+        }
+
+        return {
+            success: true,
+            message: "تم حذف حقل الدواجن بنجاح",
+        };
     });

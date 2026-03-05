@@ -361,7 +361,7 @@ export const addClinicStaffProcedure = protectedProcedure
         message: `تمت إضافتك إلى عيادة ${clinic?.name || "عيادة جديدة"} كعضو في الفريق الطبي.`,
         type: "vet_added",
         data: {
-          clinicId: input.clinicId,
+          clinicId: clinic.id,
           veterinarianId: veterinarianId,
           staffId: staffAssignment.id,
         },

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../../create-context";
-import { db, reviews, users } from "../../../db";
+import { db, reviews, users, userRoles, adminRoles } from "../../../db";
 import { eq, desc, and } from "drizzle-orm";
 
 export const reviewsRouter = createTRPCRouter({
@@ -124,5 +124,31 @@ export const reviewsRouter = createTRPCRouter({
         success: true,
         reviews: storeReviews,
       };
+    }),
+
+  // Delete a review (super admin only)
+  deleteReview: protectedProcedure
+    .input(
+      z.object({
+        reviewId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      // Check if user is super admin
+      const roles = await db
+        .select({ roleName: adminRoles.name })
+        .from(userRoles)
+        .innerJoin(adminRoles, eq(userRoles.roleId, adminRoles.id))
+        .where(eq(userRoles.userId, ctx.user.id));
+
+      const isSuperAdmin = roles.some((r) => r.roleName === "super_admin");
+
+      if (!isSuperAdmin) {
+        throw new Error("غير مصرح لك بحذف التقييمات");
+      }
+
+      await db.delete(reviews).where(eq(reviews.id, input.reviewId));
+
+      return { success: true };
     }),
 });

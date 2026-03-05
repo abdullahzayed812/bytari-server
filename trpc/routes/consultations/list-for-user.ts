@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../create-context";
 import { db, consultations } from "../../../db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 const listForUserInputSchema = z.object({
   userId: z.number(),
@@ -9,7 +9,7 @@ const listForUserInputSchema = z.object({
 
 export const listForUserProcedure = publicProcedure.input(listForUserInputSchema).query(async ({ input }) => {
   try {
-    const userConsultations = await db.select().from(consultations).where(eq(consultations.userId, input.userId));
+    const userConsultations = await db.select().from(consultations).where(eq(consultations.userId, input.userId)).orderBy(desc(consultations.createdAt));
 
     return {
       success: true,

@@ -26,6 +26,7 @@ import {
   deleteUserProcedure,
   searchUsersProcedure,
   listAllUsersProcedure,
+  resetUserPasswordProcedure,
 } from "./routes/admin/users/route";
 
 // Admin pet management
@@ -136,6 +137,7 @@ import { unfollowStoreProcedure } from "./routes/stores/unfollow/route";
 import { getStoreFollowersProcedure } from "./routes/stores/getFollowers/route";
 import { getStoreFollowerCountProcedure } from "./routes/stores/getFollowerCount/route";
 import { isFollowingStoreProcedure } from "./routes/stores/isFollowing/route";
+import { sendMessageToStoreFollowersProcedure } from "./routes/stores/sendMessageToFollowers/route";
 
 // Clinic routes
 import {
@@ -210,6 +212,11 @@ import {
   getClinicStaffWithPermissionsProcedure,
   updateStaffPermissionsProcedure,
 } from "./routes/clinics/vet-permissions/route";
+import { followClinicProcedure } from "./routes/clinics/follow/route";
+import { unfollowClinicProcedure } from "./routes/clinics/unfollow/route";
+import { isFollowingClinicProcedure } from "./routes/clinics/isFollowing/route";
+import { getClinicFollowerCountProcedure } from "./routes/clinics/getFollowerCount/route";
+import { sendMessageToClinicFollowersProcedure } from "./routes/clinics/sendMessageToFollowers/route";
 
 // Warehouse routes
 import {
@@ -373,7 +380,7 @@ import {
 
 import { getPoultryFarmDetailsProcedure, listPoultryFarmsProcedure } from "../trpc/routes/poultry-farms/list/route";
 import { createPoultryFarmProcedure } from "../trpc/routes/poultry-farms/create/route";
-import { deletePoultryFarmProcedure } from "../trpc/routes/poultry-farms/delete/route";
+import { deletePoultryFarmProcedure, adminDeletePoultryFarmProcedure } from "../trpc/routes/poultry-farms/delete/route";
 import {
   fieldAssignmentsRouter,
   getAvailableSupervisors,
@@ -536,6 +543,7 @@ export const appRouter = createTRPCRouter({
     list: listPoultryFarmsProcedure,
     create: createPoultryFarmProcedure,
     delete: deletePoultryFarmProcedure,
+    adminDelete: adminDeletePoultryFarmProcedure,
     getDetails: getPoultryFarmDetailsProcedure,
   }),
 
@@ -591,6 +599,7 @@ export const appRouter = createTRPCRouter({
     getFollowers: getStoreFollowersProcedure,
     getFollowerCount: getStoreFollowerCountProcedure,
     isFollowing: isFollowingStoreProcedure,
+    sendMessageToFollowers: sendMessageToStoreFollowersProcedure,
 
     products: createTRPCRouter({
       get: getStoreProductProcedure,
@@ -642,6 +651,11 @@ export const appRouter = createTRPCRouter({
     toggleClinicVisibility: toggleClinicVisibilityProcedure,
     deleteClinic: deleteClinicProcedure,
     updateClinic: updateClinicProcedure,
+    follow: followClinicProcedure,
+    unfollow: unfollowClinicProcedure,
+    isFollowing: isFollowingClinicProcedure,
+    getFollowerCount: getClinicFollowerCountProcedure,
+    sendMessageToFollowers: sendMessageToClinicFollowersProcedure,
 
     // getVetClinics: getVetClinicsProcedure,
 
@@ -806,6 +820,7 @@ export const appRouter = createTRPCRouter({
       delete: deleteUserProcedure,
       search: searchUsersProcedure,
       listAll: listAllUsersProcedure,
+      resetPassword: resetUserPasswordProcedure,
       getSupervisors: getSupervisorsProcedure,
     }),
 

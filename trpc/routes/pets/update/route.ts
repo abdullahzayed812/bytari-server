@@ -6,7 +6,7 @@ import { db, pets } from "../../../../db";
 export const updatePetProcedure = protectedProcedure
   .input(
     z.object({
-      id: z.number(),
+      id: z.string(),
       name: z.string().min(1),
       type: z.enum(["dog", "cat", "rabbit", "bird", "other"]),
       breed: z.string().optional(),

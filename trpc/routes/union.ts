@@ -37,10 +37,43 @@ export const unionRouter = createTRPCRouter({
           .values({
             name: "نقابة الأطباء البيطريين العراقية",
             description: "النقابة الرسمية للأطباء البيطريين في العراق",
+
+            logoUrl: "https://example.com/logos/iraqi-vet-union.png",
+
             establishedYear: "1958",
-            memberCount: "0",
+            memberCount: "15000",
+
+            phone1: "+964 1 555 1234",
+            phone2: "+964 770 123 4567",
+
+            email: "info@iraqivetunion.org",
+            website: "https://www.iraqivetunion.org",
+
+            address: "بغداد، العراق – شارع النقابات، قرب ساحة الأندلس",
+
+            services: [
+              {
+                title: "تسجيل الأطباء البيطريين",
+                description: "تسجيل ومنح أرقام عضوية رسمية للأطباء البيطريين الجدد.",
+              },
+              {
+                title: "إصدار وتجديد الهوية النقابية",
+                description: "إصدار وتجديد بطاقات العضوية للنقابة.",
+              },
+              {
+                title: "الدورات التدريبية",
+                description: "تنظيم ورش عمل ودورات علمية لتطوير المهارات المهنية.",
+              },
+              {
+                title: "الدعم القانوني",
+                description: "تقديم الاستشارات والدعم القانوني لأعضاء النقابة.",
+              },
+            ],
+
+            // createdAt & updatedAt will auto-generate because of defaultNow()
           })
           .returning();
+
         return { success: true, union: { ...newMain[0], isFollowing: false } };
       }
 
@@ -60,22 +93,24 @@ export const unionRouter = createTRPCRouter({
         z.object({
           name: z.string(),
           description: z.string(),
-          logoUrl: z.string(),
-          establishedYear: z.string(),
-          memberCount: z.string(),
-          phone1: z.string(),
-          phone2: z.string(),
-          email: z.string(),
-          website: z.string(),
-          address: z.string(),
-          services: z.array(
-            z.object({
-              id: z.string(),
-              title: z.string(),
-              description: z.string(),
-              color: z.string(),
-            })
-          ),
+          logoUrl: z.string().optional(),
+          establishedYear: z.string().optional(),
+          memberCount: z.string().optional(),
+          phone1: z.string().optional(),
+          phone2: z.string().optional(),
+          email: z.string().optional(),
+          website: z.string().optional(),
+          address: z.string().optional(),
+          services: z
+            .array(
+              z.object({
+                id: z.string(),
+                title: z.string(),
+                description: z.string(),
+                color: z.string(),
+              })
+            )
+            .optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -139,7 +174,16 @@ export const unionRouter = createTRPCRouter({
           rating: z.number(),
           description: z.string().optional(),
           establishedYear: z.number().optional(),
-          services: z.array(z.string()).optional(),
+          services: z
+            .array(
+              z.object({
+                id: z.string(),
+                title: z.string(),
+                description: z.string(),
+                color: z.string(),
+              })
+            )
+            .optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -161,7 +205,16 @@ export const unionRouter = createTRPCRouter({
           rating: z.number(),
           description: z.string().optional(),
           establishedYear: z.number().optional(),
-          services: z.array(z.string()).optional(),
+          services: z
+            .array(
+              z.object({
+                id: z.string(),
+                title: z.string(),
+                description: z.string(),
+                color: z.string(),
+              })
+            )
+            .optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {

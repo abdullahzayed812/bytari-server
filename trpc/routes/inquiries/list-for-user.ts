@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../create-context";
 import { db, inquiries } from "../../../db";
-import { or, eq } from "drizzle-orm";
+import { or, eq, desc } from "drizzle-orm";
 
 // Accept either userId or vetId (or both)
 const listInquiriesInputSchema = z.object({
@@ -24,7 +24,8 @@ export const listForUserProcedure = publicProcedure.input(listInquiriesInputSche
     const userInquiries = await db
       .select()
       .from(inquiries)
-      .where(conditions.length > 1 ? or(...conditions) : conditions[0]);
+      .where(conditions.length > 1 ? or(...conditions) : conditions[0])
+      .orderBy(desc(inquiries.createdAt));
 
     return {
       success: true,

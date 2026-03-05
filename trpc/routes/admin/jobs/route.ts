@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure } from "../../../create-context";
 import { db } from "../../../../db";
 import {
@@ -7,7 +8,6 @@ import {
   fieldSupervisionRequests,
   courseRegistrations,
   users,
-  poultryFarms,
   notifications,
 } from "../../../../db/schema";
 import { eq, and, desc, sql, getTableColumns } from "drizzle-orm";
@@ -94,12 +94,17 @@ export const jobsRouter = {
         salary: z.string().optional(),
         description: z.string(),
         requirements: z.string(),
-        contactInfo: z.string(),
+        contactInfo: z.string().email(),
       })
     )
     .mutation(async ({ input, ctx }) => {
       try {
         console.log("Creating new job request:", input.title, "by admin:", ctx.user.id);
+
+        const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, input.contactInfo));
+        if (!existingUser) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "البريد الإلكتروني للتواصل غير مرتبط بحساب مستخدم موجود في النظام" });
+        }
 
         const [newJob] = await db
           .insert(jobVacancies)
@@ -123,10 +128,8 @@ export const jobsRouter = {
         };
       } catch (error) {
         console.error("Error creating job request:", error);
-        return {
-          success: false,
-          message: "حدث خطأ أثناء إرسال طلب إنشاء الوظيفة",
-        };
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "حدث خطأ أثناء إرسال طلب إنشاء الوظيفة" });
       }
     }),
 
@@ -399,12 +402,9 @@ export const jobsRouter = {
       try {
         console.log("Submitting field supervision request for farm:", input.farmName);
 
-        const user = await db.select().from(users).where(eq(users.email, input.ownerEmail));
-        if (user.length === 0) {
-          return {
-            success: false,
-            message: "المستخدم غير موجود",
-          };
+        const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, input.ownerEmail));
+        if (!existingUser) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "البريد الإلكتروني غير مرتبط بحساب مستخدم موجود في النظام" });
         }
 
         const [request] = await db
@@ -429,10 +429,8 @@ export const jobsRouter = {
         };
       } catch (error) {
         console.error("Error submitting field supervision request:", error);
-        return {
-          success: false,
-          message: "حدث خطأ أثناء إرسال طلب الإشراف الميداني. يرجى المحاولة مرة أخرى.",
-        };
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "حدث خطأ أثناء إرسال طلب الإشراف الميداني. يرجى المحاولة مرة أخرى." });
       }
     }),
 
@@ -454,7 +452,7 @@ export const jobsRouter = {
         const jobs = await db
           .select()
           .from(jobVacancies)
-          .leftJoin(users, eq(jobVacancies.postedBy, users.id.toString()))
+          .leftJoin(users, eq(jobVacancies.contactInfo, users.email))
           .orderBy(desc(jobVacancies.createdAt))
           .limit(input.limit);
 
@@ -865,7 +863,7 @@ export const jobsRouter = {
             .select()
             .from(jobVacancies)
             .where(eq(jobVacancies.id, parseInt(requestId)))
-            .leftJoin(users, eq(jobVacancies.postedBy, users.id.toString()))
+            .leftJoin(users, eq(jobVacancies.contactInfo, users.email))
             .limit(1);
 
           if (job.length > 0) {
@@ -929,8 +927,7 @@ export const jobsRouter = {
             .select()
             .from(fieldSupervisionRequests)
             .where(eq(fieldSupervisionRequests.id, parseInt(requestId)))
-            .leftJoin(poultryFarms, eq(fieldSupervisionRequests.farmName, poultryFarms.name))
-            .leftJoin(users, eq(poultryFarms.ownerId, users.id))
+            .leftJoin(users, eq(fieldSupervisionRequests.ownerEmail, users.email))
             .limit(1);
 
           if (supervision.length > 0) {

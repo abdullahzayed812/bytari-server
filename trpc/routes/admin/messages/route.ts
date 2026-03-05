@@ -152,14 +152,15 @@ export const getUserSystemMessages = publicProcedure
           content: systemMessages.content,
           type: systemMessages.type,
           priority: systemMessages.priority,
+          imageUrl: systemMessages.imageUrl,
           createdAt: systemMessages.createdAt,
           isRead: systemMessageRecipients.isRead,
           readAt: systemMessageRecipients.readAt,
         })
         .from(systemMessageRecipients)
         .innerJoin(systemMessages, eq(systemMessageRecipients.messageId, systemMessages.id))
-        .where(eq(systemMessageRecipients.userId, input.userId))
-        // .orderBy(desc(systemMessages.sentAt))
+        .where(and(eq(systemMessageRecipients.userId, input.userId), eq(systemMessages.isActive, true)))
+        .orderBy(desc(systemMessages.createdAt))
         .limit(input.limit)
         .offset(input.offset);
 

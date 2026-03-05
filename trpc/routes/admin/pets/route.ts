@@ -7,7 +7,7 @@ import { eq, like, or, sql } from "drizzle-orm";
 export const getPetProfileProcedure = publicProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       type: z.enum(["owned", "lost", "adoption", "breeding"]).default("owned"),
       // adminId: z.number(),
     })
@@ -65,7 +65,7 @@ export const getPetProfileProcedure = publicProcedure
           })
           .from(lostPets)
           .innerJoin(users, eq(lostPets.ownerId, users.id))
-          .where(eq(lostPets.id, input.petId))
+          .where(eq(lostPets.id, Number(input.petId)))
           .limit(1);
       } else if (input.type === "adoption") {
         pet = await db
@@ -90,7 +90,7 @@ export const getPetProfileProcedure = publicProcedure
           })
           .from(adoptionPets)
           .innerJoin(users, eq(adoptionPets.ownerId, users.id))
-          .where(eq(adoptionPets.id, input.petId))
+          .where(eq(adoptionPets.id, Number(input.petId)))
           .limit(1);
       } else if (input.type === "breeding") {
         pet = await db
@@ -115,7 +115,7 @@ export const getPetProfileProcedure = publicProcedure
           })
           .from(breedingPets)
           .innerJoin(users, eq(breedingPets.ownerId, users.id))
-          .where(eq(breedingPets.id, input.petId))
+          .where(eq(breedingPets.id, Number(input.petId)))
           .limit(1);
       }
 
@@ -134,7 +134,7 @@ export const getPetProfileProcedure = publicProcedure
 export const updatePetProfileProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       adminId: z.number(),
       type: z.enum(["owned", "lost", "adoption", "breeding"]).default("owned"),
       name: z.string().min(1),
@@ -191,7 +191,7 @@ export const updatePetProfileProcedure = protectedProcedure
             status: input.status,
             updatedAt: new Date(),
           })
-          .where(eq(lostPets.id, input.petId))
+          .where(eq(lostPets.id, Number(input.petId)))
           .returning();
       } else if (input.type === "adoption") {
         updatedPet = await db
@@ -208,7 +208,7 @@ export const updatePetProfileProcedure = protectedProcedure
             isAvailable: input.status === 'active',
             updatedAt: new Date(),
           })
-          .where(eq(adoptionPets.id, input.petId))
+          .where(eq(adoptionPets.id, Number(input.petId)))
           .returning();
       } else if (input.type === "breeding") {
         updatedPet = await db
@@ -225,7 +225,7 @@ export const updatePetProfileProcedure = protectedProcedure
             isAvailable: input.status === 'active',
             updatedAt: new Date(),
           })
-          .where(eq(breedingPets.id, input.petId))
+          .where(eq(breedingPets.id, Number(input.petId)))
           .returning();
       }
 
@@ -244,7 +244,7 @@ export const updatePetProfileProcedure = protectedProcedure
 export const deletePetProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       adminId: z.number(),
       type: z.enum(["owned", "lost", "adoption", "breeding"]).default("owned"),
       reason: z.string().optional(),
@@ -259,11 +259,11 @@ export const deletePetProcedure = protectedProcedure
       if (input.type === "owned") {
         deletedPet = await db.delete(pets).where(eq(pets.id, input.petId)).returning();
       } else if (input.type === "lost") {
-        deletedPet = await db.delete(lostPets).where(eq(lostPets.id, input.petId)).returning();
+        deletedPet = await db.delete(lostPets).where(eq(lostPets.id, Number(input.petId))).returning();
       } else if (input.type === "adoption") {
-        deletedPet = await db.delete(adoptionPets).where(eq(adoptionPets.id, input.petId)).returning();
+        deletedPet = await db.delete(adoptionPets).where(eq(adoptionPets.id, Number(input.petId))).returning();
       } else if (input.type === "breeding") {
-        deletedPet = await db.delete(breedingPets).where(eq(breedingPets.id, input.petId)).returning();
+        deletedPet = await db.delete(breedingPets).where(eq(breedingPets.id, Number(input.petId))).returning();
       }
 
       if (!deletedPet || deletedPet.length === 0) {

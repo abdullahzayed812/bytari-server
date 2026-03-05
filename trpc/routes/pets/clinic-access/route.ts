@@ -17,7 +17,7 @@ import {
 export const requestClinicAccessProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       clinicId: z.number(),
       veterinarianId: z.number().optional(),
       reason: z.string().min(1, "يجب إدخال سبب الطلب"),
@@ -112,7 +112,7 @@ export const requestClinicAccessProcedure = protectedProcedure
 
 // Owner gets pending access requests
 export const getPendingAccessRequestsProcedure = protectedProcedure
-  .input(z.object({ petId: z.number() }))
+  .input(z.object({ petId: z.string() }))
   .query(async ({ input, ctx }) => {
     try {
       // Get requests for pets owned by the current user
@@ -298,7 +298,7 @@ export const rejectClinicAccessProcedure = protectedProcedure
 export const checkClinicAccessProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       clinicId: z.number(),
     })
   )
@@ -332,7 +332,7 @@ export const checkClinicAccessProcedure = protectedProcedure
 export const getMyAccessRequestsProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number().optional(),
+      petId: z.string().optional(),
       clinicId: z.number().optional(),
     })
   )
@@ -386,7 +386,7 @@ export const getMyAccessRequestsProcedure = protectedProcedure
 export const getClinicFollowUpsProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
     })
   )
   .query(async ({ input, ctx }) => {
@@ -435,7 +435,7 @@ export const getClinicFollowUpsProcedure = protectedProcedure
 export const cancelClinicFollowUpsProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       clinicId: z.number(),
     })
   )

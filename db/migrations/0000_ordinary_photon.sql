@@ -568,7 +568,7 @@ CREATE TABLE "pet_approvals" (
 );
 --> statement-breakpoint
 CREATE TABLE "pets" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"owner_id" integer NOT NULL,
 	"name" text NOT NULL,
 	"type" text NOT NULL,
@@ -1209,7 +1209,7 @@ CREATE TABLE clinic_stats (
 CREATE TABLE reminders (
   id SERIAL PRIMARY KEY,
   clinic_id INTEGER NOT NULL,
-  pet_id INTEGER NOT NULL,
+  pet_id uuid NOT NULL,
   user_id INTEGER NOT NULL,
   reminder_type TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -1241,7 +1241,7 @@ CREATE TABLE reminders (
 	-- Medical records table
 CREATE TABLE "medical_records" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" integer NOT NULL,
+	"pet_id" uuid NOT NULL,
 	"clinic_id" integer,
 	"veterinarian_id" integer,
 	"diagnosis" text NOT NULL,
@@ -1255,7 +1255,7 @@ CREATE TABLE "medical_records" (
 -- Vaccinations table
 CREATE TABLE "vaccinations" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" integer NOT NULL,
+	"pet_id" uuid NOT NULL,
 	"clinic_id" integer,
 	"name" text NOT NULL,
 	"date" timestamp with time zone DEFAULT now() NOT NULL,
@@ -1268,7 +1268,7 @@ CREATE TABLE "vaccinations" (
 -- Pet reminders table
 CREATE TABLE "pet_reminders" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" integer NOT NULL,
+	"pet_id" uuid NOT NULL,
 	"clinic_id" integer,
 	"title" text NOT NULL,
 	"description" text,
@@ -1281,7 +1281,7 @@ CREATE TABLE "pet_reminders" (
 -- Treatment cards table
 CREATE TABLE "treatment_cards" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" integer NOT NULL,
+	"pet_id" uuid NOT NULL,
 	"clinic_id" integer NOT NULL,
 	"medications" jsonb NOT NULL,
 	"instructions" text,
@@ -1293,7 +1293,7 @@ CREATE TABLE "treatment_cards" (
 -- Follow-up requests table
 CREATE TABLE "follow_up_requests" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" integer NOT NULL,
+	"pet_id" uuid NOT NULL,
 	"clinic_id" integer NOT NULL,
 	"reason" text NOT NULL,
 	"notes" text,
@@ -1306,7 +1306,7 @@ CREATE TABLE "follow_up_requests" (
 -- Clinic access requests table
 CREATE TABLE "clinic_access_requests" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" integer NOT NULL,
+	"pet_id" uuid NOT NULL,
 	"clinic_id" integer NOT NULL,
 	"veterinarian_id" integer,
 	"reason" text NOT NULL,
@@ -1322,7 +1322,7 @@ CREATE TABLE "clinic_access_requests" (
 -- Approved clinic access table
 CREATE TABLE "approved_clinic_access" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" integer NOT NULL,
+	"pet_id" uuid NOT NULL,
 	"clinic_id" integer NOT NULL,
 	"request_id" integer,
 	"granted_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -1336,7 +1336,7 @@ CREATE TABLE "approved_clinic_access" (
 -- Pending medical actions - awaiting owner approval
 CREATE TABLE "pending_medical_actions" (
   "id" serial PRIMARY KEY NOT NULL,
-  "pet_id" integer NOT NULL,
+  "pet_id" uuid NOT NULL,
   "clinic_id" integer NOT NULL,
   "veterinarian_id" integer,
   
@@ -1851,6 +1851,19 @@ CREATE TABLE "user_addresses" (
 );
 --> statement-breakpoint
 ALTER TABLE "user_addresses" ADD CONSTRAINT "user_addresses_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+--> statement-breakpoint
+CREATE TABLE "clinic_followers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"clinic_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "clinic_followers" ADD CONSTRAINT "clinic_followers_clinic_id_fkey" FOREIGN KEY ("clinic_id") REFERENCES "clinics"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "clinic_followers" ADD CONSTRAINT "clinic_followers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 --> statement-breakpoint
 CREATE TABLE "user_cart_items" (

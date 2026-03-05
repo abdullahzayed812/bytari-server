@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { publicProcedure } from "../../../create-context";
+import { protectedProcedure, publicProcedure } from "../../../create-context";
+import { hashPassword } from "../../../../lib/auth";
 import {
   db,
   users,
@@ -292,4 +293,37 @@ export const searchUsersProcedure = publicProcedure
       console.error("Error searching users:", error);
       throw new Error("فشل في البحث عن المستخدمين");
     }
+  });
+
+// Super admin emails allowed to reset passwords
+const SUPER_ADMIN_EMAILS = ["zuhairalrawi0@gmail.com", "superadmin@petapp.com"];
+
+// Reset user password (superadmin only)
+export const resetUserPasswordProcedure = protectedProcedure
+  .input(
+    z.object({
+      userId: z.number(),
+      newPassword: z.string().min(6),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    // Verify the caller is a superadmin
+    if (!SUPER_ADMIN_EMAILS.includes(ctx.user.email)) {
+      throw new Error("ليس لديك صلاحية لإعادة تعيين كلمات المرور");
+    }
+
+    const [targetUser] = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, input.userId)).limit(1);
+
+    if (!targetUser) {
+      throw new Error("المستخدم غير موجود");
+    }
+
+    const hashedPassword = await hashPassword(input.newPassword);
+
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, input.userId));
+
+    return {
+      success: true,
+      message: `تم إعادة تعيين كلمة مرور ${targetUser.name} بنجاح`,
+    };
   });

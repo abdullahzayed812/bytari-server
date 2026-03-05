@@ -6,7 +6,7 @@ import { db, pets } from "../../../../db";
 export const deletePetProcedure = protectedProcedure
   .input(
     z.object({
-      id: z.number(),
+      id: z.string(),
     })
   )
   .mutation(async ({ ctx, input }) => {

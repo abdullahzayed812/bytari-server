@@ -20,7 +20,7 @@ import {
 export const requestAddMedicalRecordProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       clinicId: z.number(),
       diagnosis: z.string().min(1),
       treatment: z.string().min(1),
@@ -77,7 +77,7 @@ export const requestAddMedicalRecordProcedure = protectedProcedure
 export const requestAddVaccinationProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       clinicId: z.number(),
       name: z.string().min(1),
       nextDate: z.string().optional(),
@@ -132,7 +132,7 @@ export const requestAddVaccinationProcedure = protectedProcedure
 export const requestAddReminderProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number(),
+      petId: z.string(),
       clinicId: z.number(),
       title: z.string().min(1),
       description: z.string().optional(),
@@ -187,7 +187,7 @@ export const requestAddReminderProcedure = protectedProcedure
 // OWNER: Get pending medical action requests
 // ============================================
 export const getPendingMedicalActionsProcedure = protectedProcedure
-  .input(z.object({ petId: z.number() }))
+  .input(z.object({ petId: z.string() }))
   .query(async ({ input, ctx }) => {
     try {
       const requests = await db
@@ -376,7 +376,7 @@ export const rejectMedicalActionProcedure = protectedProcedure
 export const getMyMedicalRequestsProcedure = protectedProcedure
   .input(
     z.object({
-      petId: z.number().optional(),
+      petId: z.string().optional(),
     })
   )
   .query(async ({ input, ctx }) => {
@@ -417,7 +417,7 @@ export const getMyMedicalRequestsProcedure = protectedProcedure
   });
   
 export const getPendingMedicalActionsCountProcedure = protectedProcedure
-  .input(z.object({ petId: z.number() }))
+  .input(z.object({ petId: z.string() }))
   .query(async ({ input, ctx }) => {
     try {
       const [result] = await db

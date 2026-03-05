@@ -152,7 +152,7 @@ export async function seedSections(db: NodePgDatabase<any>) {
     },
     {
       name: "offices",
-      title: "المذاخر البيطرية",
+      title: "المكاتب البيطرية",
       icon: "Building2",
       color: "#6B7280",
       route: "/vet-stores-list",

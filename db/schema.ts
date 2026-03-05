@@ -11,6 +11,7 @@ import {
   decimal,
   varchar,
   pgEnum,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 // Users table
@@ -58,7 +59,7 @@ export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
 
 // Pets table
 export const pets = pgTable("pets", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   ownerId: integer("owner_id")
     .notNull()
     .references(() => users.id),
@@ -80,7 +81,7 @@ export const pets = pgTable("pets", {
 // Medical records table
 export const medicalRecords = pgTable("medical_records", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
+  petId: uuid("pet_id")
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
@@ -97,7 +98,7 @@ export const medicalRecords = pgTable("medical_records", {
 // Vaccinations table (structured)
 export const vaccinations = pgTable("vaccinations", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
+  petId: uuid("pet_id")
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
@@ -113,7 +114,7 @@ export const vaccinations = pgTable("vaccinations", {
 // Pet reminders table
 export const petReminders = pgTable("pet_reminders", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
+  petId: uuid("pet_id")
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
@@ -129,7 +130,7 @@ export const petReminders = pgTable("pet_reminders", {
 // Treatment cards table
 export const treatmentCards = pgTable("treatment_cards", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
+  petId: uuid("pet_id")
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -146,7 +147,7 @@ export const treatmentCards = pgTable("treatment_cards", {
 // Follow-up requests table
 export const followUpRequests = pgTable("follow_up_requests", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
+  petId: uuid("pet_id")
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -163,7 +164,7 @@ export const followUpRequests = pgTable("follow_up_requests", {
 // Single access request table - replaces the need for multiple request types
 export const clinicAccessRequests = pgTable("clinic_access_requests", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
+  petId: uuid("pet_id")
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -188,7 +189,7 @@ export const clinicAccessRequests = pgTable("clinic_access_requests", {
 // Simple approved access table
 export const approvedClinicAccess = pgTable("approved_clinic_access", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
+  petId: uuid("pet_id")
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -208,7 +209,7 @@ export const approvedClinicAccess = pgTable("approved_clinic_access", {
 // Pending medical actions - awaiting owner approval
 export const pendingMedicalActions = pgTable("pending_medical_actions", {
   id: serial("id").primaryKey(),
-  petId: integer("pet_id")
+  petId: uuid("pet_id")
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -747,6 +748,17 @@ export const storeFollowers = pgTable("store_followers", {
   storeId: integer("store_id")
     .notNull()
     .references(() => stores.id),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const clinicFollowers = pgTable("clinic_followers", {
+  id: serial("id").primaryKey(),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id),
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
