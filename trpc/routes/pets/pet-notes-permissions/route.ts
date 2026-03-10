@@ -27,7 +27,7 @@ export const requestAddMedicalRecordProcedure = protectedProcedure
       notes: z.string().optional(),
       prescriptionImage: z.string().optional(),
       requestReason: z.string().min(1, "يجب إدخال سبب الطلب"),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -49,7 +49,10 @@ export const requestAddMedicalRecordProcedure = protectedProcedure
         .returning();
 
       // Notify pet owner
-      const [pet] = await db.select({ ownerId: pets.ownerId, name: pets.name }).from(pets).where(eq(pets.id, input.petId));
+      const [pet] = await db
+        .select({ ownerId: pets.ownerId, name: pets.name })
+        .from(pets)
+        .where(eq(pets.id, input.petId));
       if (pet && pet.ownerId) {
         await db.insert(notifications).values({
           userId: pet.ownerId,
@@ -83,7 +86,7 @@ export const requestAddVaccinationProcedure = protectedProcedure
       nextDate: z.string().optional(),
       notes: z.string().optional(),
       requestReason: z.string().min(1, "يجب إدخال سبب الطلب"),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -104,14 +107,17 @@ export const requestAddVaccinationProcedure = protectedProcedure
         .returning();
 
       // Notify pet owner
-      const [pet] = await db.select({ ownerId: pets.ownerId, name: pets.name }).from(pets).where(eq(pets.id, input.petId));
+      const [pet] = await db
+        .select({ ownerId: pets.ownerId, name: pets.name })
+        .from(pets)
+        .where(eq(pets.id, input.petId));
       if (pet && pet.ownerId) {
         await db.insert(notifications).values({
           userId: pet.ownerId,
           title: "طلب تطعيم جديد",
           message: `تم تقديم طلب لإضافة تطعيم لحيوانك الأليف "${pet.name}".`,
           type: "medical_action_request",
-          data: JSON.stringify({ petId: input.petId, requestId: request.id }),
+          data: JSON.stringify({ petId: input.petId, requestId: request.id, scheduledDate: input.nextDate ?? null }),
         });
       }
 
@@ -139,7 +145,7 @@ export const requestAddReminderProcedure = protectedProcedure
       reminderDate: z.string(),
       reminderType: z.enum(["vaccination", "medication", "checkup", "other"]).default("checkup"),
       requestReason: z.string().min(1, "يجب إدخال سبب الطلب"),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -161,14 +167,17 @@ export const requestAddReminderProcedure = protectedProcedure
         .returning();
 
       // Notify pet owner
-      const [pet] = await db.select({ ownerId: pets.ownerId, name: pets.name }).from(pets).where(eq(pets.id, input.petId));
+      const [pet] = await db
+        .select({ ownerId: pets.ownerId, name: pets.name })
+        .from(pets)
+        .where(eq(pets.id, input.petId));
       if (pet && pet.ownerId) {
         await db.insert(notifications).values({
           userId: pet.ownerId,
           title: "طلب تذكير جديد",
           message: `تم تقديم طلب لإضافة تذكير لحيوانك الأليف "${pet.name}".`,
           type: "medical_action_request",
-          data: JSON.stringify({ petId: input.petId, requestId: request.id }),
+          data: JSON.stringify({ petId: input.petId, requestId: request.id, scheduledDate: input.reminderDate }),
         });
       }
 
@@ -214,8 +223,8 @@ export const getPendingMedicalActionsProcedure = protectedProcedure
           and(
             eq(pendingMedicalActions.status, "pending"),
             eq(pendingMedicalActions.petId, input.petId),
-            eq(pets.ownerId, ctx.user.id)
-          )
+            eq(pets.ownerId, ctx.user.id),
+          ),
         )
         .orderBy(desc(pendingMedicalActions.createdAt));
 
@@ -236,7 +245,7 @@ export const approveMedicalActionProcedure = protectedProcedure
   .input(
     z.object({
       requestId: z.number(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     try {
@@ -330,7 +339,7 @@ export const rejectMedicalActionProcedure = protectedProcedure
     z.object({
       requestId: z.number(),
       rejectionReason: z.string().optional(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     try {
@@ -377,7 +386,7 @@ export const getMyMedicalRequestsProcedure = protectedProcedure
   .input(
     z.object({
       petId: z.string().optional(),
-    })
+    }),
   )
   .query(async ({ input, ctx }) => {
     try {
@@ -415,7 +424,7 @@ export const getMyMedicalRequestsProcedure = protectedProcedure
       throw new Error("فشل في جلب الطلبات");
     }
   });
-  
+
 export const getPendingMedicalActionsCountProcedure = protectedProcedure
   .input(z.object({ petId: z.string() }))
   .query(async ({ input, ctx }) => {
@@ -423,12 +432,7 @@ export const getPendingMedicalActionsCountProcedure = protectedProcedure
       const [result] = await db
         .select({ count: sql<number>`count(*)` })
         .from(pendingMedicalActions)
-        .where(
-          and(
-            eq(pendingMedicalActions.petId, input.petId),
-            eq(pendingMedicalActions.status, "pending")
-          )
-        );
+        .where(and(eq(pendingMedicalActions.petId, input.petId), eq(pendingMedicalActions.status, "pending")));
 
       return {
         success: true,

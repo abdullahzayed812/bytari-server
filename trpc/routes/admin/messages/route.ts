@@ -7,8 +7,12 @@ import {
   users,
   notifications,
   systemMessageReplies,
+  clinics,
+  approvalRequests,
+  stores,
 } from "../../../../db";
 import { eq, and, desc, inArray, sql, asc, exists } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 // Send system message
 export const sendSystemMessage = publicProcedure
@@ -145,6 +149,10 @@ export const getUserSystemMessages = publicProcedure
   )
   .query(async ({ input }: { input: any }) => {
     try {
+      const senderApproval = alias(approvalRequests, "sender_approval");
+      const senderClinic = alias(clinics, "sender_clinic");
+      const senderStore = alias(stores, "sender_store");
+
       const messages = await db
         .select({
           id: systemMessages.id,
@@ -156,9 +164,23 @@ export const getUserSystemMessages = publicProcedure
           createdAt: systemMessages.createdAt,
           isRead: systemMessageRecipients.isRead,
           readAt: systemMessageRecipients.readAt,
+          senderName: users.name,
+          clinicName: senderClinic.name,
+          storeName: senderStore.name,
         })
         .from(systemMessageRecipients)
         .innerJoin(systemMessages, eq(systemMessageRecipients.messageId, systemMessages.id))
+        .leftJoin(users, eq(systemMessages.senderId, users.id))
+        .leftJoin(
+          senderApproval,
+          and(
+            eq(senderApproval.requesterId, systemMessages.senderId),
+            eq(senderApproval.requestType, "clinic_activation"),
+            eq(senderApproval.status, "approved")
+          )
+        )
+        .leftJoin(senderClinic, eq(senderClinic.id, senderApproval.resourceId))
+        .leftJoin(senderStore, eq(senderStore.ownerId, systemMessages.senderId))
         .where(and(eq(systemMessageRecipients.userId, input.userId), eq(systemMessages.isActive, true)))
         .orderBy(desc(systemMessages.createdAt))
         .limit(input.limit)

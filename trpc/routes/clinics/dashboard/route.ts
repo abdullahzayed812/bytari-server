@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { publicProcedure } from "../../../create-context";
 import {
   db,
@@ -169,11 +169,11 @@ export const getClinicDashboardDataProcedure = publicProcedure
           owner: users,
         })
         .from(appointments)
+        .leftJoin(pets, sql`${appointments.petId}::text = ${pets.id}::text`)
+        .leftJoin(users, eq(pets.ownerId, users.id))
         .where(eq(appointments.clinicId, clinicId))
         .orderBy(desc(appointments.appointmentDate))
-        .limit(5)
-        .leftJoin(pets, eq(appointments.petId, pets.id))
-        .leftJoin(users, eq(pets.ownerId, users.id));
+        .limit(5);
 
       const recentAnimals = recentAppointments.map(({ pet, appointment, owner }) => ({
         id: pet?.id,
