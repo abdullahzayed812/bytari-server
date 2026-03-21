@@ -567,8 +567,22 @@ CREATE TABLE "pet_approvals" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+-- Function to generate random 6-character alphanumeric ID
+CREATE OR REPLACE FUNCTION generate_pet_id() RETURNS varchar(6) AS $$
+DECLARE
+  new_id varchar(6);
+BEGIN
+  LOOP
+    -- use md5 of a random value to avoid pgcrypto dependency
+    new_id := SUBSTR(md5(random()::text), 1, 6);
+    EXIT WHEN NOT EXISTS (SELECT 1 FROM pets WHERE id = new_id);
+  END LOOP;
+  RETURN new_id;
+END;
+$$ LANGUAGE plpgsql;
+--> statement-breakpoint
 CREATE TABLE "pets" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" varchar(6) PRIMARY KEY NOT NULL DEFAULT generate_pet_id(),
 	"owner_id" integer NOT NULL,
 	"name" text NOT NULL,
 	"type" text NOT NULL,
@@ -810,6 +824,9 @@ CREATE TABLE "system_messages" (
 	"target_categories" jsonb,
 	"image_url" text,
 	"link_url" text,
+	"clinic_id" integer,
+	"store_id" integer,
+	"metadata" jsonb,
 	"status" text NOT NULL DEFAULT 'sent', -- 'sent', 'replied'
 	"expires_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -1209,7 +1226,7 @@ CREATE TABLE clinic_stats (
 CREATE TABLE reminders (
   id SERIAL PRIMARY KEY,
   clinic_id INTEGER NOT NULL,
-  pet_id uuid NOT NULL,
+  pet_id varchar(6) NOT NULL,
   user_id INTEGER NOT NULL,
   reminder_type TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -1241,7 +1258,7 @@ CREATE TABLE reminders (
 	-- Medical records table
 CREATE TABLE "medical_records" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" uuid NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
 	"clinic_id" integer,
 	"veterinarian_id" integer,
 	"diagnosis" text NOT NULL,
@@ -1255,7 +1272,7 @@ CREATE TABLE "medical_records" (
 -- Vaccinations table
 CREATE TABLE "vaccinations" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" uuid NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
 	"clinic_id" integer,
 	"name" text NOT NULL,
 	"date" timestamp with time zone DEFAULT now() NOT NULL,
@@ -1268,7 +1285,7 @@ CREATE TABLE "vaccinations" (
 -- Pet reminders table
 CREATE TABLE "pet_reminders" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" uuid NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
 	"clinic_id" integer,
 	"title" text NOT NULL,
 	"description" text,
@@ -1281,7 +1298,7 @@ CREATE TABLE "pet_reminders" (
 -- Treatment cards table
 CREATE TABLE "treatment_cards" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" uuid NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
 	"clinic_id" integer NOT NULL,
 	"medications" jsonb NOT NULL,
 	"instructions" text,
@@ -1293,7 +1310,7 @@ CREATE TABLE "treatment_cards" (
 -- Follow-up requests table
 CREATE TABLE "follow_up_requests" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" uuid NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
 	"clinic_id" integer NOT NULL,
 	"reason" text NOT NULL,
 	"notes" text,
@@ -1306,7 +1323,7 @@ CREATE TABLE "follow_up_requests" (
 -- Clinic access requests table
 CREATE TABLE "clinic_access_requests" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" uuid NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
 	"clinic_id" integer NOT NULL,
 	"veterinarian_id" integer,
 	"reason" text NOT NULL,
@@ -1322,7 +1339,7 @@ CREATE TABLE "clinic_access_requests" (
 -- Approved clinic access table
 CREATE TABLE "approved_clinic_access" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"pet_id" uuid NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
 	"clinic_id" integer NOT NULL,
 	"request_id" integer,
 	"granted_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -1336,7 +1353,7 @@ CREATE TABLE "approved_clinic_access" (
 -- Pending medical actions - awaiting owner approval
 CREATE TABLE "pending_medical_actions" (
   "id" serial PRIMARY KEY NOT NULL,
-  "pet_id" uuid NOT NULL,
+  "pet_id" varchar(6) NOT NULL,
   "clinic_id" integer NOT NULL,
   "veterinarian_id" integer,
   
@@ -1597,6 +1614,8 @@ ALTER TABLE "vet_stores" DROP CONSTRAINT IF EXISTS "vet_stores_owner_id_users_id
 ALTER TABLE "system_message_recipients" DROP CONSTRAINT IF EXISTS "system_message_recipients_user_id_users_id_fk";
 -- ALTER TABLE "system_messages" DROP CONSTRAINT IF EXISTS "system_messages_recipient_id_users_id_fk";
 ALTER TABLE "system_messages" DROP CONSTRAINT IF EXISTS "system_messages_sender_id_users_id_fk";
+ALTER TABLE "system_messages" DROP CONSTRAINT IF EXISTS "system_messages_clinic_id_clinics_id_fk";
+ALTER TABLE "system_messages" DROP CONSTRAINT IF EXISTS "system_messages_store_id_stores_id_fk";
 ALTER TABLE "tips" DROP CONSTRAINT IF EXISTS "tips_author_id_users_id_fk";
 ALTER TABLE "user_roles" DROP CONSTRAINT IF EXISTS "user_roles_user_id_users_id_fk";
 ALTER TABLE "user_roles" DROP CONSTRAINT IF EXISTS "user_roles_assigned_by_users_id_fk";
@@ -1654,6 +1673,8 @@ ALTER TABLE "vet_stores" ADD CONSTRAINT "vet_stores_owner_id_users_id_fk" FOREIG
 ALTER TABLE "system_message_recipients" ADD CONSTRAINT "system_message_recipients_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 -- ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_recipient_id_users_id_fk" FOREIGN KEY ("recipient_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_sender_id_users_id_fk" FOREIGN KEY ("sender_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "system_messages" ADD CONSTRAINT "system_messages_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "tips" ADD CONSTRAINT "tips_author_id_users_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_assigned_by_users_id_fk" FOREIGN KEY ("assigned_by") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

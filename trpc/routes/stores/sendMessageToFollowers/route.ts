@@ -12,7 +12,7 @@ export const sendMessageToStoreFollowersProcedure = protectedProcedure
       imageUrl: z.string().optional(),
     })
   )
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: any) => {
     const { storeId, title, message, imageUrl } = input;
 
     // Verify the caller is the store owner
@@ -41,12 +41,14 @@ export const sendMessageToStoreFollowersProcedure = protectedProcedure
       .insert(systemMessages)
       .values({
         senderId: ctx.user.id,
+        storeId,
         title,
         content: message,
         type: "announcement",
         targetAudience: "specific",
         targetUserIds: followers.map((f) => f.userId),
         imageUrl: imageUrl || null,
+        metadata: { storeName: store.name },
         sentAt: new Date(),
       })
       .returning();
@@ -61,7 +63,7 @@ export const sendMessageToStoreFollowersProcedure = protectedProcedure
 
     // Bulk insert notifications for each follower
     await db.insert(notifications).values(
-      followers.map((f) => ({
+      followers.map((f: any) => ({
         userId: f.userId,
         title,
         message,

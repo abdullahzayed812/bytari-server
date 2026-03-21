@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-import { db, clinicFollowers, notifications, approvalRequests, systemMessages, systemMessageRecipients } from "../../../../db";
+import { db, clinicFollowers, notifications, approvalRequests, systemMessages, systemMessageRecipients, clinics } from "../../../../db";
 import { eq, and } from "drizzle-orm";
 
 export const sendMessageToClinicFollowersProcedure = protectedProcedure
@@ -33,6 +33,13 @@ export const sendMessageToClinicFollowersProcedure = protectedProcedure
       throw new Error("ليس لديك صلاحية لإرسال رسائل لمتابعي هذه العيادة");
     }
 
+    // Get clinic info for metadata
+    const [clinic] = await db
+      .select({ name: clinics.name })
+      .from(clinics)
+      .where(eq(clinics.id, clinicId))
+      .limit(1);
+
     // Get all follower user IDs
     const followers = await db
       .select({ userId: clinicFollowers.userId })
@@ -48,12 +55,14 @@ export const sendMessageToClinicFollowersProcedure = protectedProcedure
       .insert(systemMessages)
       .values({
         senderId: ctx.user.id,
+        clinicId,
         title,
         content: message,
         type: "announcement",
         targetAudience: "specific",
         targetUserIds: followers.map((f) => f.userId),
         imageUrl: imageUrl || null,
+        metadata: { clinicName: clinic?.name },
         sentAt: new Date(),
       })
       .returning();

@@ -1110,6 +1110,9 @@ export const systemMessages = pgTable("system_messages", {
   targetCategories: jsonb("target_categories"),
   imageUrl: text("image_url"),
   linkUrl: text("link_url"),
+  clinicId: integer("clinic_id").references(() => clinics.id),
+  storeId: integer("store_id").references(() => stores.id),
+  metadata: jsonb("metadata"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

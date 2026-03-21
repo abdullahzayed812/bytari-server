@@ -5,6 +5,7 @@ import {
   approvalRequests,
   adminNotifications,
   emailNotifications,
+  notifications,
   users,
   veterinarians,
   clinics,
@@ -392,7 +393,7 @@ export const approveRequestProcedure = publicProcedure
           .where(eq(stores.id, resourceId));
       }
 
-      // Send notification to the requester
+      // Send notification to the requester (admin panel)
       await db.insert(adminNotifications).values({
         recipientId: requesterId,
         type: "approval_request",
@@ -404,6 +405,54 @@ export const approveRequestProcedure = publicProcedure
         relatedResourceId: isRenewalRequest ? 0 : input.requestId,
         priority: "normal",
       });
+
+      // Send in-app notification to the user (clinic/store activation or renewal)
+      if (["clinic_activation", "clinic_renewal", "store_activation", "store_renewal"].includes(requestType)) {
+        const isClinic = requestType.startsWith("clinic");
+        const isRenewal = requestType.endsWith("renewal");
+
+        const resourceName = isClinic
+          ? (
+              await db
+                .select({ name: clinics.name })
+                .from(clinics)
+                .where(eq(clinics.id, resourceId))
+                .limit(1)
+            )[0]?.name || ""
+          : (
+              await db
+                .select({ name: stores.name })
+                .from(stores)
+                .where(eq(stores.id, resourceId))
+                .limit(1)
+            )[0]?.name || "";
+
+        const title = isClinic
+          ? isRenewal
+            ? "تم تجديد اشتراك عيادتك"
+            : "تم قبول عيادتك"
+          : isRenewal
+          ? "تم تجديد اشتراك متجرك"
+          : "تم قبول متجرك";
+
+        const message = isClinic
+          ? `تم ${isRenewal ? "تجديد" : "قبول"} طلب ${isRenewal ? "اشتراك" : "تفعيل"} العيادة${resourceName ? ` ${resourceName}` : ""}. يمكنك الآن استخدام حسابك بشكل كامل.`
+          : `تم ${isRenewal ? "تجديد" : "قبول"} طلب ${isRenewal ? "اشتراك" : "تفعيل"} المتجر${resourceName ? ` ${resourceName}` : ""}. يمكنك الآن استخدام حسابك بشكل كامل.`;
+
+        await db.insert(notifications).values({
+          userId: requesterId,
+          title,
+          message,
+          type: "approval",
+          data: JSON.stringify({
+            requestId: input.requestId,
+            resourceId,
+            requestType,
+          }),
+          isRead: false,
+          createdAt: new Date(),
+        });
+      }
 
       return { success: true, requestType };
     } catch (error) {

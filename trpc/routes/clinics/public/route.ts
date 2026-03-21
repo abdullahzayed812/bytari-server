@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { db, clinics, approvalRequests, users } from "../../../../db";
-import { eq, and, like, or, inArray } from "drizzle-orm";
+import { db, clinics, approvalRequests, users, reviews } from "../../../../db";
+import { eq, and, like, or, inArray, sql } from "drizzle-orm";
 
 export const getActiveClinicsListProcedure = publicProcedure
   .input(
@@ -91,6 +91,27 @@ export const getActiveClinicsListProcedure = publicProcedure
         userMap.set(user.id, user);
       });
 
+      // Compute review statistics for clinics (average rating + review count)
+      const clinicReviewStats: Record<number, { averageRating: number; reviewCount: number }> = {};
+      if (clinicIds.length > 0) {
+        const reviewStats = await db
+          .select({
+            clinicId: reviews.clinicId,
+            averageRating: sql<number>`ROUND(AVG(${reviews.rating}), 1)`.as("averageRating"),
+            reviewCount: sql<number>`COUNT(*)`.as("reviewCount"),
+          })
+          .from(reviews)
+          .where(inArray(reviews.clinicId, clinicIds))
+          .groupBy(reviews.clinicId);
+
+        reviewStats.forEach((stat: any) => {
+          clinicReviewStats[stat.clinicId] = {
+            averageRating: Number(stat.averageRating) || 0,
+            reviewCount: Number(stat.reviewCount) || 0,
+          };
+        });
+      }
+
       return {
         success: true,
         clinics: filteredClinics.map((clinic: any) => {
@@ -106,6 +127,8 @@ export const getActiveClinicsListProcedure = publicProcedure
             licenseImages: approval?.licenseImages || null,
             ownerName: owner?.name || "غير متوفر",
             ownerEmail: owner?.email || "غير متوفر",
+            rating: clinicReviewStats[clinic.id]?.averageRating ?? clinic.rating ?? 0,
+            reviewCount: clinicReviewStats[clinic.id]?.reviewCount ?? 0,
             createdAt:
               typeof clinic.createdAt === "number" ? new Date(clinic.createdAt * 1000).toISOString() : clinic.createdAt,
             updatedAt:

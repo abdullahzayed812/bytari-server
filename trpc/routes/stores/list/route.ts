@@ -4,6 +4,7 @@ import {
   approvalRequests,
   db,
   products,
+  reviews,
   storeFollowers,
   stores,
   storeStaff,
@@ -111,6 +112,27 @@ export const listActiveStoresProcedure = publicProcedure
         userMap.set(user.id, user);
       });
 
+      // Compute review statistics for stores (average rating + review count)
+      const storeReviewStats: Record<number, { averageRating: number; reviewCount: number }> = {};
+      if (storeIds.length > 0) {
+        const reviewStats = await db
+          .select({
+            storeId: reviews.storeId,
+            averageRating: sql<number>`ROUND(AVG(${reviews.rating}), 1)`.as("averageRating"),
+            reviewCount: sql<number>`COUNT(*)`.as("reviewCount"),
+          })
+          .from(reviews)
+          .where(inArray(reviews.storeId, storeIds))
+          .groupBy(reviews.storeId);
+
+        reviewStats.forEach((stat: any) => {
+          storeReviewStats[stat.storeId] = {
+            averageRating: Number(stat.averageRating) || 0,
+            reviewCount: Number(stat.reviewCount) || 0,
+          };
+        });
+      }
+
       return {
         success: true,
         stores: filteredStores.map((store: any) => {
@@ -125,6 +147,8 @@ export const listActiveStoresProcedure = publicProcedure
             licenseImages: approval?.licenseImages || null,
             ownerName: owner?.name || "غير متوفر",
             ownerEmail: owner?.email || "غير متوفر",
+            rating: storeReviewStats[store.id]?.averageRating ?? store.rating ?? 0,
+            reviewCount: storeReviewStats[store.id]?.reviewCount ?? 0,
           };
         }),
       };
