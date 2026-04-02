@@ -1948,3 +1948,7 @@ ALTER TABLE "union_registrations" ADD CONSTRAINT "union_registrations_user_id_us
 ALTER TABLE "union_registrations" ADD CONSTRAINT "union_registrations_main_union_id_union_main_id_fk" FOREIGN KEY ("main_union_id") REFERENCES "public"."union_main"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "union_registrations" ADD CONSTRAINT "union_registrations_branch_id_union_branches_id_fk" FOREIGN KEY ("branch_id") REFERENCES "public"."union_branches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "union_registrations" ADD CONSTRAINT "union_registrations_removed_by_users_id_fk" FOREIGN KEY ("removed_by") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+--> statement-breakpoint
+ALTER TABLE "clinic_pet_chat_messages" ADD COLUMN IF NOT EXISTS "media_url" text;
+--> statement-breakpoint
+ALTER TABLE "clinic_pet_chat_messages" ADD COLUMN IF NOT EXISTS "media_type" text;

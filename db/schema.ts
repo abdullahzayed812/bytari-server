@@ -2031,6 +2031,8 @@ export const clinicPetChatMessages = pgTable("clinic_pet_chat_messages", {
   senderId: integer("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   senderRole: text("sender_role").notNull(), // "owner" | "clinic"
   message: text("message").notNull(),
+  mediaUrl: text("media_url"),
+  mediaType: text("media_type"), // "image" | "video" | null
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

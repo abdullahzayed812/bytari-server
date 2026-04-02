@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, clinicPetChats, clinicPetChatMessages, pets, users } from "../../../../db";
+import { db, clinicPetChats, clinicPetChatMessages, pets, users, clinicStaff, notifications } from "../../../../db";
 import { TRPCError } from "@trpc/server";
 
 // Get or create a chat between a clinic and a pet owner (used by vet side)
@@ -122,16 +122,22 @@ export const getMessagesProcedure = protectedProcedure
     return { success: true, messages, nextCursor };
   });
 
-// Send a message
+// Send a message (with optional image/video)
 export const sendMessageProcedure = protectedProcedure
   .input(
     z.object({
       chatId: z.number(),
-      message: z.string().min(1),
+      message: z.string(),
       senderRole: z.enum(["owner", "clinic"]),
+      mediaUrl: z.string().optional(),
+      mediaType: z.enum(["image", "video"]).optional(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
+    if (!input.message.trim() && !input.mediaUrl) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "الرسالة لا يمكن أن تكون فارغة" });
+    }
+
     const [msg] = await db
       .insert(clinicPetChatMessages)
       .values({
@@ -139,9 +145,59 @@ export const sendMessageProcedure = protectedProcedure
         senderId: ctx.user.id,
         senderRole: input.senderRole,
         message: input.message,
+        mediaUrl: input.mediaUrl ?? null,
+        mediaType: input.mediaType ?? null,
         isRead: false,
       })
       .returning();
+
+    // Send notification to recipient(s)
+    try {
+      const [chat] = await db
+        .select({ ownerId: clinicPetChats.ownerId, clinicId: clinicPetChats.clinicId })
+        .from(clinicPetChats)
+        .where(eq(clinicPetChats.id, input.chatId))
+        .limit(1);
+
+      if (chat) {
+        const isMedia = !!input.mediaUrl;
+        const mediaLabel = input.mediaType === "video" ? "فيديو" : "صورة";
+        const notifMessage = isMedia
+          ? `أرسل ${mediaLabel}${input.message.trim() ? `: ${input.message.trim().substring(0, 60)}` : ""}`
+          : input.message.trim().substring(0, 80);
+
+        if (input.senderRole === "clinic") {
+          // Notify the pet owner
+          await db.insert(notifications).values({
+            userId: chat.ownerId,
+            title: "رسالة جديدة من العيادة",
+            message: notifMessage,
+            type: "clinic_chat",
+            data: { chatId: input.chatId },
+          });
+        } else {
+          // Notify all clinic staff
+          const staff = await db
+            .select({ userId: clinicStaff.userId })
+            .from(clinicStaff)
+            .where(eq(clinicStaff.clinicId, chat.clinicId));
+
+          if (staff.length > 0) {
+            await db.insert(notifications).values(
+              staff.map((s) => ({
+                userId: s.userId,
+                title: "رسالة جديدة من صاحب الحيوان",
+                message: notifMessage,
+                type: "clinic_chat",
+                data: { chatId: input.chatId },
+              })),
+            );
+          }
+        }
+      }
+    } catch {
+      // Notification failure should not block message delivery
+    }
 
     return { success: true, message: msg };
   });
