@@ -1991,6 +1991,16 @@ export const unionBranchSupervisors = pgTable("union_branch_supervisors", {
   userId: integer("user_id").notNull(),
 });
 
+export const unionRegistrations = pgTable("union_registrations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mainUnionId: integer("main_union_id").references(() => unionMain.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => unionBranches.id, { onDelete: "cascade" }),
+  registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
+  removedBy: integer("removed_by").references(() => users.id),
+});
+
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
   userId: integer("user_id")

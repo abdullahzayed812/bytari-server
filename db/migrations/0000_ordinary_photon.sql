@@ -1928,3 +1928,23 @@ CREATE TABLE "clinic_pet_chat_messages" (
 --> statement-breakpoint
 ALTER TABLE "clinic_pet_chat_messages" ADD CONSTRAINT "clinic_pet_chat_messages_chat_id_clinic_pet_chats_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."clinic_pet_chats"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "clinic_pet_chat_messages" ADD CONSTRAINT "clinic_pet_chat_messages_sender_id_users_id_fk" FOREIGN KEY ("sender_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+--> statement-breakpoint
+CREATE TABLE "union_registrations" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"main_union_id" integer,
+	"branch_id" integer,
+	"registered_at" timestamp with time zone NOT NULL DEFAULT now(),
+	"removed_at" timestamp with time zone,
+	"removed_by" integer,
+	CONSTRAINT "union_registrations_at_least_one" CHECK ("main_union_id" IS NOT NULL OR "branch_id" IS NOT NULL)
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX "union_reg_user_main_idx" ON "union_registrations" ("user_id", "main_union_id") WHERE "main_union_id" IS NOT NULL;
+--> statement-breakpoint
+CREATE UNIQUE INDEX "union_reg_user_branch_idx" ON "union_registrations" ("user_id", "branch_id") WHERE "branch_id" IS NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "union_registrations" ADD CONSTRAINT "union_registrations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "union_registrations" ADD CONSTRAINT "union_registrations_main_union_id_union_main_id_fk" FOREIGN KEY ("main_union_id") REFERENCES "public"."union_main"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "union_registrations" ADD CONSTRAINT "union_registrations_branch_id_union_branches_id_fk" FOREIGN KEY ("branch_id") REFERENCES "public"."union_branches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "union_registrations" ADD CONSTRAINT "union_registrations_removed_by_users_id_fk" FOREIGN KEY ("removed_by") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

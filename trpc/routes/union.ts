@@ -8,6 +8,7 @@ import {
   unionFollowers,
   unionSettings,
   unionUsers,
+  unionRegistrations,
   unionRoleEnum,
   unionAnnouncementTypeEnum,
   unionBranchRegionEnum,
@@ -19,7 +20,7 @@ import {
   rolePermissions,
   users,
 } from "../../db/schema";
-import { eq, and, gte, lte, desc, count } from "drizzle-orm";
+import { eq, and, gte, lte, desc, count, isNull, lt } from "drizzle-orm";
 
 const assignSupervisorSchema = z.object({
   branchId: z.number(),
@@ -37,56 +38,52 @@ export const unionRouter = createTRPCRouter({
           .values({
             name: "نقابة الأطباء البيطريين العراقية",
             description: "النقابة الرسمية للأطباء البيطريين في العراق",
-
             logoUrl: "https://example.com/logos/iraqi-vet-union.png",
-
             establishedYear: "1958",
             memberCount: "15000",
-
             phone1: "+964 1 555 1234",
             phone2: "+964 770 123 4567",
-
             email: "info@iraqivetunion.org",
             website: "https://www.iraqivetunion.org",
-
             address: "بغداد، العراق – شارع النقابات، قرب ساحة الأندلس",
-
             services: [
-              {
-                title: "تسجيل الأطباء البيطريين",
-                description: "تسجيل ومنح أرقام عضوية رسمية للأطباء البيطريين الجدد.",
-              },
-              {
-                title: "إصدار وتجديد الهوية النقابية",
-                description: "إصدار وتجديد بطاقات العضوية للنقابة.",
-              },
-              {
-                title: "الدورات التدريبية",
-                description: "تنظيم ورش عمل ودورات علمية لتطوير المهارات المهنية.",
-              },
-              {
-                title: "الدعم القانوني",
-                description: "تقديم الاستشارات والدعم القانوني لأعضاء النقابة.",
-              },
+              { title: "تسجيل الأطباء البيطريين", description: "تسجيل ومنح أرقام عضوية رسمية للأطباء البيطريين الجدد." },
+              { title: "إصدار وتجديد الهوية النقابية", description: "إصدار وتجديد بطاقات العضوية للنقابة." },
+              { title: "الدورات التدريبية", description: "تنظيم ورش عمل ودورات علمية لتطوير المهارات المهنية." },
+              { title: "الدعم القانوني", description: "تقديم الاستشارات والدعم القانوني لأعضاء النقابة." },
             ],
-
-            // createdAt & updatedAt will auto-generate because of defaultNow()
           })
           .returning();
 
-        return { success: true, union: { ...newMain[0], isFollowing: false } };
+        return { success: true, union: { ...newMain[0], isFollowing: false, isRegistered: false, membersCount: 0, followersCount: 0 } };
       }
 
+      const unionId = result[0].id;
       let isFollowing = false;
+      let isRegistered = false;
+      let membersCount = 0;
+      let followersCount = 0;
+
       if (ctx.user) {
-        const followStatus = await db
-          .select()
-          .from(unionFollowers)
-          .where(and(eq(unionFollowers.mainUnionId, result[0].id), eq(unionFollowers.userId, ctx.user.id)));
+        const [followStatus, regStatus, membersRes, followersRes] = await Promise.all([
+          db.select().from(unionFollowers)
+            .where(and(eq(unionFollowers.mainUnionId, unionId), eq(unionFollowers.userId, ctx.user.id)))
+            .limit(1),
+          db.select().from(unionRegistrations)
+            .where(and(eq(unionRegistrations.mainUnionId, unionId), eq(unionRegistrations.userId, ctx.user.id), isNull(unionRegistrations.removedAt)))
+            .limit(1),
+          db.select({ count: count() }).from(unionRegistrations)
+            .where(and(eq(unionRegistrations.mainUnionId, unionId), isNull(unionRegistrations.removedAt))),
+          db.select({ count: count() }).from(unionFollowers)
+            .where(eq(unionFollowers.mainUnionId, unionId)),
+        ]);
         isFollowing = followStatus.length > 0;
+        isRegistered = regStatus.length > 0;
+        membersCount = membersRes[0]?.count ?? 0;
+        followersCount = followersRes[0]?.count ?? 0;
       }
 
-      return { success: true, union: { ...result[0], isFollowing } };
+      return { success: true, union: { ...result[0], isFollowing, isRegistered, membersCount, followersCount } };
     }),
     update: protectedProcedure
       .input(
@@ -144,21 +141,30 @@ export const unionRouter = createTRPCRouter({
     }),
     get: protectedProcedure.input(z.number()).query(async ({ ctx, input }) => {
       const result = await db.select().from(unionBranches).where(eq(unionBranches.id, input));
-      if (result.length === 0) {
-        return null;
-      }
+      if (result.length === 0) return null;
       const branch = result[0];
 
       let isFollowing = false;
+      let isRegistered = false;
+      let membersCount = 0;
+
       if (ctx.user) {
-        const followStatus = await db
-          .select()
-          .from(unionFollowers)
-          .where(and(eq(unionFollowers.branchId, branch.id), eq(unionFollowers.userId, ctx.user.id)));
+        const [followStatus, regStatus, membersRes] = await Promise.all([
+          db.select().from(unionFollowers)
+            .where(and(eq(unionFollowers.branchId, branch.id), eq(unionFollowers.userId, ctx.user.id)))
+            .limit(1),
+          db.select().from(unionRegistrations)
+            .where(and(eq(unionRegistrations.branchId, branch.id), eq(unionRegistrations.userId, ctx.user.id), isNull(unionRegistrations.removedAt)))
+            .limit(1),
+          db.select({ count: count() }).from(unionRegistrations)
+            .where(and(eq(unionRegistrations.branchId, branch.id), isNull(unionRegistrations.removedAt))),
+        ]);
         isFollowing = followStatus.length > 0;
+        isRegistered = regStatus.length > 0;
+        membersCount = membersRes[0]?.count ?? 0;
       }
 
-      return { ...branch, isFollowing };
+      return { ...branch, isFollowing, isRegistered, membersCount };
     }),
     create: protectedProcedure
       .input(
@@ -305,12 +311,7 @@ export const unionRouter = createTRPCRouter({
 
   follow: createTRPCRouter({
     toggle: protectedProcedure
-      .input(
-        z.object({
-          branchId: z.number().optional(),
-          mainUnionId: z.number().optional(),
-        })
-      )
+      .input(z.object({ branchId: z.number().optional(), mainUnionId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const userId = ctx.user.id;
         const { branchId, mainUnionId } = input;
@@ -325,8 +326,8 @@ export const unionRouter = createTRPCRouter({
           .where(
             and(
               eq(unionFollowers.userId, userId),
-              branchId ? eq(unionFollowers.branchId, branchId) : eq(unionFollowers.mainUnionId, mainUnionId)
-            )
+              branchId ? eq(unionFollowers.branchId, branchId) : eq(unionFollowers.mainUnionId, mainUnionId),
+            ),
           );
 
         if (existingFollow.length > 0) {
@@ -336,6 +337,48 @@ export const unionRouter = createTRPCRouter({
           await db.insert(unionFollowers).values({ userId, branchId, mainUnionId });
           return { success: true, isFollowing: true };
         }
+      }),
+
+    getFollowers: protectedProcedure
+      .input(
+        z.object({
+          mainUnionId: z.number().optional(),
+          branchId: z.number().optional(),
+          cursor: z.number().optional(),
+          limit: z.number().default(30),
+        }),
+      )
+      .query(async ({ input }) => {
+        const { mainUnionId, branchId, cursor, limit } = input;
+        const condition = mainUnionId
+          ? eq(unionFollowers.mainUnionId, mainUnionId)
+          : eq(unionFollowers.branchId, branchId!);
+
+        const rows = await db
+          .select({
+            followId: unionFollowers.id,
+            userId: unionFollowers.userId,
+            name: users.name,
+            avatar: users.avatar,
+            email: users.email,
+            followedAt: unionFollowers.createdAt,
+          })
+          .from(unionFollowers)
+          .leftJoin(users, eq(unionFollowers.userId, users.id))
+          .where(and(condition, cursor ? lt(unionFollowers.id, cursor) : undefined))
+          .orderBy(desc(unionFollowers.id))
+          .limit(limit + 1);
+
+        const hasMore = rows.length > limit;
+        const followers = hasMore ? rows.slice(0, limit) : rows;
+        return { followers, nextCursor: hasMore ? followers[followers.length - 1]?.followId : undefined };
+      }),
+
+    removeFollower: protectedProcedure
+      .input(z.object({ followId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.delete(unionFollowers).where(eq(unionFollowers.id, input.followId));
+        return { success: true };
       }),
   }),
 
@@ -622,6 +665,110 @@ export const unionRouter = createTRPCRouter({
         regionDistribution: regionDistribution.map((item) => ({ ...item, label: item.region })),
       };
     }),
+  }),
+
+  registration: createTRPCRouter({
+    toggle: protectedProcedure
+      .input(z.object({ mainUnionId: z.number().optional(), branchId: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const { mainUnionId, branchId } = input;
+        if (!mainUnionId && !branchId) throw new Error("Either mainUnionId or branchId required");
+
+        const userId = ctx.user.id;
+        const condition = mainUnionId
+          ? eq(unionRegistrations.mainUnionId, mainUnionId)
+          : eq(unionRegistrations.branchId, branchId!);
+
+        const [existing] = await db
+          .select()
+          .from(unionRegistrations)
+          .where(and(eq(unionRegistrations.userId, userId), condition))
+          .limit(1);
+
+        if (existing) {
+          if (existing.removedAt === null) {
+            await db
+              .update(unionRegistrations)
+              .set({ removedAt: new Date(), removedBy: userId })
+              .where(eq(unionRegistrations.id, existing.id));
+            return { isRegistered: false };
+          } else {
+            await db
+              .update(unionRegistrations)
+              .set({ removedAt: null, removedBy: null, registeredAt: new Date() })
+              .where(eq(unionRegistrations.id, existing.id));
+            return { isRegistered: true };
+          }
+        }
+
+        await db.insert(unionRegistrations).values({ userId, mainUnionId, branchId });
+        return { isRegistered: true };
+      }),
+
+    remove: protectedProcedure
+      .input(z.object({ registrationId: z.number(), mainUnionId: z.number().optional(), branchId: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await db
+          .update(unionRegistrations)
+          .set({ removedAt: new Date(), removedBy: ctx.user.id })
+          .where(eq(unionRegistrations.id, input.registrationId));
+        return { success: true };
+      }),
+
+    getMembers: protectedProcedure
+      .input(
+        z.object({
+          mainUnionId: z.number().optional(),
+          branchId: z.number().optional(),
+          cursor: z.number().optional(),
+          limit: z.number().default(30),
+        }),
+      )
+      .query(async ({ input }) => {
+        const { mainUnionId, branchId, cursor, limit } = input;
+        const condition = mainUnionId
+          ? eq(unionRegistrations.mainUnionId, mainUnionId)
+          : eq(unionRegistrations.branchId, branchId!);
+
+        const rows = await db
+          .select({
+            registrationId: unionRegistrations.id,
+            userId: unionRegistrations.userId,
+            name: users.name,
+            avatar: users.avatar,
+            email: users.email,
+            phone: users.phone,
+            registeredAt: unionRegistrations.registeredAt,
+          })
+          .from(unionRegistrations)
+          .leftJoin(users, eq(unionRegistrations.userId, users.id))
+          .where(and(condition, isNull(unionRegistrations.removedAt), cursor ? lt(unionRegistrations.id, cursor) : undefined))
+          .orderBy(desc(unionRegistrations.id))
+          .limit(limit + 1);
+
+        const hasMore = rows.length > limit;
+        const members = hasMore ? rows.slice(0, limit) : rows;
+        return { members, nextCursor: hasMore ? members[members.length - 1]?.registrationId : undefined };
+      }),
+
+    getCounts: protectedProcedure
+      .input(z.object({ mainUnionId: z.number().optional(), branchId: z.number().optional() }))
+      .query(async ({ input }) => {
+        const { mainUnionId, branchId } = input;
+        const regCond = mainUnionId
+          ? eq(unionRegistrations.mainUnionId, mainUnionId)
+          : eq(unionRegistrations.branchId, branchId!);
+        const follCond = mainUnionId
+          ? eq(unionFollowers.mainUnionId, mainUnionId)
+          : eq(unionFollowers.branchId, branchId!);
+
+        const [membersRes, followersRes] = await Promise.all([
+          db.select({ count: count() }).from(unionRegistrations).where(and(regCond, isNull(unionRegistrations.removedAt))),
+          db.select({ count: count() }).from(unionFollowers).where(follCond),
+        ]);
+
+        return { membersCount: membersRes[0]?.count ?? 0, followersCount: followersRes[0]?.count ?? 0 };
+      }),
   }),
 
   users: createTRPCRouter({
