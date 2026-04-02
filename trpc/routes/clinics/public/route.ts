@@ -97,7 +97,7 @@ export const getActiveClinicsListProcedure = publicProcedure
         const reviewStats = await db
           .select({
             clinicId: reviews.clinicId,
-            averageRating: sql<number>`ROUND(AVG(${reviews.rating}), 1)`.as("averageRating"),
+            averageRating: sql<number>`ROUND(AVG(${reviews.rating})::numeric, 1)`.as("averageRating"),
             reviewCount: sql<number>`COUNT(*)`.as("reviewCount"),
           })
           .from(reviews)

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { publicProcedure } from "../../../create-context";
 import {
   db,
@@ -175,7 +176,7 @@ export const getUserSystemMessages = publicProcedure
       return { success: true, messages };
     } catch (error) {
       console.error("Error getting user system messages:", error);
-      throw new Error("Failed to get system messages");
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to get system messages", cause: error });
     }
   });
 

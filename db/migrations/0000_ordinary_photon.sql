@@ -1899,3 +1899,32 @@ CREATE TABLE "user_cart_items" (
 ALTER TABLE "user_cart_items" ADD CONSTRAINT "user_cart_items_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 --> statement-breakpoint
 ALTER TABLE "user_cart_items" ADD CONSTRAINT "user_cart_items_marketplace_product_id_marketplace_products_id_fk" FOREIGN KEY ("marketplace_product_id") REFERENCES "public"."marketplace_products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+--> statement-breakpoint
+ALTER TABLE "system_messages" ADD COLUMN IF NOT EXISTS "metadata" jsonb;
+--> statement-breakpoint
+CREATE TABLE "clinic_pet_chats" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
+	"clinic_id" integer NOT NULL,
+	"owner_id" integer NOT NULL,
+	"is_active" boolean NOT NULL DEFAULT true,
+	"created_at" timestamp with time zone NOT NULL DEFAULT now(),
+	UNIQUE ("pet_id", "clinic_id")
+);
+--> statement-breakpoint
+ALTER TABLE "clinic_pet_chats" ADD CONSTRAINT "clinic_pet_chats_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "clinic_pet_chats" ADD CONSTRAINT "clinic_pet_chats_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "clinic_pet_chats" ADD CONSTRAINT "clinic_pet_chats_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+--> statement-breakpoint
+CREATE TABLE "clinic_pet_chat_messages" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"chat_id" integer NOT NULL,
+	"sender_id" integer NOT NULL,
+	"sender_role" text NOT NULL,
+	"message" text NOT NULL,
+	"is_read" boolean NOT NULL DEFAULT false,
+	"created_at" timestamp with time zone NOT NULL DEFAULT now()
+);
+--> statement-breakpoint
+ALTER TABLE "clinic_pet_chat_messages" ADD CONSTRAINT "clinic_pet_chat_messages_chat_id_clinic_pet_chats_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."clinic_pet_chats"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "clinic_pet_chat_messages" ADD CONSTRAINT "clinic_pet_chat_messages_sender_id_users_id_fk" FOREIGN KEY ("sender_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

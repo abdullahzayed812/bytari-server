@@ -217,6 +217,15 @@ import { unfollowClinicProcedure } from "./routes/clinics/unfollow/route";
 import { isFollowingClinicProcedure } from "./routes/clinics/isFollowing/route";
 import { getClinicFollowerCountProcedure } from "./routes/clinics/getFollowerCount/route";
 import { sendMessageToClinicFollowersProcedure } from "./routes/clinics/sendMessageToFollowers/route";
+import {
+  getOrCreateChatProcedure,
+  getChatProcedure,
+  toggleActiveProcedure as toggleChatActiveProcedure,
+  getMessagesProcedure as getChatMessagesProcedure,
+  sendMessageProcedure as sendChatMessageProcedure,
+  getClinicChatsProcedure,
+  getUnreadCountProcedure as getChatUnreadCountProcedure,
+} from "./routes/clinics/chat/route";
 
 // Warehouse routes
 import {
@@ -678,6 +687,16 @@ export const appRouter = createTRPCRouter({
       updateFollowupStatus: updateFollowupStatusProcedure,
       rescheduleFollowup: rescheduleFollowupProcedure,
       deleteFollowup: deleteFollowupProcedure,
+    }),
+
+    chat: createTRPCRouter({
+      getOrCreate: getOrCreateChatProcedure,
+      getChat: getChatProcedure,
+      toggleActive: toggleChatActiveProcedure,
+      getMessages: getChatMessagesProcedure,
+      sendMessage: sendChatMessageProcedure,
+      getClinicChats: getClinicChatsProcedure,
+      getUnreadCount: getChatUnreadCountProcedure,
     }),
 
     settings: createTRPCRouter({
