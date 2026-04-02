@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, count } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
 import { db, clinicPetChats, clinicPetChatMessages, pets, users, clinicStaff, notifications } from "../../../../db";
 import { TRPCError } from "@trpc/server";
@@ -37,7 +37,7 @@ export const getOrCreateChatProcedure = protectedProcedure
     return { success: true, chat: created };
   });
 
-// Fetch chat without creating (used by owner side)
+// Fetch chat without creating (used by owner side), includes unread count from clinic
 export const getChatProcedure = protectedProcedure
   .input(z.object({ petId: z.string(), clinicId: z.number() }))
   .query(async ({ input }) => {
@@ -52,7 +52,20 @@ export const getChatProcedure = protectedProcedure
       )
       .limit(1);
 
-    return { success: true, chat: chat ?? null };
+    if (!chat) return { success: true, chat: null };
+
+    const [unreadRow] = await db
+      .select({ count: count() })
+      .from(clinicPetChatMessages)
+      .where(
+        and(
+          eq(clinicPetChatMessages.chatId, chat.id),
+          eq(clinicPetChatMessages.senderRole, "clinic"),
+          eq(clinicPetChatMessages.isRead, false),
+        ),
+      );
+
+    return { success: true, chat: { ...chat, unreadCount: unreadRow?.count ?? 0 } };
   });
 
 // Flip is_active on a chat (clinic only)
@@ -258,6 +271,23 @@ export const getClinicChatsProcedure = protectedProcedure
     );
 
     return { success: true, chats: enriched };
+  });
+
+// Mark all clinic messages in a chat as read (called by owner on icon tap)
+export const markAsReadProcedure = protectedProcedure
+  .input(z.object({ chatId: z.number() }))
+  .mutation(async ({ input }) => {
+    await db
+      .update(clinicPetChatMessages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(clinicPetChatMessages.chatId, input.chatId),
+          eq(clinicPetChatMessages.senderRole, "clinic"),
+          eq(clinicPetChatMessages.isRead, false),
+        ),
+      );
+    return { success: true };
   });
 
 // Total unread message count for a clinic (from owner side)

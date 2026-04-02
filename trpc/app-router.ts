@@ -225,6 +225,7 @@ import {
   sendMessageProcedure as sendChatMessageProcedure,
   getClinicChatsProcedure,
   getUnreadCountProcedure as getChatUnreadCountProcedure,
+  markAsReadProcedure as markChatAsReadProcedure,
 } from "./routes/clinics/chat/route";
 
 // Warehouse routes
@@ -697,6 +698,7 @@ export const appRouter = createTRPCRouter({
       sendMessage: sendChatMessageProcedure,
       getClinicChats: getClinicChatsProcedure,
       getUnreadCount: getChatUnreadCountProcedure,
+      markAsRead: markChatAsReadProcedure,
     }),
 
     settings: createTRPCRouter({
