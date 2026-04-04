@@ -1,5 +1,6 @@
 import { createTRPCRouter, publicProcedure, protectedProcedure } from "../../trpc/create-context.js";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { db } from "../../db";
 import {
   unionMain,
@@ -13,6 +14,8 @@ import {
   unionAnnouncementTypeEnum,
   unionBranchRegionEnum,
   notifications,
+  systemMessages,
+  systemMessageRecipients,
   userRoles,
   unionBranchSupervisors,
   adminRoles,
@@ -768,6 +771,87 @@ export const unionRouter = createTRPCRouter({
         ]);
 
         return { membersCount: membersRes[0]?.count ?? 0, followersCount: followersRes[0]?.count ?? 0 };
+      }),
+  }),
+
+  messaging: createTRPCRouter({
+    sendToMembers: protectedProcedure
+      .input(
+        z.object({
+          mainUnionId: z.number().optional(),
+          branchId: z.number().optional(),
+          title: z.string().min(1),
+          message: z.string().min(1),
+          target: z.enum(["members", "followers", "all"]).default("members"),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { mainUnionId, branchId, title, message, target } = input;
+        if (!mainUnionId && !branchId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Either mainUnionId or branchId required" });
+        }
+
+        const userIdSet = new Set<number>();
+
+        if (target === "members" || target === "all") {
+          const condition = mainUnionId
+            ? eq(unionRegistrations.mainUnionId, mainUnionId)
+            : eq(unionRegistrations.branchId, branchId!);
+          const rows = await db
+            .select({ userId: unionRegistrations.userId })
+            .from(unionRegistrations)
+            .where(and(condition, isNull(unionRegistrations.removedAt)));
+          rows.forEach((r) => userIdSet.add(r.userId));
+        }
+
+        if (target === "followers" || target === "all") {
+          const condition = mainUnionId
+            ? eq(unionFollowers.mainUnionId, mainUnionId)
+            : eq(unionFollowers.branchId, branchId!);
+          const rows = await db
+            .select({ userId: unionFollowers.userId })
+            .from(unionFollowers)
+            .where(condition);
+          rows.forEach((r) => userIdSet.add(r.userId));
+        }
+
+        const userIds = [...userIdSet];
+        if (userIds.length === 0) return { success: true, sentCount: 0 };
+
+        // Create system message record
+        const [systemMessage] = await db
+          .insert(systemMessages)
+          .values({
+            senderId: ctx.user.id,
+            title,
+            content: message,
+            type: "announcement",
+            targetAudience: "specific",
+            targetUserIds: userIds,
+            metadata: { mainUnionId, branchId, target },
+            sentAt: new Date(),
+          })
+          .returning();
+
+        // Bulk insert message recipients
+        await db.insert(systemMessageRecipients).values(
+          userIds.map((userId) => ({
+            messageId: systemMessage.id,
+            userId,
+          })),
+        );
+
+        // Bulk insert notifications
+        await db.insert(notifications).values(
+          userIds.map((userId) => ({
+            userId,
+            title,
+            message,
+            type: "union_message",
+          })),
+        );
+
+        return { success: true, sentCount: userIds.length };
       }),
   }),
 

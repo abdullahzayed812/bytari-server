@@ -117,7 +117,7 @@ import { deleteStoreProductProcedure } from "./routes/stores/products/delete/rou
 import { toggleStoreProductVisibilityProcedure } from "./routes/stores/products/toggle/route";
 import { getStoreProductProcedure } from "./routes/stores/products/get/route";
 import { getStoreByIdProcedure } from "./routes/stores/getById/route";
-import { updateStoreProcedure } from "./routes/stores/update/route";
+import { updateStoreProcedure, setStoreActiveProcedure } from "./routes/stores/update/route";
 import { deleteStoreProcedure } from "./routes/stores/delete/route";
 import {
   addStoreStaffProcedure,
@@ -604,6 +604,7 @@ export const appRouter = createTRPCRouter({
     getUserApprovedStores: getUserApprovedStoresProcedure,
     update: updateStoreProcedure,
     delete: deleteStoreProcedure,
+    setActive: setStoreActiveProcedure,
     follow: followStoreProcedure,
     unfollow: unfollowStoreProcedure,
     getFollowers: getStoreFollowersProcedure,

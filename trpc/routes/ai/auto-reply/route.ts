@@ -6,7 +6,6 @@ import { eq } from "drizzle-orm";
 // دالة محسنة لإرسال طلب للذكاء الاصطناعي
 async function callAI(
   messages: any[],
-  maxLength: number = 1500
 ): Promise<{
   success: boolean;
   response: string;
@@ -36,12 +35,7 @@ async function callAI(
 
     console.log("✅ AI response received in", processingTime, "ms");
 
-    // تحديد طول الرد
-    let aiResponse = data.completion || "عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.";
-    if (aiResponse.length > maxLength) {
-      aiResponse = aiResponse.substring(0, maxLength - 3) + "...";
-      console.log("✂️ AI response truncated to", maxLength, "characters");
-    }
+    const aiResponse = data.completion || "عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.";
 
     return {
       success: true,
@@ -74,7 +68,7 @@ async function getAiSettingsFromDb(type: "consultations" | "inquiries") {
       isEnabled: false, // Default to disabled if no settings exist
       systemPrompt: type === "consultations" ? "أنت مساعد ذكي." : "أنت مساعد ذكي.",
       responseDelay: 15,
-      maxResponseLength: 1500,
+      maxResponseLength: null,
     };
   }
 
@@ -142,7 +136,7 @@ ${input.attachments ? "ملاحظة: تم إرفاق صور/فيديو مع ال
       console.log(`⏱️ Waiting ${aiSettings.responseDelay} seconds before AI response...`);
       await new Promise((resolve) => setTimeout(resolve, aiSettings.responseDelay * 1000));
 
-      const aiResult = await callAI(messages, aiSettings.maxResponseLength);
+      const aiResult = await callAI(messages);
 
       logAiStats("consultations", aiResult.success, aiResult.processingTime || 0, aiResult.tokensUsed);
 
@@ -231,7 +225,7 @@ ${input.attachments ? "ملاحظة: تم إرفاق مواد مرجعية مع 
       console.log(`⏱️ Waiting ${aiSettings.responseDelay} seconds before AI response...`);
       await new Promise((resolve) => setTimeout(resolve, aiSettings.responseDelay * 1000));
 
-      const aiResult = await callAI(messages, aiSettings.maxResponseLength);
+      const aiResult = await callAI(messages);
 
       logAiStats("inquiries", aiResult.success, aiResult.processingTime || 0, aiResult.tokensUsed);
 
@@ -404,7 +398,7 @@ export const testAiProcedure = publicProcedure
         },
       ];
 
-      const aiResult = await callAI(messages, 500); // رد مختصر للاختبار
+      const aiResult = await callAI(messages);
 
       return {
         success: aiResult.success,

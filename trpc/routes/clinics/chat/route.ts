@@ -31,7 +31,7 @@ export const getOrCreateChatProcedure = protectedProcedure
 
     const [created] = await db
       .insert(clinicPetChats)
-      .values({ petId: input.petId, clinicId: input.clinicId, ownerId: pet.ownerId, isActive: true })
+      .values({ petId: input.petId, clinicId: input.clinicId, ownerId: pet.ownerId, isActive: false })
       .returning();
 
     return { success: true, chat: created };
@@ -186,7 +186,7 @@ export const sendMessageProcedure = protectedProcedure
             title: "رسالة جديدة من العيادة",
             message: notifMessage,
             type: "clinic_chat",
-            data: { chatId: input.chatId },
+            data: { chatId: input.chatId, recipientRole: "owner", clinicId: chat.clinicId },
           });
         } else {
           // Notify all clinic staff
@@ -202,7 +202,7 @@ export const sendMessageProcedure = protectedProcedure
                 title: "رسالة جديدة من صاحب الحيوان",
                 message: notifMessage,
                 type: "clinic_chat",
-                data: { chatId: input.chatId },
+                data: { chatId: input.chatId, recipientRole: "clinic", clinicId: chat.clinicId },
               })),
             );
           }

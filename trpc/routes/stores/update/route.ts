@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure } from "../../../create-context";
+import { publicProcedure, protectedProcedure } from "../../../create-context";
 import { db, stores } from "../../../../db";
 import { eq } from "drizzle-orm";
 
@@ -38,4 +38,12 @@ export const updateStoreProcedure = publicProcedure
       console.error("Error updating store:", error);
       throw new Error("حدث خطأ أثناء تحديث المتجر");
     }
+  });
+
+
+export const setStoreActiveProcedure = protectedProcedure
+  .input(z.object({ storeId: z.number(), isActive: z.boolean() }))
+  .mutation(async ({ input }) => {
+    await db.update(stores).set({ isActive: input.isActive }).where(eq(stores.id, input.storeId));
+    return { success: true };
   });
