@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { poultryFarms } from "../../../../db/schema";
+import { poultryFarms, approvalRequests, adminNotifications, users } from "../../../../db/schema";
+import { eq, inArray } from "drizzle-orm";
+
+const SUPER_ADMIN_EMAILS = ["zuhairalrawi0@gmail.com", "superadmin@petapp.com"];
 
 const createPoultryFarmSchema = z.object({
   // Required fields
@@ -74,13 +77,45 @@ export const createPoultryFarmProcedure = publicProcedure.input(createPoultryFar
         description: input.description ?? null,
         images: imagesString,
 
-        // Default values
-        isActive: true,
+        // Default values - inactive until admin approves
+        isActive: false,
         isVerified: false,
       })
       .returning();
 
     console.log("Poultry farm created successfully:", farm);
+
+    // Create approval request
+    const [approvalRequest] = await db
+      .insert(approvalRequests)
+      .values({
+        requestType: "poultry_farm_activation",
+        requesterId: input.ownerId,
+        resourceId: farm.id,
+        title: `طلب تفعيل حقل دواجن ${input.name}`,
+        description: `طلب تفعيل حقل دواجن ${input.name} في ${input.location}`,
+        licenseImages: input.images && input.images.length > 0 ? JSON.stringify(input.images) : null,
+        paymentStatus: "not_required",
+        status: "pending",
+        priority: "normal",
+        createdAt: Math.floor(Date.now() / 1000),
+        updatedAt: Math.floor(Date.now() / 1000),
+      })
+      .returning();
+
+    // Notify superadmins only
+    const adminUsers = await db.select({ id: users.id }).from(users).where(inArray(users.email, SUPER_ADMIN_EMAILS));
+    for (const admin of adminUsers) {
+      await db.insert(adminNotifications).values({
+        recipientId: admin.id,
+        type: "approval_request",
+        title: "طلب تفعيل حقل دواجن جديد",
+        content: `طلب تفعيل حقل دواجن: ${input.name}`,
+        relatedResourceType: "poultry_farm",
+        relatedResourceId: farm.id,
+        priority: "normal",
+      });
+    }
 
     return {
       success: true,
@@ -89,7 +124,8 @@ export const createPoultryFarmProcedure = publicProcedure.input(createPoultryFar
         facilities: farm.facilities || [],
         images: farm.images ? JSON.parse(farm.images) : [],
       },
-      message: "تم إنشاء حقل الدواجن بنجاح",
+      requestId: approvalRequest.id,
+      message: "تم إرسال طلب تسجيل الحقل بنجاح. سيتم مراجعته من قبل الإدارة.",
     };
   } catch (error) {
     console.error("Error creating poultry farm:", error);

@@ -54,25 +54,14 @@ export const addDailyDataProcedure = publicProcedure
   .input(
     z.object({
       batchId: z.number().int().positive(),
-      mortality: z.number().int().min(0),
+      temperature: z.number().optional(),
+      humidity: z.number().min(0).max(100).optional(),
+      feedConsumption: z.number().min(0).optional(),
+      waterConsumption: z.number().min(0).optional(),
+      activityLevel: z.string().optional(),
+      mortality: z.number().int().min(0).optional().default(0),
       mortalityReasons: z.array(z.string()).optional(),
-      feedConsumption: z.number().positive(),
-      averageWeight: z.number().positive(),
-      treatments: z
-        .array(
-          z.object({
-            id: z.string(),
-            name: z.string(),
-            dosage: z.string(),
-            frequency: z.string(),
-            duration: z.number(),
-            administeredBy: z.string(),
-            cost: z.number(),
-            reason: z.string(),
-            notes: z.string(),
-          })
-        )
-        .optional(),
+      treatments: z.string().optional(),
       notes: z.string().optional(),
     })
   )
@@ -92,11 +81,22 @@ export const addDailyDataProcedure = publicProcedure
 
       const dayNumber = existingData.length + 1;
 
-      // Calculate feed cost and estimated profit
-      const feedCost = input.feedConsumption * 0.5; // تكلفة تقديرية
-      const mortalityLoss = input.mortality * parseFloat(batch.pricePerChick);
+      // Calculate estimated values
+      const mortality = input.mortality ?? 0;
+      const feedCost = input.feedConsumption ? input.feedConsumption * 0.5 : 0;
+      const mortalityLoss = mortality * parseFloat(batch.pricePerChick);
       const estimatedRevenue = batch.currentCount * 0.02;
       const estimatedProfit = Math.max(0, estimatedRevenue - feedCost - mortalityLoss);
+
+      // Parse treatments as simple text stored in notes-style jsonb
+      const treatmentsArr = input.treatments
+        ? input.treatments.split(",").map((t, i) => ({
+            id: `t${Date.now()}_${i}`,
+            name: t.trim(),
+            dosage: "", frequency: "", duration: 0,
+            administeredBy: "owner", cost: 0, reason: "preventive", notes: "",
+          })).filter((t) => t.name.length > 0)
+        : [];
 
       // Insert daily data
       const [dailyData] = await db
@@ -105,20 +105,23 @@ export const addDailyDataProcedure = publicProcedure
           batchId: input.batchId,
           dayNumber,
           date: new Date(),
-          feedConsumption: input.feedConsumption.toString(),
+          temperature: input.temperature?.toString(),
+          humidity: input.humidity?.toString(),
+          feedConsumption: input.feedConsumption?.toString(),
           feedCost: feedCost.toString(),
-          averageWeight: input.averageWeight.toString(),
-          mortality: input.mortality,
+          waterConsumption: input.waterConsumption?.toString(),
+          averageWeight: undefined,
+          activityLevel: input.activityLevel,
+          mortality,
           mortalityReasons: input.mortalityReasons || [],
-          treatments: input.treatments || [],
+          treatments: treatmentsArr,
           vaccinations: [],
           estimatedProfit: estimatedProfit.toString(),
           notes: input.notes,
         })
         .returning();
 
-      // Update batch
-      const newCurrentCount = Math.max(0, batch.currentCount - input.mortality);
+      const newCurrentCount = Math.max(0, batch.currentCount - mortality);
       const newChicksAge = batch.chicksAge + 1;
 
       await db

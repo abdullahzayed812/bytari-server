@@ -1481,15 +1481,41 @@ export const poultryFarms = pgTable("poultry_farms", {
   totalArea: decimal("total_area", { precision: 10, scale: 2 }), // متر مربع
   capacity: integer("capacity").notNull(), // السعة القصوى
   currentPopulation: integer("current_population").default(0),
-  status: varchar("status", { length: 20 }).notNull().default("active"), // active, inactive, suspended
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, active, rejected, deactivated, banned
 
   // Assignment tracking
   assignedVetId: integer("assigned_vet_id").references(() => veterinarians.id),
   assignedSupervisorId: integer("assigned_supervisor_id").references(() => users.id),
 
-  isActive: boolean("is_active").notNull().default(true),
+  // Subscription / activation
+  activationStartDate: timestamp("activation_start_date", { withTimezone: true }),
+  activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
+  needsRenewal: boolean("needs_renewal").notNull().default(false),
+  reviewingRenewalRequest: boolean("reviewing_renewal_request").notNull().default(false),
+
+  isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ============== FARM STAFF TABLE ==============
+// Any user (vet or pet_owner) can be added as a farm worker
+export const farmStaff = pgTable("farm_staff", {
+  id: serial("id").primaryKey(),
+  farmId: integer("farm_id")
+    .notNull()
+    .references(() => poultryFarms.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  addedBy: integer("added_by")
+    .notNull()
+    .references(() => users.id),
+  // Permissions: view_only (can see farm + daily data), add_daily_data (can also add)
+  permissions: varchar("permissions", { length: 20 }).notNull().default("add_daily_data"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // ============== POULTRY BATCHES TABLE ==============
@@ -1531,12 +1557,20 @@ export const poultryDailyData = pgTable("poultry_daily_data", {
   dayNumber: integer("day_number").notNull(), // رقم اليوم في الدفعة
   date: timestamp("date").notNull(),
 
-  // Feed consumption
-  feedConsumption: decimal("feed_consumption", { precision: 10, scale: 2 }).notNull(), // كيلو
+  // Environmental conditions
+  temperature: decimal("temperature", { precision: 5, scale: 2 }), // درجة الحرارة (°C)
+  humidity: decimal("humidity", { precision: 5, scale: 2 }), // الرطوبة (%)
+
+  // Feed & water
+  feedConsumption: decimal("feed_consumption", { precision: 10, scale: 2 }), // كيلو
   feedCost: decimal("feed_cost", { precision: 10, scale: 2 }), // تكلفة العلف
+  waterConsumption: decimal("water_consumption", { precision: 10, scale: 2 }), // الماء (لتر)
 
   // Weight
-  averageWeight: decimal("average_weight", { precision: 10, scale: 2 }).notNull(), // جرام
+  averageWeight: decimal("average_weight", { precision: 10, scale: 2 }), // جرام
+
+  // Activity / movement
+  activityLevel: text("activity_level"), // الحركة والسلوك
 
   // Mortality
   mortality: integer("mortality").notNull().default(0), // عدد النفوق

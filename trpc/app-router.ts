@@ -391,6 +391,22 @@ import {
 import { getPoultryFarmDetailsProcedure, listPoultryFarmsProcedure } from "../trpc/routes/poultry-farms/list/route";
 import { createPoultryFarmProcedure } from "../trpc/routes/poultry-farms/create/route";
 import { deletePoultryFarmProcedure, adminDeletePoultryFarmProcedure } from "../trpc/routes/poultry-farms/delete/route";
+import { updatePoultryFarmProcedure } from "../trpc/routes/poultry-farms/update/route";
+import {
+  getFarmWorkersProcedure,
+  addFarmWorkerProcedure,
+  removeFarmWorkerProcedure,
+  updateFarmWorkerPermissionsProcedure,
+  getWorkerFarmsProcedure,
+} from "../trpc/routes/poultry-farms/staff/route";
+import {
+  activatePoultryFarmProcedure,
+  rejectPoultryFarmProcedure,
+  checkExpiredPoultryFarmsProcedure,
+  requestPoultryFarmRenewalProcedure,
+  banPoultryFarmProcedure,
+  deactivatePoultryFarmProcedure,
+} from "../trpc/routes/poultry-farms/activate/route";
 import {
   fieldAssignmentsRouter,
   getAvailableSupervisors,
@@ -552,9 +568,21 @@ export const appRouter = createTRPCRouter({
 
     list: listPoultryFarmsProcedure,
     create: createPoultryFarmProcedure,
+    update: updatePoultryFarmProcedure,
     delete: deletePoultryFarmProcedure,
     adminDelete: adminDeletePoultryFarmProcedure,
     getDetails: getPoultryFarmDetailsProcedure,
+    activate: activatePoultryFarmProcedure,
+    reject: rejectPoultryFarmProcedure,
+    ban: banPoultryFarmProcedure,
+    deactivate: deactivatePoultryFarmProcedure,
+    checkExpired: checkExpiredPoultryFarmsProcedure,
+    requestRenewal: requestPoultryFarmRenewalProcedure,
+    getWorkers: getFarmWorkersProcedure,
+    addWorker: addFarmWorkerProcedure,
+    removeWorker: removeFarmWorkerProcedure,
+    updateWorkerPermissions: updateFarmWorkerPermissionsProcedure,
+    getWorkerFarms: getWorkerFarmsProcedure,
   }),
 
   poultryBatches: createTRPCRouter({

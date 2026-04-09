@@ -619,10 +619,14 @@ CREATE TABLE "poultry_farms" (
 	"health_status" text DEFAULT 'healthy',
 	"last_inspection" timestamp with time zone,
 	"images" text,
-	"status" varchar(20) DEFAULT 'active' NOT NULL,
+	"status" varchar(20) DEFAULT 'pending' NOT NULL,
 	"assigned_vet_id" integer,
 	"assigned_supervisor_id" integer,
-	"is_active" boolean DEFAULT true NOT NULL,
+	"activation_start_date" timestamp with time zone,
+	"activation_end_date" timestamp with time zone,
+	"needs_renewal" boolean DEFAULT false NOT NULL,
+	"reviewing_renewal_request" boolean DEFAULT false NOT NULL,
+	"is_active" boolean DEFAULT false NOT NULL,
 	"is_verified" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -643,15 +647,30 @@ CREATE TABLE  "assignment_requests" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+-- ============== CREATE FARM STAFF TABLE ==============
+CREATE TABLE "farm_staff" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "farm_id" integer NOT NULL,
+    "user_id" integer NOT NULL,
+    "added_by" integer NOT NULL,
+    "permissions" varchar(20) DEFAULT 'add_daily_data' NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
 -- ============== CREATE POULTRY DAILY DATA TABLE ==============
 CREATE TABLE "poultry_daily_data" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"batch_id" integer NOT NULL,
 	"day_number" integer NOT NULL,
 	"date" timestamp with time zone NOT NULL,
-	"feed_consumption" numeric(10, 2) NOT NULL,
+	"temperature" numeric(5, 2),
+	"humidity" numeric(5, 2),
+	"feed_consumption" numeric(10, 2),
 	"feed_cost" numeric(10, 2),
-	"average_weight" numeric(10, 2) NOT NULL,
+	"water_consumption" numeric(10, 2),
+	"average_weight" numeric(10, 2),
+	"activity_level" text,
 	"mortality" integer DEFAULT 0 NOT NULL,
 	"mortality_reasons" jsonb DEFAULT '[]'::jsonb,
 	"treatments" jsonb DEFAULT '[]'::jsonb,
@@ -1952,3 +1971,20 @@ ALTER TABLE "union_registrations" ADD CONSTRAINT "union_registrations_removed_by
 ALTER TABLE "clinic_pet_chat_messages" ADD COLUMN IF NOT EXISTS "media_url" text;
 --> statement-breakpoint
 ALTER TABLE "clinic_pet_chat_messages" ADD COLUMN IF NOT EXISTS "media_type" text;
+
+ALTER TABLE "farm_staff"
+ADD CONSTRAINT "farm_staff_farm_id_fk"
+FOREIGN KEY ("farm_id")
+REFERENCES "poultry_farms"("id")
+ON DELETE CASCADE;
+
+ALTER TABLE "farm_staff"
+ADD CONSTRAINT "farm_staff_user_id_fk"
+FOREIGN KEY ("user_id")
+REFERENCES "users"("id")
+ON DELETE CASCADE;
+
+ALTER TABLE "farm_staff"
+ADD CONSTRAINT "farm_staff_added_by_fk"
+FOREIGN KEY ("added_by")
+REFERENCES "users"("id");

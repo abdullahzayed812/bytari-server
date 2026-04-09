@@ -10,6 +10,7 @@ import {
   veterinarians,
   clinics,
   stores,
+  poultryFarms,
 } from "../../../../db";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -19,7 +20,7 @@ export const getPendingApprovalsProcedure = publicProcedure
     z.object({
       adminId: z.number(),
       type: z
-        .enum(["all", "vet_registration", "clinic_activation", "store_activation", "clinic_renewal", "store_renewal"])
+        .enum(["all", "vet_registration", "clinic_activation", "store_activation", "clinic_renewal", "store_renewal", "poultry_farm_activation", "poultry_farm_renewal"])
         .optional(),
     })
   )
@@ -210,6 +211,49 @@ export const getPendingApprovalsProcedure = publicProcedure
         allRequests = [...allRequests, ...renewalRequests];
       }
 
+      // Get poultry farms that need renewal
+      if (!input.type || input.type === "all" || input.type === "poultry_farm_renewal") {
+        const expiredFarms = await db
+          .select({
+            id: poultryFarms.id,
+            name: poultryFarms.name,
+            activationEndDate: poultryFarms.activationEndDate,
+            ownerId: poultryFarms.ownerId,
+            ownerName: users.name,
+            ownerEmail: users.email,
+            images: poultryFarms.images,
+          })
+          .from(poultryFarms)
+          .innerJoin(users, eq(poultryFarms.ownerId, users.id))
+          .where(and(eq(poultryFarms.needsRenewal, true), eq(poultryFarms.isActive, false)));
+
+        const farmRenewalRequests = expiredFarms.map((farm) => ({
+          id: farm.id + 30000, // Offset to avoid ID conflicts
+          requestType: "poultry_farm_renewal" as const,
+          requesterId: farm.ownerId,
+          resourceId: farm.id,
+          title: `طلب تجديد اشتراك حقل دواجن ${farm.name}`,
+          description: `انتهت صلاحية تفعيل الحقل في ${farm.activationEndDate ? new Date(farm.activationEndDate).toLocaleDateString("ar-SA") : "غير محدد"}`,
+          documents: null,
+          licenseImages: farm.images ? farm.images : null,
+          identityImages: null,
+          officialDocuments: null,
+          paymentStatus: "pending" as const,
+          paymentAmount: null,
+          paymentMethod: null,
+          paymentTransactionId: null,
+          paymentCompletedAt: null,
+          paymentReceipt: null,
+          status: "pending",
+          priority: "high",
+          createdAt: farm.activationEndDate || new Date(),
+          requesterName: farm.ownerName,
+          requesterEmail: farm.ownerEmail,
+        }));
+
+        allRequests = [...allRequests, ...farmRenewalRequests];
+      }
+
       // Sort by creation date (most recent first)
       allRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -309,7 +353,15 @@ export const approveRequestProcedure = publicProcedure
 
       if (isRenewalRequest) {
         // Handle virtual renewal requests
-        if (input.requestId >= 20000) {
+        if (input.requestId >= 30000) {
+          // Poultry farm renewal
+          resourceId = input.requestId - 30000;
+          const [farm] = await db.select().from(poultryFarms).where(eq(poultryFarms.id, resourceId)).limit(1);
+          if (!farm) throw new Error("Poultry farm not found for renewal");
+          requestType = "poultry_farm_renewal";
+          requesterId = farm.ownerId;
+          title = `تجديد اشتراك حقل دواجن ${farm.name}`;
+        } else if (input.requestId >= 20000) {
           // Store renewal
           resourceId = input.requestId - 20000;
           const [store] = await db.select().from(stores).where(eq(stores.id, resourceId)).limit(1);
@@ -323,7 +375,7 @@ export const approveRequestProcedure = publicProcedure
           const [clinic] = await db.select().from(clinics).where(eq(clinics.id, resourceId)).limit(1);
           if (!clinic) throw new Error("Clinic not found for renewal");
           requestType = "clinic_renewal";
-          requesterId = clinic.id; // Assuming ownerId is same as clinic ID or handled elsewhere
+          requesterId = clinic.id;
           title = `تجديد اشتراك عيادة ${clinic.name}`;
         }
       } else {
@@ -391,6 +443,19 @@ export const approveRequestProcedure = publicProcedure
             needsRenewal: false,
           })
           .where(eq(stores.id, resourceId));
+      } else if (requestType === "poultry_farm_activation" || requestType === "poultry_farm_renewal") {
+        await db
+          .update(poultryFarms)
+          .set({
+            isActive: true,
+            isVerified: true,
+            activationStartDate: startDate,
+            activationEndDate: endDate,
+            reviewingRenewalRequest: false,
+            needsRenewal: false,
+            updatedAt: new Date(),
+          })
+          .where(eq(poultryFarms.id, resourceId));
       }
 
       // Send notification to the requester (admin panel)
@@ -406,8 +471,20 @@ export const approveRequestProcedure = publicProcedure
         priority: "normal",
       });
 
-      // Send in-app notification to the user (clinic/store activation or renewal)
-      if (["clinic_activation", "clinic_renewal", "store_activation", "store_renewal"].includes(requestType)) {
+      // Send in-app notification to the user (clinic/store/poultry farm activation or renewal)
+      if (["poultry_farm_activation", "poultry_farm_renewal"].includes(requestType)) {
+        const isRenewal = requestType === "poultry_farm_renewal";
+        const [farmRow] = await db.select({ name: poultryFarms.name }).from(poultryFarms).where(eq(poultryFarms.id, resourceId)).limit(1);
+        await db.insert(notifications).values({
+          userId: requesterId,
+          title: isRenewal ? "تم تجديد اشتراك حقل الدواجن" : "تم قبول حقل الدواجن",
+          message: `تم ${isRenewal ? "تجديد" : "قبول"} طلب ${isRenewal ? "اشتراك" : "تفعيل"} حقل الدواجن${farmRow?.name ? ` ${farmRow.name}` : ""}. صالح حتى ${endDate.toLocaleDateString("ar-SA")}.`,
+          type: "approval",
+          data: JSON.stringify({ requestId: input.requestId, resourceId, requestType }),
+          isRead: false,
+          createdAt: new Date(),
+        });
+      } else if (["clinic_activation", "clinic_renewal", "store_activation", "store_renewal"].includes(requestType)) {
         const isClinic = requestType.startsWith("clinic");
         const isRenewal = requestType.endsWith("renewal");
 
@@ -482,7 +559,15 @@ export const rejectRequestProcedure = publicProcedure
 
       if (isRenewalRequest) {
         // Handle virtual renewal requests
-        if (input.requestId >= 20000) {
+        if (input.requestId >= 30000) {
+          // Poultry farm renewal
+          resourceId = input.requestId - 30000;
+          const [farm] = await db.select().from(poultryFarms).where(eq(poultryFarms.id, resourceId)).limit(1);
+          if (!farm) throw new Error("Poultry farm not found for renewal");
+          requestType = "poultry_farm_renewal";
+          requesterId = farm.ownerId;
+          title = `تجديد اشتراك حقل دواجن ${farm.name}`;
+        } else if (input.requestId >= 20000) {
           // Store renewal
           resourceId = input.requestId - 20000;
           const [store] = await db.select().from(stores).where(eq(stores.id, resourceId)).limit(1);
@@ -558,6 +643,17 @@ export const rejectRequestProcedure = publicProcedure
             updatedAt: new Date(),
           })
           .where(eq(stores.id, resourceId));
+      } else if (requestType === "poultry_farm_activation" || requestType === "poultry_farm_renewal") {
+        await db
+          .update(poultryFarms)
+          .set({
+            isActive: false,
+            isVerified: false,
+            needsRenewal: false,
+            reviewingRenewalRequest: false,
+            updatedAt: new Date(),
+          })
+          .where(eq(poultryFarms.id, resourceId));
       }
 
       // Notify the requester about the rejection
@@ -739,11 +835,39 @@ export const checkExpiredSubscriptionsProcedure = publicProcedure
         }
       }
 
+      // Check expired poultry farms
+      const activeFarms = await db
+        .select({ id: poultryFarms.id, name: poultryFarms.name, ownerId: poultryFarms.ownerId, activationEndDate: poultryFarms.activationEndDate })
+        .from(poultryFarms)
+        .where(and(eq(poultryFarms.isActive, true), eq(poultryFarms.needsRenewal, false)));
+
+      let expiredFarmsCount = 0;
+      for (const farm of activeFarms) {
+        if (farm.activationEndDate && new Date(farm.activationEndDate) <= now) {
+          await db
+            .update(poultryFarms)
+            .set({ isActive: false, needsRenewal: true, updatedAt: now })
+            .where(eq(poultryFarms.id, farm.id));
+
+          await db.insert(adminNotifications).values({
+            recipientId: farm.ownerId,
+            type: "system_alert",
+            title: "انتهت صلاحية حقل الدواجن",
+            content: `انتهت صلاحية تفعيل حقل الدواجن ${farm.name}. يرجى تجديد الاشتراك لاستمرار الخدمة.`,
+            relatedResourceType: "poultry_farm",
+            relatedResourceId: farm.id,
+            priority: "high",
+          });
+
+          expiredFarmsCount++;
+        }
+      }
+
       return {
         success: true,
-        expiredClinics: expiredClinics.filter((c) => c.activationEndDate && new Date(c.activationEndDate) <= now)
-          .length,
+        expiredClinics: expiredClinics.filter((c) => c.activationEndDate && new Date(c.activationEndDate) <= now).length,
         expiredStores: expiredStores.filter((s) => s.activationEndDate && new Date(s.activationEndDate) <= now).length,
+        expiredFarms: expiredFarmsCount,
       };
     } catch (error) {
       console.error("Error checking expired subscriptions:", error);

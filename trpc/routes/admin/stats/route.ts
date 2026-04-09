@@ -20,6 +20,7 @@ import {
   jobVacancies,
   jobApplications,
   fieldSupervisionRequests,
+  poultryFarms,
 } from "../../../../db";
 import { and, count, eq, or, sql } from "drizzle-orm";
 
@@ -278,6 +279,15 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         .from(fieldSupervisionRequests)
         .where(eq(fieldSupervisionRequests.status, "pending"));
 
+      // Pending poultry farms (status=pending + needing renewal), excludes rejected/deactivated/banned
+      const [pendingPoultryFarmsCount] = await db
+        .select({ count: count() })
+        .from(poultryFarms)
+        .where(or(
+          eq(poultryFarms.status, "pending"),
+          eq(poultryFarms.needsRenewal, true)
+        ));
+
       // Mock field assignments count (replace with actual query when table is ready)
       const pendingFieldAssignments = 3;
 
@@ -292,6 +302,7 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         pendingJobs:
           pendingJobVacanciessCount.count + pendingJobApplicationsCount.count + pendingFieldSupervisionsCount.count ||
           0,
+        pendingPoultryFarms: pendingPoultryFarmsCount.count || 0,
 
         total:
           (pendingApprovalsCount.count || 0) +
@@ -311,6 +322,7 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         pendingInquiries: 4,
         pendingConsultations: 6,
         pendingFieldAssignments: 3,
+        pendingPoultryFarms: 0,
         total: 38,
       };
     }
