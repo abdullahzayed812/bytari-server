@@ -783,12 +783,23 @@ export const unionRouter = createTRPCRouter({
           title: z.string().min(1),
           message: z.string().min(1),
           target: z.enum(["members", "followers", "all"]).default("members"),
+          linkUrl: z.string().url().optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        const { mainUnionId, branchId, title, message, target } = input;
+        const { mainUnionId, branchId, title, message, target, linkUrl } = input;
         if (!mainUnionId && !branchId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Either mainUnionId or branchId required" });
+        }
+
+        // Fetch union/branch name for display in messages
+        let unionName: string | null = null;
+        if (branchId) {
+          const [branch] = await db.select({ name: unionBranches.name }).from(unionBranches).where(eq(unionBranches.id, branchId));
+          unionName = branch?.name ?? null;
+        } else if (mainUnionId) {
+          const [main] = await db.select({ name: unionMain.name }).from(unionMain).where(eq(unionMain.id, mainUnionId));
+          unionName = main?.name ?? null;
         }
 
         const userIdSet = new Set<number>();
@@ -828,7 +839,8 @@ export const unionRouter = createTRPCRouter({
             type: "announcement",
             targetAudience: "specific",
             targetUserIds: userIds,
-            metadata: { mainUnionId, branchId, target },
+            linkUrl: linkUrl ?? null,
+            metadata: { mainUnionId, branchId, target, unionName },
             sentAt: new Date(),
           })
           .returning();

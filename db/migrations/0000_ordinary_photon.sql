@@ -1988,3 +1988,20 @@ ALTER TABLE "farm_staff"
 ADD CONSTRAINT "farm_staff_added_by_fk"
 FOREIGN KEY ("added_by")
 REFERENCES "users"("id");
+
+--> statement-breakpoint
+CREATE TABLE "pet_ownership_transfers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
+	"from_user_id" integer NOT NULL,
+	"to_user_id" integer NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "pet_ownership_transfers" ADD CONSTRAINT "pet_ownership_transfers_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+--> statement-breakpoint
+ALTER TABLE "pet_ownership_transfers" ADD CONSTRAINT "pet_ownership_transfers_from_user_id_users_id_fk" FOREIGN KEY ("from_user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+--> statement-breakpoint
+ALTER TABLE "pet_ownership_transfers" ADD CONSTRAINT "pet_ownership_transfers_to_user_id_users_id_fk" FOREIGN KEY ("to_user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

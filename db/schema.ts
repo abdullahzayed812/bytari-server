@@ -78,6 +78,23 @@ export const pets = pgTable("pets", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Pet ownership transfer requests
+export const petOwnershipTransfers = pgTable("pet_ownership_transfers", {
+  id: serial("id").primaryKey(),
+  petId: uuid("pet_id")
+    .notNull()
+    .references(() => pets.id, { onDelete: "cascade" }),
+  fromUserId: integer("from_user_id")
+    .notNull()
+    .references(() => users.id),
+  toUserId: integer("to_user_id")
+    .notNull()
+    .references(() => users.id),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Medical records table
 export const medicalRecords = pgTable("medical_records", {
   id: serial("id").primaryKey(),

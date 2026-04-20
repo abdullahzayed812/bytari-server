@@ -62,6 +62,14 @@ import {
 } from "./routes/pets/sighting/route";
 
 import {
+  initiateTransferProcedure,
+  respondToTransferProcedure,
+  getSentTransfersProcedure,
+  getReceivedTransfersProcedure,
+  cancelTransferProcedure,
+} from "./routes/pets/transfer/route";
+
+import {
   // addMedicalRecordProcedure,
   // addReminderProcedure,
   // addVaccinationProcedure,
@@ -559,6 +567,15 @@ export const appRouter = createTRPCRouter({
       getReports: getPetSightingReports,
       dismissReport: dismissPetSightingReport,
       closeReport: closePetSightingReport,
+    }),
+
+    // Pet Ownership Transfer
+    transfer: createTRPCRouter({
+      initiate: initiateTransferProcedure,
+      respond: respondToTransferProcedure,
+      getSent: getSentTransfersProcedure,
+      getReceived: getReceivedTransfersProcedure,
+      cancel: cancelTransferProcedure,
     }),
   }),
 

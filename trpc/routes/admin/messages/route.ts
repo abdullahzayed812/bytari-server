@@ -158,6 +158,7 @@ export const getUserSystemMessages = publicProcedure
           type: systemMessages.type,
           priority: systemMessages.priority,
           imageUrl: systemMessages.imageUrl,
+          linkUrl: systemMessages.linkUrl,
           createdAt: systemMessages.createdAt,
           isRead: systemMessageRecipients.isRead,
           readAt: systemMessageRecipients.readAt,
