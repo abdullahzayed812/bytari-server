@@ -10,10 +10,11 @@ export const sendMessageToClinicFollowersProcedure = protectedProcedure
       title: z.string().min(1),
       message: z.string().min(1),
       imageUrl: z.string().optional(),
+      linkUrl: z.string().url().optional(),
     })
   )
   .mutation(async ({ input, ctx }) => {
-    const { clinicId, title, message, imageUrl } = input;
+    const { clinicId, title, message, imageUrl, linkUrl } = input;
 
     // Verify the caller is the clinic owner
     const [ownerRequest] = await db
@@ -62,6 +63,7 @@ export const sendMessageToClinicFollowersProcedure = protectedProcedure
         targetAudience: "specific",
         targetUserIds: followers.map((f) => f.userId),
         imageUrl: imageUrl || null,
+        linkUrl: linkUrl ?? null,
         metadata: { clinicName: clinic?.name },
         sentAt: new Date(),
       })

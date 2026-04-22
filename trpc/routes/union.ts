@@ -784,10 +784,11 @@ export const unionRouter = createTRPCRouter({
           message: z.string().min(1),
           target: z.enum(["members", "followers", "all"]).default("members"),
           linkUrl: z.string().url().optional(),
+          imageUrl: z.string().optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        const { mainUnionId, branchId, title, message, target, linkUrl } = input;
+        const { mainUnionId, branchId, title, message, target, linkUrl, imageUrl } = input;
         if (!mainUnionId && !branchId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Either mainUnionId or branchId required" });
         }
@@ -840,6 +841,7 @@ export const unionRouter = createTRPCRouter({
             targetAudience: "specific",
             targetUserIds: userIds,
             linkUrl: linkUrl ?? null,
+            imageUrl: imageUrl ?? null,
             metadata: { mainUnionId, branchId, target, unionName },
             sentAt: new Date(),
           })

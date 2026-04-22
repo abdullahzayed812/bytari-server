@@ -8,9 +8,12 @@ import {
   veterinarians,
   vetPermissions,
   clinicStaff,
-  clinicStats,
+  medicalRecords,
+  vaccinations,
+  petReminders,
+  approvedClinicAccess,
 } from "../../../../db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, count, countDistinct, sql } from "drizzle-orm";
 
 // ============== GET USER CLINICS (UPDATED) ==============
 export const getUserClinicsProcedure = publicProcedure
@@ -202,35 +205,73 @@ export const getUserApprovedClinicsProcedure = publicProcedure
         };
       }
 
-      // Fetch clinic details along with stats
-      const clinicsWithStats = await db
-        .select({
-          clinic: clinics, // Select all fields from the clinics table
-          totalAnimals: clinicStats.totalAnimals,
-          activePatients: clinicStats.activePatients,
-          completedTreatments: clinicStats.completedTreatments,
-        })
+      // Fetch clinic details
+      const clinicRows = await db
+        .select()
         .from(clinics)
-        .leftJoin(clinicStats, eq(clinics.id, clinicStats.clinicId)) // Left join with clinicStats
         .where(and(eq(clinics.isActive, true), inArray(clinics.id, allClinicIds)));
+
+      // Compute stats per clinic dynamically
+      const medicalPetsRows = await db
+        .select({ clinicId: medicalRecords.clinicId, count: countDistinct(medicalRecords.petId) })
+        .from(medicalRecords)
+        .where(inArray(medicalRecords.clinicId, allClinicIds))
+        .groupBy(medicalRecords.clinicId);
+
+      const vaccinationPetsRows = await db
+        .select({ clinicId: vaccinations.clinicId, count: countDistinct(vaccinations.petId) })
+        .from(vaccinations)
+        .where(inArray(vaccinations.clinicId, allClinicIds))
+        .groupBy(vaccinations.clinicId);
+
+      const reminderPetsRows = await db
+        .select({ clinicId: petReminders.clinicId, count: countDistinct(petReminders.petId) })
+        .from(petReminders)
+        .where(inArray(petReminders.clinicId, allClinicIds))
+        .groupBy(petReminders.clinicId);
+
+      const activePatientsRows = await db
+        .select({ clinicId: approvedClinicAccess.clinicId, count: count() })
+        .from(approvedClinicAccess)
+        .where(and(inArray(approvedClinicAccess.clinicId, allClinicIds), eq(approvedClinicAccess.isActive, true)))
+        .groupBy(approvedClinicAccess.clinicId);
+
+      const completedTreatmentsRows = await db
+        .select({ clinicId: vaccinations.clinicId, count: count() })
+        .from(vaccinations)
+        .where(inArray(vaccinations.clinicId, allClinicIds))
+        .groupBy(vaccinations.clinicId);
+
+      const toMap = <T extends { clinicId: number | null; count: number }>(rows: T[]) =>
+        Object.fromEntries(rows.filter((r) => r.clinicId !== null).map((r) => [r.clinicId!, r.count]));
+
+      const medicalMap = toMap(medicalPetsRows);
+      const vaccinationMap = toMap(vaccinationPetsRows);
+      const reminderMap = toMap(reminderPetsRows);
+      const activePatientsMap = toMap(activePatientsRows);
+      const completedTreatmentsMap = toMap(completedTreatmentsRows);
 
       return {
         success: true,
-        clinics: clinicsWithStats.map(({ clinic, totalAnimals, activePatients, completedTreatments }: any) => {
+        clinics: clinicRows.map((clinic: any) => {
           const isOwned = ownedClinicIds.includes(clinic.id);
           const isAssigned = assignedClinicIds.includes(clinic.id);
 
-          // Calculate subscription status
           const now = new Date();
           const endDate = clinic.activationEndDate ? new Date(clinic.activationEndDate) : null;
           const daysRemaining = endDate ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
           const needsRenewal = daysRemaining && daysRemaining < 1;
 
+          const totalAnimals =
+            (medicalMap[clinic.id] ?? 0) +
+            (vaccinationMap[clinic.id] ?? 0) +
+            (reminderMap[clinic.id] ?? 0);
+
           return {
             ...clinic,
-            totalAnimals: totalAnimals || 0, // Add with default 0 if null from left join
-            activePatients: activePatients || 0, // Add with default 0 if null
-            completedTreatments: completedTreatments || 0, // Add with default 0 if null
+            totalAnimals,
+            activePatients: activePatientsMap[clinic.id] ?? 0,
+            completedTreatments: completedTreatmentsMap[clinic.id] ?? 0,
             ...(isOwned && { needsRenewal, daysRemaining }),
             isOwned,
             isAssigned,

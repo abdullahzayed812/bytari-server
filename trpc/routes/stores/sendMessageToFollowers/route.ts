@@ -10,10 +10,11 @@ export const sendMessageToStoreFollowersProcedure = protectedProcedure
       title: z.string().min(1),
       message: z.string().min(1),
       imageUrl: z.string().optional(),
+      linkUrl: z.string().url().optional(),
     })
   )
   .mutation(async ({ input, ctx }: any) => {
-    const { storeId, title, message, imageUrl } = input;
+    const { storeId, title, message, imageUrl, linkUrl } = input;
 
     // Verify the caller is the store owner
     const [store] = await db
@@ -48,6 +49,7 @@ export const sendMessageToStoreFollowersProcedure = protectedProcedure
         targetAudience: "specific",
         targetUserIds: followers.map((f) => f.userId),
         imageUrl: imageUrl || null,
+        linkUrl: linkUrl ?? null,
         metadata: { storeName: store.name },
         sentAt: new Date(),
       })

@@ -425,6 +425,7 @@ import { hospitalRouter } from "./routes/hospitals/hospital";
 import { announcementRouter } from "./routes/hospitals/announcement";
 
 import { contentRouter } from "./routes/content/route";
+import { searchProcedure } from "./routes/search/route";
 
 import {
   getUserNotificationsProcedure,
@@ -787,6 +788,11 @@ export const appRouter = createTRPCRouter({
 
   // Public Content
   content: contentRouter,
+
+  // Search
+  search: createTRPCRouter({
+    query: searchProcedure,
+  }),
 
   // Admin routes
   admin: createTRPCRouter({

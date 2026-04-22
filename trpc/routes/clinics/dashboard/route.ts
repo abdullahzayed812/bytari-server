@@ -1,10 +1,9 @@
 import { z } from "zod";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, countDistinct, count } from "drizzle-orm";
 import { publicProcedure } from "../../../create-context";
 import {
   db,
   clinics,
-  clinicStats,
   appointments,
   pets,
   users,
@@ -12,6 +11,10 @@ import {
   clinicStaff,
   vetPermissions,
   approvalRequests,
+  medicalRecords,
+  vaccinations,
+  petReminders,
+  approvedClinicAccess,
 } from "../../../../db";
 
 export const getClinicDashboardDataProcedure = publicProcedure
@@ -158,8 +161,43 @@ export const getClinicDashboardDataProcedure = publicProcedure
         }
       }
 
-      // Get clinic stats
-      const [stats] = await db.select().from(clinicStats).where(eq(clinicStats.clinicId, clinicId)).limit(1);
+      // Compute clinic stats dynamically
+      const [totalAnimalsRow] = await db
+        .select({ count: countDistinct(medicalRecords.petId) })
+        .from(medicalRecords)
+        .where(eq(medicalRecords.clinicId, clinicId));
+
+      const [totalVaccinationsRow] = await db
+        .select({ count: countDistinct(vaccinations.petId) })
+        .from(vaccinations)
+        .where(eq(vaccinations.clinicId, clinicId));
+
+      const [totalRemindersRow] = await db
+        .select({ count: countDistinct(petReminders.petId) })
+        .from(petReminders)
+        .where(eq(petReminders.clinicId, clinicId));
+
+      // Distinct pets across all three sources
+      const totalAnimals =
+        (totalAnimalsRow?.count ?? 0) +
+        (totalVaccinationsRow?.count ?? 0) +
+        (totalRemindersRow?.count ?? 0);
+
+      const [activePatientsRow] = await db
+        .select({ count: count() })
+        .from(approvedClinicAccess)
+        .where(and(eq(approvedClinicAccess.clinicId, clinicId), eq(approvedClinicAccess.isActive, true)));
+
+      const [completedTreatmentsRow] = await db
+        .select({ count: count() })
+        .from(vaccinations)
+        .where(eq(vaccinations.clinicId, clinicId));
+
+      const stats = {
+        totalAnimals,
+        activePatients: activePatientsRow?.count ?? 0,
+        completedTreatments: completedTreatmentsRow?.count ?? 0,
+      };
 
       // Get recent animals (last 5 appointments) with owner info
       const recentAppointments = await db
@@ -201,11 +239,7 @@ export const getClinicDashboardDataProcedure = publicProcedure
           services: clinic.services,
           images: clinic.images,
         },
-        stats: {
-          totalAnimals: stats?.totalAnimals || 0,
-          activePatients: stats?.activePatients || 0,
-          completedTreatments: stats?.completedTreatments || 0,
-        },
+        stats,
         recentAnimals,
         // User access information
         access: {

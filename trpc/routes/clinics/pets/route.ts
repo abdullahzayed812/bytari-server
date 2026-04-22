@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, max, sql } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, pets, users, approvedClinicAccess, medicalRecords } from "../../../../db";
+import { db, pets, users, approvedClinicAccess, medicalRecords, vaccinations, petReminders } from "../../../../db";
 
 export const getClinicLatestPetsProcedure = protectedProcedure
   .input(
@@ -12,6 +12,33 @@ export const getClinicLatestPetsProcedure = protectedProcedure
   )
   .query(async ({ input }) => {
     try {
+      const latestMedical = db
+        .select({ petId: medicalRecords.petId, latestDate: max(medicalRecords.date).as("latestDate") })
+        .from(medicalRecords)
+        .where(eq(medicalRecords.clinicId, input.clinicId))
+        .groupBy(medicalRecords.petId)
+        .as("latestMedical");
+
+      const latestVaccination = db
+        .select({ petId: vaccinations.petId, latestDate: max(vaccinations.date).as("latestDate") })
+        .from(vaccinations)
+        .where(eq(vaccinations.clinicId, input.clinicId))
+        .groupBy(vaccinations.petId)
+        .as("latestVaccination");
+
+      const latestReminder = db
+        .select({ petId: petReminders.petId, latestDate: max(petReminders.reminderDate).as("latestDate") })
+        .from(petReminders)
+        .where(eq(petReminders.clinicId, input.clinicId))
+        .groupBy(petReminders.petId)
+        .as("latestReminder");
+
+      const lastActionAt = sql<string>`GREATEST(
+        COALESCE(${latestMedical.latestDate}, '1970-01-01'::timestamptz),
+        COALESCE(${latestVaccination.latestDate}, '1970-01-01'::timestamptz),
+        COALESCE(${latestReminder.latestDate}, '1970-01-01'::timestamptz)
+      )`;
+
       const clinicPets = await db
         .select({
           id: pets.id,
@@ -25,6 +52,13 @@ export const getClinicLatestPetsProcedure = protectedProcedure
           image: pets.image,
           ownerName: users.name,
           createdAt: pets.createdAt,
+          hasMedical: sql<boolean>`${latestMedical.latestDate} IS NOT NULL`,
+          hasVaccination: sql<boolean>`${latestVaccination.latestDate} IS NOT NULL`,
+          hasReminder: sql<boolean>`${latestReminder.latestDate} IS NOT NULL`,
+          latestMedicalDate: latestMedical.latestDate,
+          latestVaccinationDate: latestVaccination.latestDate,
+          latestReminderDate: latestReminder.latestDate,
+          lastActionAt,
         })
         .from(pets)
         .leftJoin(users, eq(users.id, pets.ownerId))
@@ -36,26 +70,34 @@ export const getClinicLatestPetsProcedure = protectedProcedure
             eq(approvedClinicAccess.isActive, true)
           )
         )
-        .orderBy(desc(approvedClinicAccess.grantedAt)) // Order by when access was granted
+        .leftJoin(latestMedical, eq(latestMedical.petId, pets.id))
+        .leftJoin(latestVaccination, eq(latestVaccination.petId, pets.id))
+        .leftJoin(latestReminder, eq(latestReminder.petId, pets.id))
+        .orderBy(desc(lastActionAt))
         .limit(input.limit);
 
-      // Add status based on whether pet has medical records
-      const petsWithStatus = await Promise.all(
-        clinicPets.map(async (pet) => {
-          const rawMedicalRecords = await db
-            .select({ id: medicalRecords.id })
-            .from(medicalRecords)
-            .where(and(eq(medicalRecords.petId, pet.id), eq(medicalRecords.clinicId, input.clinicId)))
-            .limit(1);
+      const petsWithStatus = clinicPets.map((pet) => {
+        const latestDate =
+          pet.latestMedicalDate || pet.latestVaccinationDate || pet.latestReminderDate
+            ? new Date(
+                Math.max(
+                  pet.latestMedicalDate ? new Date(pet.latestMedicalDate).getTime() : 0,
+                  pet.latestVaccinationDate ? new Date(pet.latestVaccinationDate).getTime() : 0,
+                  pet.latestReminderDate ? new Date(pet.latestReminderDate).getTime() : 0
+                )
+              )
+            : null;
 
-          return {
-            ...pet,
-            owner: pet.ownerName,
-            status: rawMedicalRecords.length > 0 ? "تحت العلاج" : "فحص دوري",
-            lastVisit: rawMedicalRecords.length > 0 ? "مؤخراً" : "لا توجد زيارات",
-          };
-        })
-      );
+        const status = pet.hasMedical ? "تحت العلاج" : pet.hasVaccination ? "متعافي" : "فحص دوري";
+        const lastVisit = latestDate ? latestDate.toLocaleDateString("ar-SA") : "لا توجد زيارات";
+
+        return {
+          ...pet,
+          owner: pet.ownerName,
+          status,
+          lastVisit,
+        };
+      });
 
       return {
         success: true,

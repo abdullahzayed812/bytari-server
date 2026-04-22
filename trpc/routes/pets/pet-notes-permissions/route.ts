@@ -117,7 +117,7 @@ export const requestAddVaccinationProcedure = protectedProcedure
           title: "طلب تطعيم جديد",
           message: `تم تقديم طلب لإضافة تطعيم لحيوانك الأليف "${pet.name}".`,
           type: "medical_action_request",
-          data: JSON.stringify({ petId: input.petId, requestId: request.id, scheduledDate: input.nextDate ?? null }),
+          data: { petId: input.petId, requestId: request.id, scheduledDate: input.nextDate ?? null },
         });
       }
 
@@ -177,7 +177,7 @@ export const requestAddReminderProcedure = protectedProcedure
           title: "طلب تذكير جديد",
           message: `تم تقديم طلب لإضافة تذكير لحيوانك الأليف "${pet.name}".`,
           type: "medical_action_request",
-          data: JSON.stringify({ petId: input.petId, requestId: request.id, scheduledDate: input.reminderDate }),
+          data: { petId: input.petId, requestId: request.id, scheduledDate: input.reminderDate },
         });
       }
 

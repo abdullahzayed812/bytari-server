@@ -273,17 +273,17 @@ export const getClinicChatsProcedure = protectedProcedure
     return { success: true, chats: enriched };
   });
 
-// Mark all clinic messages in a chat as read (called by owner on icon tap)
+// Mark all messages from the other party as read (works for both owner and vet)
 export const markAsReadProcedure = protectedProcedure
   .input(z.object({ chatId: z.number() }))
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input, ctx }) => {
     await db
       .update(clinicPetChatMessages)
       .set({ isRead: true })
       .where(
         and(
           eq(clinicPetChatMessages.chatId, input.chatId),
-          eq(clinicPetChatMessages.senderRole, "clinic"),
+          sql`${clinicPetChatMessages.senderId} != ${ctx.user.id}`,
           eq(clinicPetChatMessages.isRead, false),
         ),
       );
