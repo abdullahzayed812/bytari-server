@@ -869,6 +869,33 @@ export const unionRouter = createTRPCRouter({
       }),
   }),
 
+  supervisors: createTRPCRouter({
+    list: protectedProcedure.query(async () => {
+      const rows = await db
+        .select({
+          id: unionBranchSupervisors.id,
+          branchId: unionBranchSupervisors.branchId,
+          userId: unionBranchSupervisors.userId,
+          branchName: unionBranches.name,
+          branchGovernorate: unionBranches.governorate,
+          userName: users.name,
+          userEmail: users.email,
+          userAvatar: users.avatar,
+        })
+        .from(unionBranchSupervisors)
+        .leftJoin(unionBranches, eq(unionBranchSupervisors.branchId, unionBranches.id))
+        .leftJoin(users, eq(unionBranchSupervisors.userId, users.id))
+        .orderBy(desc(unionBranchSupervisors.id));
+      return { supervisors: rows };
+    }),
+    remove: protectedProcedure
+      .input(z.object({ supervisorId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.delete(unionBranchSupervisors).where(eq(unionBranchSupervisors.id, input.supervisorId));
+        return { success: true };
+      }),
+  }),
+
   users: createTRPCRouter({
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.select().from(unionUsers);

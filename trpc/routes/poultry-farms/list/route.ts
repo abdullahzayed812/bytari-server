@@ -2,7 +2,7 @@ import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { db } from "../../../../db";
 import { poultryFarms, veterinarians, users, poultryBatches, poultryDailyData } from "../../../../db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, lte } from "drizzle-orm";
 
 export const listPoultryFarmsProcedure = publicProcedure
   .input(
@@ -65,6 +65,27 @@ export const listPoultryFarmsProcedure = publicProcedure
         .from(poultryFarms)
         .leftJoin(users, eq(poultryFarms.ownerId, users.id))
         .where(conditions.length > 0 ? (conditions.length === 1 ? conditions[0] : and(...conditions)) : undefined);
+
+      // Auto-expire farms whose activationEndDate has passed
+      const now = new Date();
+      const expiredIds = farms
+        .filter((f) => f.isActive && f.activationEndDate && new Date(f.activationEndDate) <= now)
+        .map((f) => f.id);
+
+      if (expiredIds.length > 0) {
+        for (const farmId of expiredIds) {
+          await db
+            .update(poultryFarms)
+            .set({ isActive: false, needsRenewal: true, updatedAt: now })
+            .where(eq(poultryFarms.id, farmId));
+        }
+        farms.forEach((f) => {
+          if (expiredIds.includes(f.id)) {
+            (f as any).isActive = false;
+            (f as any).needsRenewal = true;
+          }
+        });
+      }
 
       console.log("Poultry farms retrieved successfully:", farms.length);
 

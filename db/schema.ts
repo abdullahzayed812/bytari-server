@@ -74,6 +74,7 @@ export const pets = pgTable("pets", {
   medicalHistory: text("medical_history"),
   vaccinations: jsonb("vaccinations"), // JSON data
   isLost: boolean("is_lost").notNull().default(false),
+  isNeutered: boolean("is_neutered").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

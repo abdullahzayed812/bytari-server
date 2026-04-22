@@ -22,7 +22,7 @@ import {
   fieldSupervisionRequests,
   poultryFarms,
 } from "../../../../db";
-import { and, count, eq, or, sql } from "drizzle-orm";
+import { and, count, eq, notInArray, or, sql } from "drizzle-orm";
 
 export const getSystemStatsProcedure = publicProcedure
   .input(
@@ -235,11 +235,14 @@ export const getPendingApprovalCountsProcedure = publicProcedure
   )
   .query(async ({ input }: { input: { adminId: number } }) => {
     try {
-      // Get pending approval counts
+      // Get pending approval counts (excluding poultry farm requests — those have a dedicated screen)
       const [pendingApprovalsCount] = await db
         .select({ count: count() })
         .from(approvalRequests)
-        .where(eq(approvalRequests.status, "pending"));
+        .where(and(
+          eq(approvalRequests.status, "pending"),
+          notInArray(approvalRequests.requestType, ["poultry_farm_activation", "poultry_farm_renewal"])
+        ));
       const [pendingPetApprovalsCount] = await db
         .select({ count: count() })
         .from(petApprovalRequests)

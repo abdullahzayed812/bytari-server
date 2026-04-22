@@ -437,7 +437,7 @@ import {
 } from "./routes/notifications/route";
 
 // Poultry batches and daily data
-import { addPoultryBatchProcedure, addDailyDataProcedure, sellBatchProcedure } from "./routes/poultry-batches/route";
+import { addPoultryBatchProcedure, addDailyDataProcedure, sellBatchProcedure, updateDailyDataProcedure } from "./routes/poultry-batches/route";
 
 // Assignment requests (vet, supervisor, removal)
 import {
@@ -606,6 +606,7 @@ export const appRouter = createTRPCRouter({
   poultryBatches: createTRPCRouter({
     add: addPoultryBatchProcedure,
     addDailyData: addDailyDataProcedure,
+    updateDailyData: updateDailyDataProcedure,
     sell: sellBatchProcedure,
   }),
 

@@ -15,6 +15,7 @@ const createPetSchema = z.object({
   images: z.array(z.string()).optional(),
   medicalHistory: z.string().optional(),
   vaccinations: z.string().optional(),
+  isNeutered: z.boolean().optional(),
 });
 
 export const createPetProcedure = protectedProcedure.input(createPetSchema).mutation(async ({ ctx, input }) => {
@@ -33,6 +34,7 @@ export const createPetProcedure = protectedProcedure.input(createPetSchema).muta
         image: input.image,
         images: input.images,
         medicalHistory: input.medicalHistory,
+        isNeutered: input.isNeutered ?? false,
         vaccinations: input.vaccinations
           ? JSON.parse(JSON.stringify(input.vaccinations.split(",").map((v) => v.trim())))
           : [],

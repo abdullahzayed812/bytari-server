@@ -595,6 +595,7 @@ CREATE TABLE "pets" (
 	"medical_history" text,
 	"vaccinations" jsonb,
 	"is_lost" boolean DEFAULT false NOT NULL,
+	"is_neutered" boolean DEFAULT false,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );

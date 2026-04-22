@@ -58,6 +58,7 @@ export const addDailyDataProcedure = publicProcedure
       humidity: z.number().min(0).max(100).optional(),
       feedConsumption: z.number().min(0).optional(),
       waterConsumption: z.number().min(0).optional(),
+      averageWeight: z.number().min(0).optional(),
       activityLevel: z.string().optional(),
       mortality: z.number().int().min(0).optional().default(0),
       mortalityReasons: z.array(z.string()).optional(),
@@ -110,7 +111,7 @@ export const addDailyDataProcedure = publicProcedure
           feedConsumption: input.feedConsumption?.toString(),
           feedCost: feedCost.toString(),
           waterConsumption: input.waterConsumption?.toString(),
-          averageWeight: undefined,
+          averageWeight: input.averageWeight?.toString(),
           activityLevel: input.activityLevel,
           mortality,
           mortalityReasons: input.mortalityReasons || [],
@@ -147,6 +148,54 @@ export const addDailyDataProcedure = publicProcedure
       console.error("Error adding daily data:", error);
       throw new Error("فشل في إضافة البيانات اليومية");
     }
+  });
+
+// ============== UPDATE DAILY DATA ==============
+export const updateDailyDataProcedure = publicProcedure
+  .input(
+    z.object({
+      dayId: z.number().int().positive(),
+      temperature: z.number().optional(),
+      humidity: z.number().min(0).max(100).optional(),
+      feedConsumption: z.number().min(0).optional(),
+      waterConsumption: z.number().min(0).optional(),
+      averageWeight: z.number().min(0).optional(),
+      activityLevel: z.string().optional(),
+      mortality: z.number().int().min(0).optional(),
+      mortalityReasons: z.array(z.string()).optional(),
+      treatments: z.string().optional(),
+      notes: z.string().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const { dayId, treatments, ...fields } = input;
+
+    const treatmentsArr = treatments !== undefined
+      ? treatments.split(",").map((t, i) => ({
+          id: `t${Date.now()}_${i}`,
+          name: t.trim(),
+          dosage: "", frequency: "", duration: 0,
+          administeredBy: "owner", cost: 0, reason: "preventive", notes: "",
+        })).filter((t) => t.name.length > 0)
+      : undefined;
+
+    const updateData: Record<string, any> = {};
+    if (fields.temperature !== undefined) updateData.temperature = fields.temperature.toString();
+    if (fields.humidity !== undefined) updateData.humidity = fields.humidity.toString();
+    if (fields.feedConsumption !== undefined) updateData.feedConsumption = fields.feedConsumption.toString();
+    if (fields.waterConsumption !== undefined) updateData.waterConsumption = fields.waterConsumption.toString();
+    if (fields.averageWeight !== undefined) updateData.averageWeight = fields.averageWeight.toString();
+    if (fields.activityLevel !== undefined) updateData.activityLevel = fields.activityLevel;
+    if (fields.mortality !== undefined) updateData.mortality = fields.mortality;
+    if (fields.mortalityReasons !== undefined) updateData.mortalityReasons = fields.mortalityReasons;
+    if (treatmentsArr !== undefined) updateData.treatments = treatmentsArr;
+    if (fields.notes !== undefined) updateData.notes = fields.notes;
+
+    if (Object.keys(updateData).length === 0) return { success: true };
+
+    await db.update(poultryDailyData).set(updateData).where(eq(poultryDailyData.id, dayId));
+
+    return { success: true };
   });
 
 // ============== SELL BATCH ==============

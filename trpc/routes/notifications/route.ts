@@ -2,7 +2,7 @@ import { z } from "zod";
 import { protectedProcedure } from "../../create-context";
 import { db } from "../../../db";
 import { notifications } from "../../../db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or, gte } from "drizzle-orm";
 
 // Get user notifications
 export const getUserNotificationsProcedure = protectedProcedure
@@ -16,7 +16,13 @@ export const getUserNotificationsProcedure = protectedProcedure
     })
   )
   .query(async ({ input }) => {
-    const conditions = [eq(notifications.userId, input.userId)];
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const conditions = [
+      eq(notifications.userId, input.userId),
+      or(eq(notifications.isRead, false), gte(notifications.createdAt, sevenDaysAgo)),
+    ];
 
     if (input.type) {
       conditions.push(eq(notifications.type, input.type));

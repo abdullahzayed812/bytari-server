@@ -13,7 +13,7 @@ export const activatePoultryFarmProcedure = adminProcedure
       farmId: z.number().int().positive(),
       activationStartDate: z.date(),
       activationEndDate: z.date(),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     const [farm] = await db
@@ -43,18 +43,14 @@ export const activatePoultryFarmProcedure = adminProcedure
       .update(approvalRequests)
       .set({ status: "approved", updatedAt: Math.floor(Date.now() / 1000) })
       .where(
-        and(
-          eq(approvalRequests.resourceId, input.farmId),
-          eq(approvalRequests.requestType, "poultry_farm_activation"),
-          eq(approvalRequests.status, "pending")
-        )
+        and(eq(approvalRequests.resourceId, input.farmId), eq(approvalRequests.requestType, "poultry_farm_activation"), eq(approvalRequests.status, "pending")),
       );
 
     // In-app notification to farm owner
     await db.insert(notifications).values({
       userId: farm.ownerId,
       title: "تم قبول حقل الدواجن",
-      message: `تم قبول وتفعيل حقل الدواجن "${farm.name}". صالح حتى ${input.activationEndDate.toLocaleDateString("ar-SA")}.`,
+      message: `تم قبول وتفعيل حقل الدواجن "${farm.name}". صالح حتى ${input.activationEndDate.toLocaleDateString()}.`,
       type: "approval",
       data: JSON.stringify({ farmId: farm.id }),
       isRead: false,
@@ -70,7 +66,7 @@ export const rejectPoultryFarmProcedure = adminProcedure
     z.object({
       farmId: z.number().int().positive(),
       rejectionReason: z.string().min(1),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     const [farm] = await db
@@ -95,11 +91,7 @@ export const rejectPoultryFarmProcedure = adminProcedure
         updatedAt: Math.floor(Date.now() / 1000),
       })
       .where(
-        and(
-          eq(approvalRequests.resourceId, input.farmId),
-          eq(approvalRequests.requestType, "poultry_farm_activation"),
-          eq(approvalRequests.status, "pending")
-        )
+        and(eq(approvalRequests.resourceId, input.farmId), eq(approvalRequests.requestType, "poultry_farm_activation"), eq(approvalRequests.status, "pending")),
       );
 
     // In-app notification to farm owner
@@ -117,47 +109,47 @@ export const rejectPoultryFarmProcedure = adminProcedure
   });
 
 // Check and mark expired poultry farm subscriptions
-export const checkExpiredPoultryFarmsProcedure = publicProcedure
-  .input(z.object({ adminId: z.number() }))
-  .mutation(async ({ input }) => {
-    const now = new Date();
+export const checkExpiredPoultryFarmsProcedure = publicProcedure.input(z.object({ adminId: z.number() })).mutation(async ({ input }) => {
+  const now = new Date();
 
-    const activeFarms = await db
-      .select({ id: poultryFarms.id, name: poultryFarms.name, ownerId: poultryFarms.ownerId, activationEndDate: poultryFarms.activationEndDate })
-      .from(poultryFarms)
-      .where(and(eq(poultryFarms.isActive, true), eq(poultryFarms.needsRenewal, false)));
+  const activeFarms = await db
+    .select({ id: poultryFarms.id, name: poultryFarms.name, ownerId: poultryFarms.ownerId, activationEndDate: poultryFarms.activationEndDate })
+    .from(poultryFarms)
+    .where(and(eq(poultryFarms.isActive, true), eq(poultryFarms.needsRenewal, false)));
 
-    let expiredCount = 0;
-    for (const farm of activeFarms) {
-      if (farm.activationEndDate && new Date(farm.activationEndDate) <= now) {
-        await db
-          .update(poultryFarms)
-          .set({ isActive: false, needsRenewal: true, updatedAt: now })
-          .where(eq(poultryFarms.id, farm.id));
+  let expiredCount = 0;
+  for (const farm of activeFarms) {
+    if (farm.activationEndDate && new Date(farm.activationEndDate) <= now) {
+      await db.update(poultryFarms).set({ isActive: false, needsRenewal: true, updatedAt: now }).where(eq(poultryFarms.id, farm.id));
 
-        await db.insert(adminNotifications).values({
-          recipientId: farm.ownerId,
-          type: "system_alert",
-          title: "انتهت صلاحية حقل الدواجن",
-          content: `انتهت صلاحية تفعيل حقل الدواجن "${farm.name}". يرجى تجديد الاشتراك.`,
-          relatedResourceType: "poultry_farm",
-          relatedResourceId: farm.id,
-          priority: "high",
-        });
+      await db.insert(adminNotifications).values({
+        recipientId: farm.ownerId,
+        type: "system_alert",
+        title: "انتهت صلاحية حقل الدواجن",
+        content: `انتهت صلاحية تفعيل حقل الدواجن "${farm.name}". يرجى تجديد الاشتراك.`,
+        relatedResourceType: "poultry_farm",
+        relatedResourceId: farm.id,
+        priority: "high",
+      });
 
-        expiredCount++;
-      }
+      expiredCount++;
     }
+  }
 
-    return { success: true, expiredCount };
-  });
+  return { success: true, expiredCount };
+});
 
 // Owner: renew subscription request
 export const requestPoultryFarmRenewalProcedure = publicProcedure
   .input(z.object({ farmId: z.number().int().positive(), ownerId: z.number().int().positive() }))
   .mutation(async ({ input }) => {
     const [farm] = await db
-      .select({ id: poultryFarms.id, name: poultryFarms.name, needsRenewal: poultryFarms.needsRenewal, reviewingRenewalRequest: poultryFarms.reviewingRenewalRequest })
+      .select({
+        id: poultryFarms.id,
+        name: poultryFarms.name,
+        needsRenewal: poultryFarms.needsRenewal,
+        reviewingRenewalRequest: poultryFarms.reviewingRenewalRequest,
+      })
       .from(poultryFarms)
       .where(and(eq(poultryFarms.id, input.farmId), eq(poultryFarms.ownerId, input.ownerId)))
       .limit(1);
@@ -166,10 +158,7 @@ export const requestPoultryFarmRenewalProcedure = publicProcedure
     if (!farm.needsRenewal) throw new Error("لا يحتاج الحقل إلى تجديد");
     if (farm.reviewingRenewalRequest) throw new Error("طلب التجديد قيد المراجعة بالفعل");
 
-    await db
-      .update(poultryFarms)
-      .set({ reviewingRenewalRequest: true, updatedAt: new Date() })
-      .where(eq(poultryFarms.id, input.farmId));
+    await db.update(poultryFarms).set({ reviewingRenewalRequest: true, updatedAt: new Date() }).where(eq(poultryFarms.id, input.farmId));
 
     await db.insert(approvalRequests).values({
       requestType: "poultry_farm_renewal",
@@ -206,7 +195,7 @@ export const banPoultryFarmProcedure = adminProcedure
     z.object({
       farmId: z.number().int().positive(),
       reason: z.string().min(1),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     const [farm] = await db
@@ -236,31 +225,29 @@ export const banPoultryFarmProcedure = adminProcedure
   });
 
 // Admin: deactivate an active poultry farm
-export const deactivatePoultryFarmProcedure = adminProcedure
-  .input(z.object({ farmId: z.number().int().positive() }))
-  .mutation(async ({ input }) => {
-    const [farm] = await db
-      .select({ id: poultryFarms.id, ownerId: poultryFarms.ownerId, name: poultryFarms.name })
-      .from(poultryFarms)
-      .where(eq(poultryFarms.id, input.farmId))
-      .limit(1);
+export const deactivatePoultryFarmProcedure = adminProcedure.input(z.object({ farmId: z.number().int().positive() })).mutation(async ({ input }) => {
+  const [farm] = await db
+    .select({ id: poultryFarms.id, ownerId: poultryFarms.ownerId, name: poultryFarms.name })
+    .from(poultryFarms)
+    .where(eq(poultryFarms.id, input.farmId))
+    .limit(1);
 
-    if (!farm) throw new Error("حقل الدواجن غير موجود");
+  if (!farm) throw new Error("حقل الدواجن غير موجود");
 
-    await db
-      .update(poultryFarms)
-      .set({ isActive: false, status: "deactivated", updatedAt: new Date() })
-      .where(eq(poultryFarms.id, input.farmId));
+  await db
+    .update(poultryFarms)
+    .set({ isActive: false, status: "deactivated", needsRenewal: false, reviewingRenewalRequest: false, updatedAt: new Date() })
+    .where(eq(poultryFarms.id, input.farmId));
 
-    await db.insert(notifications).values({
-      userId: farm.ownerId,
-      title: "تم إيقاف تفعيل حقل الدواجن",
-      message: `تم إيقاف تفعيل حقل الدواجن "${farm.name}" من قبل الإدارة.`,
-      type: "warning",
-      data: JSON.stringify({ farmId: farm.id }),
-      isRead: false,
-      createdAt: new Date(),
-    });
-
-    return { success: true, message: "تم إيقاف تفعيل حقل الدواجن" };
+  await db.insert(notifications).values({
+    userId: farm.ownerId,
+    title: "تم إيقاف تفعيل حقل الدواجن",
+    message: `تم إيقاف تفعيل حقل الدواجن "${farm.name}" من قبل الإدارة.`,
+    type: "warning",
+    data: JSON.stringify({ farmId: farm.id }),
+    isRead: false,
+    createdAt: new Date(),
   });
+
+  return { success: true, message: "تم إيقاف تفعيل حقل الدواجن" };
+});
