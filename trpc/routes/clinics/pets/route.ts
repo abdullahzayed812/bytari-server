@@ -13,30 +13,30 @@ export const getClinicLatestPetsProcedure = protectedProcedure
   .query(async ({ input }) => {
     try {
       const latestMedical = db
-        .select({ petId: medicalRecords.petId, latestDate: max(medicalRecords.date).as("latestDate") })
+        .select({ petId: medicalRecords.petId, medicalDate: max(medicalRecords.date).as("medicalDate") })
         .from(medicalRecords)
         .where(eq(medicalRecords.clinicId, input.clinicId))
         .groupBy(medicalRecords.petId)
         .as("latestMedical");
 
       const latestVaccination = db
-        .select({ petId: vaccinations.petId, latestDate: max(vaccinations.date).as("latestDate") })
+        .select({ petId: vaccinations.petId, vaccinationDate: max(vaccinations.date).as("vaccinationDate") })
         .from(vaccinations)
         .where(eq(vaccinations.clinicId, input.clinicId))
         .groupBy(vaccinations.petId)
         .as("latestVaccination");
 
       const latestReminder = db
-        .select({ petId: petReminders.petId, latestDate: max(petReminders.reminderDate).as("latestDate") })
+        .select({ petId: petReminders.petId, reminderDate: max(petReminders.reminderDate).as("reminderDate") })
         .from(petReminders)
         .where(eq(petReminders.clinicId, input.clinicId))
         .groupBy(petReminders.petId)
         .as("latestReminder");
 
       const lastActionAt = sql<string>`GREATEST(
-        COALESCE(${latestMedical.latestDate}, '1970-01-01'::timestamptz),
-        COALESCE(${latestVaccination.latestDate}, '1970-01-01'::timestamptz),
-        COALESCE(${latestReminder.latestDate}, '1970-01-01'::timestamptz)
+        COALESCE(${latestMedical.medicalDate}, '1970-01-01'::timestamptz),
+        COALESCE(${latestVaccination.vaccinationDate}, '1970-01-01'::timestamptz),
+        COALESCE(${latestReminder.reminderDate}, '1970-01-01'::timestamptz)
       )`;
 
       const clinicPets = await db
@@ -52,12 +52,12 @@ export const getClinicLatestPetsProcedure = protectedProcedure
           image: pets.image,
           ownerName: users.name,
           createdAt: pets.createdAt,
-          hasMedical: sql<boolean>`${latestMedical.latestDate} IS NOT NULL`,
-          hasVaccination: sql<boolean>`${latestVaccination.latestDate} IS NOT NULL`,
-          hasReminder: sql<boolean>`${latestReminder.latestDate} IS NOT NULL`,
-          latestMedicalDate: latestMedical.latestDate,
-          latestVaccinationDate: latestVaccination.latestDate,
-          latestReminderDate: latestReminder.latestDate,
+          hasMedical: sql<boolean>`${latestMedical.medicalDate} IS NOT NULL`,
+          hasVaccination: sql<boolean>`${latestVaccination.vaccinationDate} IS NOT NULL`,
+          hasReminder: sql<boolean>`${latestReminder.reminderDate} IS NOT NULL`,
+          latestMedicalDate: latestMedical.medicalDate,
+          latestVaccinationDate: latestVaccination.vaccinationDate,
+          latestReminderDate: latestReminder.reminderDate,
           lastActionAt,
         })
         .from(pets)

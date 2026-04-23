@@ -12,6 +12,7 @@ import {
   vaccinations,
   petReminders,
   approvedClinicAccess,
+  reviews,
 } from "../../../../db";
 import { eq, and, inArray, count, countDistinct, sql } from "drizzle-orm";
 
@@ -321,6 +322,93 @@ export const getAllClinicsForAdmin = adminProcedure
     } catch (error) {
       console.error("Error fetching clinics (admin):", error);
       throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب جميع العيادات");
+    }
+  });
+
+// ============== ADMIN: GET ALL CLINICS WITH ENRICHED DATA ==============
+export const getAdminClinicsListProcedure = adminProcedure
+  .input(z.object({}))
+  .query(async () => {
+    try {
+      // Fetch ALL clinics regardless of isActive
+      const allClinics = await db.select().from(clinics).orderBy(clinics.createdAt);
+
+      const clinicIds = allClinics.map((c: any) => c.id);
+      if (clinicIds.length === 0) return { success: true, clinics: [] };
+
+      // Fetch approval requests to get owner info and document images
+      const approvalData = await db
+        .select()
+        .from(approvalRequests)
+        .where(and(eq(approvalRequests.requestType, "clinic_activation"), inArray(approvalRequests.resourceId, clinicIds)));
+
+      const userIds = [...new Set(approvalData.map((a: any) => a.requesterId))];
+      const userData =
+        userIds.length > 0
+          ? await db
+              .select({ id: users.id, name: users.name, email: users.email })
+              .from(users)
+              .where(inArray(users.id, userIds))
+          : [];
+
+      const approvalMap = new Map<number, any>();
+      approvalData.forEach((a: any) => {
+        if (!approvalMap.has(a.resourceId)) approvalMap.set(a.resourceId, a);
+      });
+
+      const userMap = new Map<number, any>();
+      userData.forEach((u: any) => userMap.set(u.id, u));
+
+      // Compute review statistics
+      const reviewStats = await db
+        .select({
+          clinicId: reviews.clinicId,
+          averageRating: sql<number>`ROUND(AVG(${reviews.rating})::numeric, 1)`.as("averageRating"),
+          reviewCount: sql<number>`COUNT(*)`.as("reviewCount"),
+        })
+        .from(reviews)
+        .where(inArray(reviews.clinicId, clinicIds))
+        .groupBy(reviews.clinicId);
+
+      const reviewMap: Record<number, { averageRating: number; reviewCount: number }> = {};
+      reviewStats.forEach((s: any) => {
+        reviewMap[s.clinicId] = { averageRating: Number(s.averageRating) || 0, reviewCount: Number(s.reviewCount) || 0 };
+      });
+
+      return {
+        success: true,
+        clinics: allClinics.map((clinic: any) => {
+          const approval = approvalMap.get(clinic.id);
+          const owner = approval ? userMap.get(approval.requesterId) : null;
+
+          // Derive status: pending approval → "pending", active → "active", inactive → "banned"
+          let status: string;
+          if (!approval || approval.status === "pending") {
+            status = "pending";
+          } else if (clinic.isActive) {
+            status = "active";
+          } else {
+            status = "banned";
+          }
+
+          return {
+            ...clinic,
+            status,
+            ownerName: owner?.name || "غير متوفر",
+            ownerEmail: owner?.email || "غير متوفر",
+            identityImages: approval?.identityImages || null,
+            licenseImages: approval?.licenseImages || null,
+            rating: reviewMap[clinic.id]?.averageRating ?? clinic.rating ?? 0,
+            reviewsCount: reviewMap[clinic.id]?.reviewCount ?? 0,
+            reportCount: 0,
+            isPremium: false,
+            createdAt: typeof clinic.createdAt === "number" ? new Date(clinic.createdAt * 1000).toISOString() : clinic.createdAt,
+          };
+        }),
+      };
+    } catch (error) {
+      console.error("Error fetching admin clinics list:", error);
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب قائمة العيادات");
     }
   });
 

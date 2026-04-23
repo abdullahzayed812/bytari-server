@@ -15,10 +15,11 @@ export const updatePetProcedure = protectedProcedure
       weight: z.number().optional(),
       color: z.string().optional(),
       image: z.string().optional(),
+      isNeutered: z.boolean().optional(),
     })
   )
   .mutation(async ({ ctx, input }) => {
-    const { id, name, type, breed, age, gender, weight, color, image } = input;
+    const { id, name, type, breed, age, gender, weight, color, image, isNeutered } = input;
     const userId = ctx.user.id;
 
     const pet = await db.query.pets.findFirst({
@@ -40,6 +41,7 @@ export const updatePetProcedure = protectedProcedure
         weight,
         color,
         image,
+        isNeutered,
         updatedAt: new Date(),
       })
       .where(eq(pets.id, id));

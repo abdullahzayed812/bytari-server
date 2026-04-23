@@ -148,6 +148,7 @@ export const updatePetProfileProcedure = protectedProcedure
       medicalHistory: z.string().optional(),
       vaccinations: z.string().optional(),
       isLost: z.boolean().optional(),
+      isNeutered: z.boolean().optional(),
       status: z.string().optional(),
     })
   )
@@ -172,6 +173,7 @@ export const updatePetProfileProcedure = protectedProcedure
             medicalHistory: input.medicalHistory,
             vaccinations: input.vaccinations ? JSON.parse(input.vaccinations) : undefined,
             isLost: input.isLost || false,
+            isNeutered: input.isNeutered,
             updatedAt: new Date(),
           })
           .where(eq(pets.id, input.petId))

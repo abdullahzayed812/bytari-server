@@ -6,6 +6,8 @@ import {
   adminNotifications,
   emailNotifications,
   notifications,
+  systemMessages,
+  systemMessageRecipients,
   users,
   veterinarians,
   clinics,
@@ -528,6 +530,41 @@ export const approveRequestProcedure = publicProcedure
           }),
           isRead: false,
           createdAt: new Date(),
+        });
+
+        // Send educational video link via system message
+        const videoUrl = isClinic
+          ? "https://drive.google.com/file/d/1Qcd62gym24NoYJYSkPThl6Ga6-UgcZjr/view?usp=drivesdk"
+          : "https://drive.google.com/file/d/1xGIJmdfTgKUvxFncR0Zds_Qpprvl_Y3k/view?usp=drivesdk";
+
+        const videoMessageTitle = isClinic
+          ? "مرحباً بك في منصتنا — فيديو تعليمي للعيادات"
+          : "مرحباً بك في منصتنا — فيديو تعليمي للمكاتب";
+
+        const videoMessageContent = isClinic
+          ? `تهانينا! تم ${isRenewal ? "تجديد" : "تفعيل"} حساب عيادتك${resourceName ? ` "${resourceName}"` : ""} بنجاح.\n\nلمساعدتك على البدء، أعددنا فيديو تعليمياً يشرح كيفية استخدام المنصة بشكل كامل. اضغط على الرابط أدناه لمشاهدة الفيديو.`
+          : `تهانينا! تم ${isRenewal ? "تجديد" : "تفعيل"} حساب مكتبك${resourceName ? ` "${resourceName}"` : ""} بنجاح.\n\nلمساعدتك على البدء، أعددنا فيديو تعليمياً يشرح كيفية استخدام المنصة بشكل كامل. اضغط على الرابط أدناه لمشاهدة الفيديو.`;
+
+        const [videoMsg] = await db
+          .insert(systemMessages)
+          .values({
+            senderId: input.adminId,
+            title: videoMessageTitle,
+            content: videoMessageContent,
+            type: "announcement",
+            targetAudience: "specific",
+            targetUserIds: [requesterId],
+            priority: "high",
+            linkUrl: videoUrl,
+            sentAt: new Date(),
+            isActive: true,
+          })
+          .returning();
+
+        await db.insert(systemMessageRecipients).values({
+          messageId: videoMsg.id,
+          userId: requesterId,
+          isRead: false,
         });
       }
 

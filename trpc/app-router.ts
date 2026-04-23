@@ -117,6 +117,7 @@ import {
   getUserStoresProcedure,
   listActiveStoresProcedure,
   listStoresProcedure,
+  getAdminStoresListProcedure,
 } from "./routes/stores/list/route";
 import { addStoreProductProcedure } from "./routes/stores/products/create/route";
 import { listProductsProcedure } from "./routes/stores/products/list/route";
@@ -170,6 +171,7 @@ import {
   // getVetClinicsProcedure,
   getAllClinicsForAdmin,
   getClinicByIdProcedure,
+  getAdminClinicsListProcedure,
 } from "./routes/clinics/list/route";
 import { getActiveClinicsListProcedure } from "./routes/clinics/public/route";
 import { getClinicDashboardDataProcedure } from "./routes/clinics/dashboard/route";
@@ -647,6 +649,7 @@ export const appRouter = createTRPCRouter({
     create: createStoreProcedure,
     list: listStoresProcedure,
     listActive: listActiveStoresProcedure,
+    getAdminList: getAdminStoresListProcedure,
     getById: getStoreByIdProcedure,
     getUserApprovedStores: getUserApprovedStoresProcedure,
     update: updateStoreProcedure,
@@ -706,6 +709,7 @@ export const appRouter = createTRPCRouter({
     getLatestPets: getClinicLatestPetsProcedure,
     getAllClinics: getAllClinicsForAdmin,
 
+    getAdminList: getAdminClinicsListProcedure,
     toggleClinicVisibility: toggleClinicVisibilityProcedure,
     deleteClinic: deleteClinicProcedure,
     updateClinic: updateClinicProcedure,

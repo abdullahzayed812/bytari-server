@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure } from "../../../create-context";
+import { adminProcedure, publicProcedure } from "../../../create-context";
 import {
   approvalRequests,
   db,
@@ -429,5 +429,86 @@ export const getStoreProcedure = publicProcedure
     } catch (error) {
       console.error("Error getting store:", error);
       throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب المتجر");
+    }
+  });
+
+// ============== ADMIN: GET ALL STORES WITH ENRICHED DATA ==============
+export const getAdminStoresListProcedure = adminProcedure
+  .input(z.object({}))
+  .query(async () => {
+    try {
+      const allStores = await db.select().from(stores).orderBy(stores.createdAt);
+
+      const storeIds = allStores.map((s: any) => s.id);
+      if (storeIds.length === 0) return { success: true, stores: [] };
+
+      const approvalData = await db
+        .select()
+        .from(approvalRequests)
+        .where(and(eq(approvalRequests.requestType, "store_activation"), inArray(approvalRequests.resourceId, storeIds)));
+
+      const userIds = [...new Set(approvalData.map((a: any) => a.requesterId))];
+      const userData =
+        userIds.length > 0
+          ? await db
+              .select({ id: users.id, name: users.name, email: users.email })
+              .from(users)
+              .where(inArray(users.id, userIds))
+          : [];
+
+      const approvalMap = new Map<number, any>();
+      approvalData.forEach((a: any) => {
+        if (!approvalMap.has(a.resourceId)) approvalMap.set(a.resourceId, a);
+      });
+
+      const userMap = new Map<number, any>();
+      userData.forEach((u: any) => userMap.set(u.id, u));
+
+      const reviewStats = await db
+        .select({
+          storeId: reviews.storeId,
+          averageRating: sql<number>`ROUND(AVG(${reviews.rating})::numeric, 1)`.as("averageRating"),
+          reviewCount: sql<number>`COUNT(*)`.as("reviewCount"),
+        })
+        .from(reviews)
+        .where(inArray(reviews.storeId, storeIds))
+        .groupBy(reviews.storeId);
+
+      const reviewMap: Record<number, { averageRating: number; reviewCount: number }> = {};
+      reviewStats.forEach((s: any) => {
+        reviewMap[s.storeId] = { averageRating: Number(s.averageRating) || 0, reviewCount: Number(s.reviewCount) || 0 };
+      });
+
+      return {
+        success: true,
+        stores: allStores.map((store: any) => {
+          const approval = approvalMap.get(store.id);
+          const owner = approval ? userMap.get(approval.requesterId) : null;
+
+          let status: string;
+          if (!approval || approval.status === "pending") {
+            status = "pending";
+          } else if (store.isActive) {
+            status = "active";
+          } else {
+            status = "banned";
+          }
+
+          return {
+            ...store,
+            status,
+            images: store.images ? JSON.parse(store.images) : [],
+            ownerName: owner?.name || "غير متوفر",
+            ownerEmail: owner?.email || "غير متوفر",
+            identityImages: approval?.identityImages || null,
+            licenseImages: approval?.licenseImages || null,
+            rating: reviewMap[store.id]?.averageRating ?? store.rating ?? 0,
+            reviewCount: reviewMap[store.id]?.reviewCount ?? 0,
+          };
+        }),
+      };
+    } catch (error) {
+      console.error("Error fetching admin stores list:", error);
+      throw new Error(error instanceof Error ? error.message : "حدث خطأ أثناء جلب قائمة المذاخر");
     }
   });
