@@ -422,10 +422,13 @@ export async function sendWelcomeMessageToUser(userId: number, userType: string)
     if (existing) return;
 
     const title = "مرحباً بك في تطبيق بيطري!";
-    const content =
-      userType === "veterinarian"
-        ? "مرحباً بك دكتور في تطبيق بيطري. يمكنك الآن إدارة عيادتك، متابعة الحالات المرضية، والتواصل مع أصحاب الحيوانات الأليفة بكل سهولة."
-        : "مرحباً بك في تطبيق بيطري. يمكنك الآن إضافة حيواناتك الأليفة، حجز المواعيد في العيادات، والحصول على استشارات طبية فورية.";
+    const isVet = userType === "veterinarian";
+    const content = isVet
+      ? "مرحباً بك دكتور في تطبيق بيطري. يمكنك الآن إدارة عيادتك، متابعة الحالات المرضية، والتواصل مع أصحاب الحيوانات الأليفة بكل سهولة.\n\nلمساعدتك على البدء، أعددنا فيديو تعليمياً يشرح كيفية استخدام المنصة. اضغط على الرابط أدناه لمشاهدة الفيديو."
+      : "مرحباً بك في تطبيق بيطري. يمكنك الآن إضافة حيواناتك الأليفة، حجز المواعيد في العيادات، والحصول على استشارات طبية فورية.\n\nلمساعدتك على البدء، أعددنا فيديو تعليمياً يشرح كيفية استخدام التطبيق. اضغط على الرابط أدناه لمشاهدة الفيديو.";
+    const linkUrl = isVet
+      ? "https://drive.google.com/file/d/1kOttwMAUGdFt-qfwARcOmeb1C5R3sv7G/view?usp=drivesdk"
+      : "https://drive.google.com/file/d/1zxhCMtq85LV3RH9fTwJixro0kQbU1kZA/view?usp=drivesdk";
 
     // Create system message
     const [message] = await db
@@ -438,6 +441,7 @@ export async function sendWelcomeMessageToUser(userId: number, userType: string)
         targetAudience: "specific",
         targetUserIds: [userId],
         priority: "high",
+        linkUrl,
         sentAt: new Date(),
       })
       .returning();

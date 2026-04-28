@@ -117,6 +117,12 @@ export async function seedAdminSystem(db) {
         category: "stores",
       },
       {
+        name: "manage_poultry_farms",
+        displayName: "إدارة حقول الدواجن",
+        description: "إدارة وتفعيل حقول الدواجن",
+        category: "farms",
+      },
+      {
         name: "manage_hospitals",
         displayName: "إدارة المستشفيات",
         description: "إدارة وتفعيل المستشفيات البيطرية",

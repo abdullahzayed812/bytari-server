@@ -1,24 +1,14 @@
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import {
-  db,
-  stores,
-  veterinarians,
-  users,
-  storePermissions,
-  notifications,
-  storeStaff,
-  approvalRequests,
-  adminNotifications,
-} from "../../../../db";
+import { db, stores, veterinarians, users, storePermissions, notifications, storeStaff, approvalRequests, adminNotifications } from "../../../../db";
 
 // ============== GET STORE SETTINGS ==============
 export const getStoreSettingsProcedure = protectedProcedure
   .input(
     z.object({
       storeId: z.number(),
-    })
+    }),
   )
   .query(async ({ input, ctx }) => {
     try {
@@ -42,6 +32,9 @@ export const getStoreSettingsProcedure = protectedProcedure
           phone: store.phone,
           email: store.email,
           website: store.website,
+          facebook: store.facebook,
+          instagram: store.instagram,
+          whatsapp: store.whatsapp,
           latitude: store.latitude,
           longitude: store.longitude,
           workingHours: store.workingHours,
@@ -80,7 +73,7 @@ export const updateStoreBasicInfoProcedure = protectedProcedure
       latitude: z.number().optional(),
       longitude: z.number().optional(),
       images: z.array(z.string()).optional(),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -128,7 +121,10 @@ export const updateStoreContactInfoProcedure = protectedProcedure
       phone: z.string().min(1, "رقم الهاتف مطلوب"),
       email: z.string().email("البريد الإلكتروني غير صحيح").optional(),
       website: z.string().url("رابط الموقع غير صحيح").optional(),
-    })
+      facebook: z.string().url("رابط الفيس بوك غير صحيح").optional(),
+      instagram: z.string().url("رابط انستجرام غير صحيح").optional(),
+      whatsapp: z.string().url("رابط واتساب غير صحيح").optional(),
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     try {
@@ -140,6 +136,9 @@ export const updateStoreContactInfoProcedure = protectedProcedure
           phone: input.phone,
           email: input.email,
           website: input.website,
+          facebook: input.facebook,
+          instagram: input.instagram,
+          whatsapp: input.whatsapp,
           updatedAt: now,
         })
         .where(eq(stores.id, input.storeId))
@@ -162,7 +161,7 @@ export const updateStoreWorkingHoursProcedure = protectedProcedure
     z.object({
       storeId: z.number(),
       workingHours: z.string(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     try {
@@ -189,56 +188,54 @@ export const updateStoreWorkingHoursProcedure = protectedProcedure
   });
 
 // ============== GET STORE STAFF ==============
-export const getStoreStaffProcedure = protectedProcedure
-  .input(z.object({ storeId: z.number() }))
-  .query(async ({ input }) => {
-    try {
-      const staff = await db
-        .select({
-          staffId: storeStaff.id,
-          id: veterinarians.id,
-          userId: veterinarians.userId,
-          experience: veterinarians.experience, // READ ONLY
-          isVerified: veterinarians.isVerified,
-          rating: veterinarians.rating,
-          userName: users.name,
-          userEmail: users.email,
-          userPhone: users.phone,
-          userAvatar: users.avatar,
-          // Staff assignment info
-          assignedAt: storeStaff.assignedAt,
-          role: storeStaff.role,
-          status: storeStaff.status,
-          notes: storeStaff.notes,
-        })
-        .from(storeStaff)
-        .innerJoin(veterinarians, eq(storeStaff.veterinarianId, veterinarians.id))
-        .innerJoin(users, eq(veterinarians.userId, users.id))
-        .where(and(eq(storeStaff.storeId, input.storeId), eq(storeStaff.isActive, true)));
+export const getStoreStaffProcedure = protectedProcedure.input(z.object({ storeId: z.number() })).query(async ({ input }) => {
+  try {
+    const staff = await db
+      .select({
+        staffId: storeStaff.id,
+        id: veterinarians.id,
+        userId: veterinarians.userId,
+        experience: veterinarians.experience, // READ ONLY
+        isVerified: veterinarians.isVerified,
+        rating: veterinarians.rating,
+        userName: users.name,
+        userEmail: users.email,
+        userPhone: users.phone,
+        userAvatar: users.avatar,
+        // Staff assignment info
+        assignedAt: storeStaff.assignedAt,
+        role: storeStaff.role,
+        status: storeStaff.status,
+        notes: storeStaff.notes,
+      })
+      .from(storeStaff)
+      .innerJoin(veterinarians, eq(storeStaff.veterinarianId, veterinarians.id))
+      .innerJoin(users, eq(veterinarians.userId, users.id))
+      .where(and(eq(storeStaff.storeId, input.storeId), eq(storeStaff.isActive, true)));
 
-      return {
-        success: true,
-        staff: staff.map((s) => ({
-          staffId: s.staffId,
-          id: s.id,
-          userId: s.userId,
-          name: s.userName,
-          email: s.userEmail,
-          phone: s.userPhone,
-          avatar: s.userAvatar,
-          experience: s.experience, // read only
-          isVerified: s.isVerified,
-          rating: s.rating,
-          assignedAt: s.assignedAt,
-          role: s.role,
-          status: s.status,
-          notes: s.notes,
-        })),
-      };
-    } catch (error) {
-      throw new Error("حدث خطأ أثناء جلب موظفي المذخر");
-    }
-  });
+    return {
+      success: true,
+      staff: staff.map((s) => ({
+        staffId: s.staffId,
+        id: s.id,
+        userId: s.userId,
+        name: s.userName,
+        email: s.userEmail,
+        phone: s.userPhone,
+        avatar: s.userAvatar,
+        experience: s.experience, // read only
+        isVerified: s.isVerified,
+        rating: s.rating,
+        assignedAt: s.assignedAt,
+        role: s.role,
+        status: s.status,
+        notes: s.notes,
+      })),
+    };
+  } catch (error) {
+    throw new Error("حدث خطأ أثناء جلب موظفي المذخر");
+  }
+});
 
 // ============== ADD STAFF MEMBER ==============
 export const addStoreStaffProcedure = protectedProcedure
@@ -246,7 +243,7 @@ export const addStoreStaffProcedure = protectedProcedure
     z.object({
       storeId: z.number(),
       email: z.string().email("البريد الإلكتروني غير صحيح"),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     try {
@@ -282,13 +279,7 @@ export const addStoreStaffProcedure = protectedProcedure
       const [existing] = await db
         .select()
         .from(storeStaff)
-        .where(
-          and(
-            eq(storeStaff.storeId, input.storeId),
-            eq(storeStaff.veterinarianId, vetId),
-            eq(storeStaff.isActive, true)
-          )
-        )
+        .where(and(eq(storeStaff.storeId, input.storeId), eq(storeStaff.veterinarianId, vetId), eq(storeStaff.isActive, true)))
         .limit(1);
 
       if (existing) {
@@ -341,7 +332,7 @@ export const removeStoreStaffProcedure = protectedProcedure
     z.object({
       storeId: z.number(),
       veterinarianId: z.number(), // veterinarianId
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -350,13 +341,7 @@ export const removeStoreStaffProcedure = protectedProcedure
       const [staffAssignment] = await db
         .select()
         .from(storeStaff)
-        .where(
-          and(
-            eq(storeStaff.storeId, input.storeId),
-            eq(storeStaff.veterinarianId, input.veterinarianId),
-            eq(storeStaff.isActive, true)
-          )
-        )
+        .where(and(eq(storeStaff.storeId, input.storeId), eq(storeStaff.veterinarianId, input.veterinarianId), eq(storeStaff.isActive, true)))
         .limit(1);
 
       if (!staffAssignment) {
@@ -378,9 +363,7 @@ export const removeStoreStaffProcedure = protectedProcedure
           isActive: false,
           updatedAt: now,
         })
-        .where(
-          and(eq(storePermissions.storeId, input.storeId), eq(storePermissions.veterinarianId, input.veterinarianId))
-        );
+        .where(and(eq(storePermissions.storeId, input.storeId), eq(storePermissions.veterinarianId, input.veterinarianId)));
 
       return {
         success: true,
@@ -397,7 +380,7 @@ export const updateStoreImagesProcedure = protectedProcedure
     z.object({
       storeId: z.number(),
       images: z.array(z.string()),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     try {
@@ -428,7 +411,7 @@ export const getStoreSubscriptionProcedure = protectedProcedure
   .input(
     z.object({
       storeId: z.number(),
-    })
+    }),
   )
   .query(async ({ input, ctx }) => {
     try {
@@ -481,9 +464,9 @@ export const updateStorePermissionsProcedure = protectedProcedure
         z.object({
           veterinarianId: z.number(),
           permission: z.enum(["all", "view_edit_inventory", "view_only", "orders_only"]),
-        })
+        }),
       ),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     try {
@@ -537,13 +520,7 @@ export const updateStorePermissionsProcedure = protectedProcedure
         const [staffRecord] = await db
           .select()
           .from(storeStaff)
-          .where(
-            and(
-              eq(storeStaff.veterinarianId, veterinarianId),
-              eq(storeStaff.storeId, input.storeId),
-              eq(storeStaff.isActive, true)
-            )
-          )
+          .where(and(eq(storeStaff.veterinarianId, veterinarianId), eq(storeStaff.storeId, input.storeId), eq(storeStaff.isActive, true)))
           .limit(1);
 
         if (!staffRecord) {
@@ -608,7 +585,7 @@ export const requestStoreRenewalProcedure = protectedProcedure
   .input(
     z.object({
       storeId: z.number(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     try {
@@ -635,8 +612,8 @@ export const requestStoreRenewalProcedure = protectedProcedure
             eq(approvalRequests.requesterId, userId),
             eq(approvalRequests.resourceId, input.storeId),
             eq(approvalRequests.requestType, "store_renewal"),
-            eq(approvalRequests.status, "pending")
-          )
+            eq(approvalRequests.status, "pending"),
+          ),
         )
         .limit(1);
 

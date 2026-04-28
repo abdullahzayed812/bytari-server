@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminProcedure, publicProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { poultryFarms, adminNotifications, notifications, users, approvalRequests } from "../../../../db/schema";
+import { poultryFarms, adminNotifications, notifications, users, approvalRequests, systemMessages, systemMessageRecipients } from "../../../../db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 
 const SUPER_ADMIN_EMAILS = ["zuhairalrawi0@gmail.com", "superadmin@petapp.com"];
@@ -15,7 +15,7 @@ export const activatePoultryFarmProcedure = adminProcedure
       activationEndDate: z.date(),
     }),
   )
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input, ctx }) => {
     const [farm] = await db
       .select({ id: poultryFarms.id, ownerId: poultryFarms.ownerId, name: poultryFarms.name })
       .from(poultryFarms)
@@ -55,6 +55,30 @@ export const activatePoultryFarmProcedure = adminProcedure
       data: JSON.stringify({ farmId: farm.id }),
       isRead: false,
       createdAt: new Date(),
+    });
+
+    // Send educational video link via system message
+    const videoUrl = "https://drive.google.com/file/d/1JxD6qWE7mDTIKPC62XRKzSqlfNOljv8t/view?usp=drivesdk";
+    const [videoMsg] = await db
+      .insert(systemMessages)
+      .values({
+        senderId: ctx.user.id,
+        title: "مرحباً بك في منصتنا — فيديو تعليمي لحقول الدواجن",
+        content: `تهانينا! تم تفعيل حساب حقل الدواجن "${farm.name}" بنجاح.\n\nلمساعدتك على البدء، أعددنا فيديو تعليمياً يشرح كيفية استخدام المنصة بشكل كامل. اضغط على الرابط أدناه لمشاهدة الفيديو.`,
+        type: "announcement",
+        targetAudience: "specific",
+        targetUserIds: [farm.ownerId],
+        priority: "high",
+        linkUrl: videoUrl,
+        sentAt: new Date(),
+        isActive: true,
+      })
+      .returning();
+
+    await db.insert(systemMessageRecipients).values({
+      messageId: videoMsg.id,
+      userId: farm.ownerId,
+      isRead: false,
     });
 
     return { success: true, message: "تم تفعيل حقل الدواجن بنجاح" };
