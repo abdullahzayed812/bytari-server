@@ -5,89 +5,56 @@ import { db, clinicPetChats, clinicPetChatMessages, pets, users, clinicStaff, no
 import { TRPCError } from "@trpc/server";
 
 // Get or create a chat between a clinic and a pet owner (used by vet side)
-export const getOrCreateChatProcedure = protectedProcedure
-  .input(z.object({ petId: z.string(), clinicId: z.number() }))
-  .query(async ({ input }) => {
-    const [existing] = await db
-      .select()
-      .from(clinicPetChats)
-      .where(
-        and(
-          eq(clinicPetChats.petId, input.petId),
-          eq(clinicPetChats.clinicId, input.clinicId),
-        ),
-      )
-      .limit(1);
+export const getOrCreateChatProcedure = protectedProcedure.input(z.object({ petId: z.string(), clinicId: z.number() })).query(async ({ input }) => {
+  const [existing] = await db
+    .select()
+    .from(clinicPetChats)
+    .where(and(eq(clinicPetChats.petId, input.petId), eq(clinicPetChats.clinicId, input.clinicId)))
+    .limit(1);
 
-    if (existing) return { success: true, chat: existing };
+  if (existing) return { success: true, chat: existing };
 
-    const [pet] = await db
-      .select({ ownerId: pets.ownerId })
-      .from(pets)
-      .where(eq(pets.id, input.petId))
-      .limit(1);
+  const [pet] = await db.select({ ownerId: pets.ownerId }).from(pets).where(eq(pets.id, input.petId)).limit(1);
 
-    if (!pet) throw new TRPCError({ code: "NOT_FOUND", message: "الحيوان غير موجود" });
+  if (!pet) throw new TRPCError({ code: "NOT_FOUND", message: "الحيوان غير موجود" });
 
-    const [created] = await db
-      .insert(clinicPetChats)
-      .values({ petId: input.petId, clinicId: input.clinicId, ownerId: pet.ownerId, isActive: false })
-      .returning();
+  const [created] = await db.insert(clinicPetChats).values({ petId: input.petId, clinicId: input.clinicId, ownerId: pet.ownerId, isActive: false }).returning();
 
-    return { success: true, chat: created };
-  });
+  return { success: true, chat: created };
+});
 
 // Fetch chat without creating (used by owner side), includes unread count from clinic
-export const getChatProcedure = protectedProcedure
-  .input(z.object({ petId: z.string(), clinicId: z.number() }))
-  .query(async ({ input }) => {
-    const [chat] = await db
-      .select()
-      .from(clinicPetChats)
-      .where(
-        and(
-          eq(clinicPetChats.petId, input.petId),
-          eq(clinicPetChats.clinicId, input.clinicId),
-        ),
-      )
-      .limit(1);
+export const getChatProcedure = protectedProcedure.input(z.object({ petId: z.string(), clinicId: z.number() })).query(async ({ input }) => {
+  const [chat] = await db
+    .select()
+    .from(clinicPetChats)
+    .where(and(eq(clinicPetChats.petId, input.petId), eq(clinicPetChats.clinicId, input.clinicId)))
+    .limit(1);
 
-    if (!chat) return { success: true, chat: null };
+  if (!chat) return { success: true, chat: null };
 
-    const [unreadRow] = await db
-      .select({ count: count() })
-      .from(clinicPetChatMessages)
-      .where(
-        and(
-          eq(clinicPetChatMessages.chatId, chat.id),
-          eq(clinicPetChatMessages.senderRole, "clinic"),
-          eq(clinicPetChatMessages.isRead, false),
-        ),
-      );
+  const [unreadRow] = await db
+    .select({ count: count() })
+    .from(clinicPetChatMessages)
+    .where(and(eq(clinicPetChatMessages.chatId, chat.id), eq(clinicPetChatMessages.senderRole, "clinic"), eq(clinicPetChatMessages.isRead, false)));
 
-    return { success: true, chat: { ...chat, unreadCount: unreadRow?.count ?? 0 } };
-  });
+  return { success: true, chat: { ...chat, unreadCount: unreadRow?.count ?? 0 } };
+});
 
 // Flip is_active on a chat (clinic only)
-export const toggleActiveProcedure = protectedProcedure
-  .input(z.object({ chatId: z.number(), clinicId: z.number() }))
-  .mutation(async ({ input }) => {
-    const [chat] = await db
-      .select()
-      .from(clinicPetChats)
-      .where(and(eq(clinicPetChats.id, input.chatId), eq(clinicPetChats.clinicId, input.clinicId)))
-      .limit(1);
+export const toggleActiveProcedure = protectedProcedure.input(z.object({ chatId: z.number(), clinicId: z.number() })).mutation(async ({ input }) => {
+  const [chat] = await db
+    .select()
+    .from(clinicPetChats)
+    .where(and(eq(clinicPetChats.id, input.chatId), eq(clinicPetChats.clinicId, input.clinicId)))
+    .limit(1);
 
-    if (!chat) throw new TRPCError({ code: "NOT_FOUND", message: "المحادثة غير موجودة" });
+  if (!chat) throw new TRPCError({ code: "NOT_FOUND", message: "المحادثة غير موجودة" });
 
-    const [updated] = await db
-      .update(clinicPetChats)
-      .set({ isActive: !chat.isActive })
-      .where(eq(clinicPetChats.id, input.chatId))
-      .returning();
+  const [updated] = await db.update(clinicPetChats).set({ isActive: !chat.isActive }).where(eq(clinicPetChats.id, input.chatId)).returning();
 
-    return { success: true, chat: updated };
-  });
+  return { success: true, chat: updated };
+});
 
 // Fetch paginated messages and mark other side as read
 export const getMessagesProcedure = protectedProcedure
@@ -99,6 +66,15 @@ export const getMessagesProcedure = protectedProcedure
     }),
   )
   .query(async ({ input, ctx }) => {
+    // Mark messages from the other side as read BEFORE fetching,
+    // so the response already reflects the correct read state.
+    await db
+      .update(clinicPetChatMessages)
+      .set({ isRead: true })
+      .where(
+        and(eq(clinicPetChatMessages.chatId, input.chatId), eq(clinicPetChatMessages.isRead, false), sql`${clinicPetChatMessages.senderId} != ${ctx.user.id}`),
+      );
+
     const rows = await db
       .select({
         id: clinicPetChatMessages.id,
@@ -106,6 +82,8 @@ export const getMessagesProcedure = protectedProcedure
         senderId: clinicPetChatMessages.senderId,
         senderRole: clinicPetChatMessages.senderRole,
         message: clinicPetChatMessages.message,
+        mediaUrl: clinicPetChatMessages.mediaUrl,
+        mediaType: clinicPetChatMessages.mediaType,
         isRead: clinicPetChatMessages.isRead,
         createdAt: clinicPetChatMessages.createdAt,
         senderName: users.name,
@@ -120,18 +98,6 @@ export const getMessagesProcedure = protectedProcedure
     const messages = (hasMore ? rows.slice(0, input.limit) : rows).reverse();
     const nextCursor = hasMore ? messages[0]?.id : undefined;
 
-    // Mark unread messages from the other side as read
-    await db
-      .update(clinicPetChatMessages)
-      .set({ isRead: true })
-      .where(
-        and(
-          eq(clinicPetChatMessages.chatId, input.chatId),
-          eq(clinicPetChatMessages.isRead, false),
-          sql`${clinicPetChatMessages.senderId} != ${ctx.user.id}`,
-        ),
-      );
-
     return { success: true, messages, nextCursor };
   });
 
@@ -143,7 +109,7 @@ export const sendMessageProcedure = protectedProcedure
       message: z.string(),
       senderRole: z.enum(["owner", "clinic"]),
       mediaUrl: z.string().optional(),
-      mediaType: z.enum(["image", "video"]).optional(),
+      mediaType: z.enum(["image", "video", "file"]).optional(),
     }),
   )
   .mutation(async ({ input, ctx }) => {
@@ -190,10 +156,7 @@ export const sendMessageProcedure = protectedProcedure
           });
         } else {
           // Notify all clinic staff
-          const staff = await db
-            .select({ userId: clinicStaff.userId })
-            .from(clinicStaff)
-            .where(eq(clinicStaff.clinicId, chat.clinicId));
+          const staff = await db.select({ userId: clinicStaff.userId }).from(clinicStaff).where(eq(clinicStaff.clinicId, chat.clinicId));
 
           if (staff.length > 0) {
             await db.insert(notifications).values(
@@ -216,103 +179,80 @@ export const sendMessageProcedure = protectedProcedure
   });
 
 // List all chats for a clinic with last message + unread count
-export const getClinicChatsProcedure = protectedProcedure
-  .input(z.object({ clinicId: z.number() }))
-  .query(async ({ input }) => {
-    const chats = await db
-      .select({
-        id: clinicPetChats.id,
-        petId: clinicPetChats.petId,
-        clinicId: clinicPetChats.clinicId,
-        ownerId: clinicPetChats.ownerId,
-        isActive: clinicPetChats.isActive,
-        createdAt: clinicPetChats.createdAt,
-        petName: pets.name,
-        petImage: pets.image,
-        ownerName: users.name,
-      })
-      .from(clinicPetChats)
-      .innerJoin(pets, eq(clinicPetChats.petId, pets.id))
-      .innerJoin(users, eq(clinicPetChats.ownerId, users.id))
-      .where(eq(clinicPetChats.clinicId, input.clinicId))
-      .orderBy(desc(clinicPetChats.createdAt));
+export const getClinicChatsProcedure = protectedProcedure.input(z.object({ clinicId: z.number() })).query(async ({ input }) => {
+  const chats = await db
+    .select({
+      id: clinicPetChats.id,
+      petId: clinicPetChats.petId,
+      clinicId: clinicPetChats.clinicId,
+      ownerId: clinicPetChats.ownerId,
+      isActive: clinicPetChats.isActive,
+      createdAt: clinicPetChats.createdAt,
+      petName: pets.name,
+      petImage: pets.image,
+      ownerName: users.name,
+    })
+    .from(clinicPetChats)
+    .innerJoin(pets, eq(clinicPetChats.petId, pets.id))
+    .innerJoin(users, eq(clinicPetChats.ownerId, users.id))
+    .where(eq(clinicPetChats.clinicId, input.clinicId))
+    .orderBy(desc(clinicPetChats.createdAt));
 
-    const enriched = await Promise.all(
-      chats.map(async (chat) => {
-        const [lastMsg] = await db
-          .select({ message: clinicPetChatMessages.message, createdAt: clinicPetChatMessages.createdAt })
-          .from(clinicPetChatMessages)
-          .where(eq(clinicPetChatMessages.chatId, chat.id))
-          .orderBy(desc(clinicPetChatMessages.createdAt))
-          .limit(1);
+  const enriched = await Promise.all(
+    chats.map(async (chat) => {
+      const [lastMsg] = await db
+        .select({ message: clinicPetChatMessages.message, createdAt: clinicPetChatMessages.createdAt })
+        .from(clinicPetChatMessages)
+        .where(eq(clinicPetChatMessages.chatId, chat.id))
+        .orderBy(desc(clinicPetChatMessages.createdAt))
+        .limit(1);
 
-        const [unreadRow] = await db
-          .select({ count: sql<number>`cast(count(*) as int)` })
-          .from(clinicPetChatMessages)
-          .where(
-            and(
-              eq(clinicPetChatMessages.chatId, chat.id),
-              eq(clinicPetChatMessages.senderRole, "owner"),
-              eq(clinicPetChatMessages.isRead, false),
-            ),
-          );
+      const [unreadRow] = await db
+        .select({ count: sql<number>`cast(count(*) as int)` })
+        .from(clinicPetChatMessages)
+        .where(and(eq(clinicPetChatMessages.chatId, chat.id), eq(clinicPetChatMessages.senderRole, "owner"), eq(clinicPetChatMessages.isRead, false)));
 
-        return {
-          ...chat,
-          lastMessage: lastMsg?.message ?? null,
-          lastMessageAt: lastMsg?.createdAt ?? chat.createdAt,
-          unreadCount: unreadRow?.count ?? 0,
-        };
-      }),
-    );
+      return {
+        ...chat,
+        lastMessage: lastMsg?.message ?? null,
+        lastMessageAt: lastMsg?.createdAt ?? chat.createdAt,
+        unreadCount: unreadRow?.count ?? 0,
+      };
+    }),
+  );
 
-    enriched.sort(
-      (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
-    );
+  enriched.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
 
-    return { success: true, chats: enriched };
-  });
+  return { success: true, chats: enriched };
+});
 
 // Mark all messages from the other party as read (works for both owner and vet)
-export const markAsReadProcedure = protectedProcedure
-  .input(z.object({ chatId: z.number() }))
-  .mutation(async ({ input, ctx }) => {
-    await db
-      .update(clinicPetChatMessages)
-      .set({ isRead: true })
-      .where(
-        and(
-          eq(clinicPetChatMessages.chatId, input.chatId),
-          sql`${clinicPetChatMessages.senderId} != ${ctx.user.id}`,
-          eq(clinicPetChatMessages.isRead, false),
-        ),
-      );
-    return { success: true };
-  });
+export const markAsReadProcedure = protectedProcedure.input(z.object({ chatId: z.number() })).mutation(async ({ input, ctx }) => {
+  await db
+    .update(clinicPetChatMessages)
+    .set({ isRead: true })
+    .where(
+      and(
+        eq(clinicPetChatMessages.chatId, input.chatId),
+        // sql`${clinicPetChatMessages.senderId} != ${ctx.user.id}`,
+        eq(clinicPetChatMessages.isRead, false),
+      ),
+    );
+  return { success: true };
+});
 
 // Total unread message count for a clinic (from owner side)
-export const getUnreadCountProcedure = protectedProcedure
-  .input(z.object({ clinicId: z.number() }))
-  .query(async ({ input }) => {
-    const chatIds = await db
-      .select({ id: clinicPetChats.id })
-      .from(clinicPetChats)
-      .where(eq(clinicPetChats.clinicId, input.clinicId));
+export const getUnreadCountProcedure = protectedProcedure.input(z.object({ clinicId: z.number() })).query(async ({ input }) => {
+  const chatIds = await db.select({ id: clinicPetChats.id }).from(clinicPetChats).where(eq(clinicPetChats.clinicId, input.clinicId));
 
-    if (chatIds.length === 0) return { success: true, count: 0 };
+  if (chatIds.length === 0) return { success: true, count: 0 };
 
-    const ids = chatIds.map((c) => c.id);
+  const ids = chatIds.map((c) => c.id);
 
-    const [result] = await db
-      .select({ count: sql<number>`cast(count(*) as int)` })
-      .from(clinicPetChatMessages)
-      .where(
-        and(
-          inArray(clinicPetChatMessages.chatId, ids),
-          eq(clinicPetChatMessages.senderRole, "owner"),
-          eq(clinicPetChatMessages.isRead, false),
-        ),
-      );
+  const [result] = await db
+    .select({ count: sql<number>`cast(count(*) as int)` })
+    .from(clinicPetChatMessages)
+    .where(and(inArray(clinicPetChatMessages.chatId, ids), eq(clinicPetChatMessages.senderRole, "owner"), eq(clinicPetChatMessages.isRead, false)));
 
-    return { success: true, count: result?.count ?? 0 };
-  });
+  return { success: true, count: result?.count ?? 0 };
+});
