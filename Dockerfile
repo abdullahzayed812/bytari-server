@@ -28,8 +28,7 @@ EXPOSE 3001
 # Run migrations, seeds, then start app
 # Combine everything into one CMD layer
 
-# bun run db/migrations/migrate.ts && \
-# bun run db/seeds/index.ts && \
-# echo "🚀 Starting the app..." && \
-
-CMD bun run start
+CMD bun run db/migrations/migrate.ts && \
+bun run db/seeds/index.ts && \
+echo "🚀 Starting the app..." && \
+bun run start
