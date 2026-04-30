@@ -46,7 +46,7 @@ async function triggerAutoReplyForUserConsultation(
 
     await new Promise((resolve) => setTimeout(resolve, (settings.responseDelay || 15) * 1000));
 
-    const aiResult = await callAI(messages, settings.maxResponseLength || 1500);
+    const aiResult = await callAI(messages);
 
     if (aiResult.success) {
       await db.insert(consultationResponses).values({

@@ -56,7 +56,7 @@ async function createInquiryInDB(input: {
 /* -------------------------------------------------------
  * 🤖 Helper Function: Call External AI API
  * -----------------------------------------------------*/
-async function callAI(messages: any[], maxLength: number = 1500): Promise<{
+async function callAI(messages: any[]): Promise<{
   success: boolean;
   response: string;
   tokensUsed?: number;
@@ -77,10 +77,7 @@ async function callAI(messages: any[], maxLength: number = 1500): Promise<{
 
     const data = await response.json();
     const processingTime = Date.now() - startTime;
-    let aiResponse = data.completion || 'عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.';
-    if (aiResponse.length > maxLength) {
-      aiResponse = aiResponse.substring(0, maxLength - 3) + '...';
-    }
+    const aiResponse = data.completion || 'عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.';
     return { success: true, response: aiResponse, tokensUsed: data.tokensUsed || 0, processingTime };
   } catch (error) {
     const processingTime = Date.now() - startTime;
@@ -116,7 +113,7 @@ async function triggerAutoReplyInquiry(inquiry: { id: number; title: string; con
 
     await new Promise(resolve => setTimeout(resolve, (settings.responseDelay || 15) * 1000));
 
-    const aiResult = await callAI(messages, settings.maxResponseLength || 1500);
+    const aiResult = await callAI(messages);
 
     if (aiResult.success) {
       await db.insert(inquiryReplies).values({

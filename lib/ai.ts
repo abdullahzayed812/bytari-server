@@ -4,7 +4,6 @@
  * -----------------------------------------------------*/
 export async function callAI(
   messages: any[],
-  maxLength: number = 1500
 ): Promise<{
   success: boolean;
   response: string;
@@ -26,10 +25,7 @@ export async function callAI(
 
     const data = await response.json();
     const processingTime = Date.now() - startTime;
-    let aiResponse = data.completion || "عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.";
-    if (aiResponse.length > maxLength) {
-      aiResponse = aiResponse.substring(0, maxLength - 3) + "...";
-    }
+    const aiResponse = data.completion || "عذراً، لم أتمكن من تقديم رد مناسب في الوقت الحالي.";
     return { success: true, response: aiResponse, tokensUsed: data.tokensUsed || 0, processingTime };
   } catch (error) {
     const processingTime = Date.now() - startTime;
