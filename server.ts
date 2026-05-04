@@ -120,8 +120,8 @@ app.use(
   })
 );
 
-// Health check endpoint
-app.get("/", (c) => {
+// Health check endpoint (API clients)
+app.get("/api/status", (c) => {
   return c.json({
     status: "ok",
     message: "Veterinary API is running",
@@ -153,6 +153,10 @@ app.use(
     endpoint: "/trpc",
   })
 );
+
+// Mount pages (landing + privacy policy)
+import pagesApp from "./routes/pages";
+app.route("/", pagesApp);
 
 // Mount upload router
 import uploadApp from "./routes/upload";
