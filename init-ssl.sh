@@ -25,7 +25,7 @@ docker compose up -d
 echo "Requesting real SSL certificate..."
 docker compose run --rm certbot certonly --webroot \
   --webroot-path /var/www/certbot \
-  -d $DOMAIN -d www.$DOMAIN \
+  -d $DOMAIN \
   --email $EMAIL --agree-tos --no-eff-email \
   --force-renewal
 
