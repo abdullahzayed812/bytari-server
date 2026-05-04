@@ -23,7 +23,7 @@ COPY . .
 RUN mkdir -p uploads
 
 # Expose app port
-EXPOSE 80
+EXPOSE 3001
 
 # Run migrations, seeds, then start app
 # Combine everything into one CMD layer
