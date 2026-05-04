@@ -25,9 +25,9 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-veterinary_app}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production}
-      PORT: 3001
+      PORT: 80
     ports:
-      - "${BACKEND_PORT:-3001}:3001"
+      - "${BACKEND_PORT:-80}:80"
     depends_on:
       postgres:
         condition: service_healthy
