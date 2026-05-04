@@ -39,7 +39,7 @@ app.use(
       imgSrc: ["'self'", "data:", "https:"],
     },
     referrerPolicy: "strict-origin-when-cross-origin",
-  })
+  }),
 );
 
 // Request logging
@@ -68,22 +68,16 @@ app.use(
           message: `Rate limit exceeded. Max ${rateLimitMax} requests per ${rateLimitWindow / 1000} seconds.`,
           retryAfter: Math.ceil(rateLimitWindow / 1000),
         },
-        429
+        429,
       );
     },
-  })
+  }),
 );
 
 // CORS configuration
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
-  : [
-    "http://localhost:8081",
-    "http://localhost:3000",
-    "http://127.0.0.1:8081",
-    "http://127.0.0.1:3000",
-    "exp://192.168.0.128:8081",
-  ];
+  : ["http://localhost:8081", "http://localhost:3000", "http://127.0.0.1:8081", "http://127.0.0.1:3000", "exp://192.168.0.128:8081"];
 
 // Add production origins
 if (process.env.NODE_ENV === "production") {
@@ -117,7 +111,7 @@ app.use(
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: false, // Change to false for "*" origin
     maxAge: 86400,
-  })
+  }),
 );
 
 // Health check endpoint (API clients)
@@ -151,7 +145,7 @@ app.use(
     router: appRouter,
     createContext,
     endpoint: "/trpc",
-  })
+  }),
 );
 
 // Mount pages (landing + privacy policy)
@@ -167,7 +161,7 @@ import { serveStatic } from "hono/bun";
 app.use("/uploads/*", serveStatic({ root: "./" }));
 
 // Start server
-const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+const port = process.env.PORT ? parseInt(process.env.PORT) : 80;
 
 console.log(`🚀 Veterinary Backend Server starting on port ${port}`);
 console.log(`📊 Health check available at http://localhost:${port}/health`);
