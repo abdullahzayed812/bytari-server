@@ -305,6 +305,18 @@ const PRIVACY_HTML = `<!DOCTYPE html>
     </div>
 
     <div class="card">
+      <div class="card-header">
+        <span class="card-icon">📷</span>
+        <h2>أذونات التطبيق</h2>
+      </div>
+      <p>يطلب التطبيق الأذونات التالية لتقديم خدماته:</p>
+      <ul class="rights-list" style="margin-top:10px;">
+        <li>• <strong>الكاميرا (CAMERA):</strong> تُستخدم لالتقاط صور حيوانك الأليف عند إنشاء إعلان ضياع أو تحديث الملف الشخصي. لا يتم الوصول إلى الكاميرا إلا عند موافقتك الصريحة.</li>
+      </ul>
+      <p style="margin-top:10px;">جميع الصور التي تلتقطها تبقى تحت سيطرتك الكاملة ولا تُشارك مع أي طرف ثالث دون إذنك.</p>
+    </div>
+
+    <div class="card">
       <h2 style="color:#27AE60;margin-bottom:12px;">تحديثات السياسة</h2>
       <p>قد نقوم بتحديث سياسة الخصوصية من وقت لآخر. سنُخطرك بأي تغييرات مهمة عبر التطبيق أو البريد الإلكتروني.</p>
     </div>
