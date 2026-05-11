@@ -1,20 +1,12 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { publicProcedure } from '../../../create-context';
 import { db, users, userRoles, adminRoles } from '../../../../db';
 import { eq, and } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
 
-// Simple admin authentication - في الإنتاج يجب استخدام نظام مصادقة أكثر أماناً
-// Admin credentials
-const ADMIN_CREDENTIALS = [
-  { email: 'zuhairalrawi0@gmail.com', password: 'zuh000123000321zuh', isSuperAdmin: true },
-  { email: 'superadmin@petapp.com', password: 'superadmin123', isSuperAdmin: true },
-  { email: 'admin@petapp.com', password: 'admin123', isSuperAdmin: false }
-];
-
-// دالة للتحقق من صحة كلمة المرور (يجب استخدام bcrypt في الإنتاج)
-const verifyPassword = (inputPassword: string, storedPassword: string): boolean => {
-  // في الإنتاج، استخدم bcrypt.compare(inputPassword, hashedPassword)
-  return inputPassword === storedPassword;
+const verifyPassword = async (inputPassword: string, storedPassword: string): Promise<boolean> => {
+  return bcrypt.compare(inputPassword, storedPassword);
 };
 
 // دالة لإنشاء توكن آمن أكثر
@@ -33,108 +25,74 @@ export const adminAuthProcedure = publicProcedure
   }))
   .mutation(async ({ input }) => {
     const { email, password } = input;
-    
-    try {
-      // البحث عن المستخدم في قاعدة البيانات
-      const user = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          name: users.name,
-          userType: users.userType,
-          isActive: users.isActive
-        })
-        .from(users)
-        .where(and(
-          eq(users.email, email),
-          eq(users.isActive, true)
-        ))
-        .limit(1);
-      
-      if (!user || user.length === 0) {
-        throw new Error('بيانات الدخول غير صحيحة');
-      }
-      
-      const foundUser = user[0];
-      
-      // التحقق من كلمة المرور
-      let isValidPassword = false;
-      let isSuperAdmin = false;
-      
-      // التحقق من بيانات الاعتماد المحددة مسبقاً
-      const adminCredential = ADMIN_CREDENTIALS.find(cred => 
-        cred.email === email && verifyPassword(password, cred.password)
-      );
-      
-      if (adminCredential) {
-        isValidPassword = true;
-        isSuperAdmin = adminCredential.isSuperAdmin;
-      } else {
-        // التحقق من المستخدمين العاديين في قاعدة البيانات
-        // في التطبيق الحقيقي يجب تشفير كلمة المرور
-        const defaultAdminPassword = 'admin123';
-        if (verifyPassword(password, defaultAdminPassword)) {
-          isValidPassword = true;
-        }
-      }
-      
-      if (!isValidPassword) {
-        throw new Error('بيانات الدخول غير صحيحة');
-      }
-      
-      // التحقق من الصلاحيات الإدارية
-      let hasAdminPermissions = isSuperAdmin;
-      
-      if (!isSuperAdmin) {
-        try {
-          // التحقق من أن المستخدم له صلاحيات إدارية
-          const userRoleData = await db
-            .select({
-              roleId: userRoles.roleId,
-              roleName: adminRoles.name,
-              roleDisplayName: adminRoles.displayName,
-              isActive: userRoles.isActive
-            })
-            .from(userRoles)
-            .innerJoin(adminRoles, eq(userRoles.roleId, adminRoles.id))
-            .where(and(
-              eq(userRoles.userId, foundUser.id),
-              eq(userRoles.isActive, true),
-              eq(adminRoles.isActive, true)
-            ));
-          
-          hasAdminPermissions = userRoleData && userRoleData.length > 0;
-        } catch (dbError) {
-          console.warn('Database tables not ready, skipping role check:', dbError);
-          hasAdminPermissions = false;
-        }
-      }
-      
-      if (!hasAdminPermissions) {
-        throw new Error('المستخدم لا يملك صلاحيات إدارية');
-      }
-      
-      // إنشاء token آمن أكثر (في الإنتاج يجب استخدام JWT)
-      const token = generateSecureToken(foundUser.id, foundUser.email);
-      
-      return {
-        success: true,
-        user: {
-          id: foundUser.id,
-          email: foundUser.email,
-          name: foundUser.name,
-          userType: foundUser.userType,
-          isSuperAdmin,
-          roles: isSuperAdmin ? [{ id: 'super', name: 'super_admin', displayName: 'مدير عام' }] : []
-        },
-        token,
-        message: 'تم تسجيل الدخول بنجاح'
-      };
-      
-    } catch (error) {
-      console.error('خطأ في تسجيل دخول الأدمن:', error);
-      throw new Error(error instanceof Error ? error.message : 'حدث خطأ أثناء تسجيل الدخول');
+
+    // البحث عن المستخدم في قاعدة البيانات
+    const userRows = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        userType: users.userType,
+        password: users.password,
+        isActive: users.isActive
+      })
+      .from(users)
+      .where(and(
+        eq(users.email, email.toLowerCase()),
+        eq(users.isActive, true)
+      ))
+      .limit(1);
+
+    if (!userRows || userRows.length === 0) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'بيانات الدخول غير صحيحة' });
     }
+
+    const foundUser = userRows[0];
+
+    // التحقق من كلمة المرور باستخدام bcrypt
+    const isValidPassword = await verifyPassword(password, foundUser.password);
+    if (!isValidPassword) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'بيانات الدخول غير صحيحة' });
+    }
+
+    // التحقق من أن المستخدم من نوع admin
+    if (foundUser.userType !== 'admin') {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'المستخدم لا يملك صلاحيات إدارية' });
+    }
+
+    // التحقق من الأدوار الإدارية
+    const userRoleData = await db
+      .select({
+        roleId: userRoles.roleId,
+        roleName: adminRoles.name,
+        roleDisplayName: adminRoles.displayName,
+      })
+      .from(userRoles)
+      .innerJoin(adminRoles, eq(userRoles.roleId, adminRoles.id))
+      .where(and(
+        eq(userRoles.userId, foundUser.id),
+        eq(userRoles.isActive, true),
+        eq(adminRoles.isActive, true)
+      ));
+
+    const isSuperAdmin = userRoleData.some(r => r.roleName === 'super_admin');
+
+    // إنشاء token
+    const token = generateSecureToken(foundUser.id, foundUser.email);
+
+    return {
+      success: true,
+      user: {
+        id: foundUser.id,
+        email: foundUser.email,
+        name: foundUser.name,
+        userType: foundUser.userType,
+        isSuperAdmin,
+        roles: userRoleData.map(r => ({ id: r.roleId, name: r.roleName, displayName: r.roleDisplayName }))
+      },
+      token,
+      message: 'تم تسجيل الدخول بنجاح'
+    };
   });
 
 export const adminVerifyProcedure = publicProcedure
