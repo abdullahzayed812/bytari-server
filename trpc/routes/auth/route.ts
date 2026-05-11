@@ -113,16 +113,15 @@ export const registerProcedure = publicProcedure.input(registerSchema).mutation(
     console.error("Registration error:", error);
     throw new ValidationError("Failed to register user");
   } finally {
-    // Send welcome message in background
     if (input?.email) {
-      const [user] = await db
-        .select({ id: users.id, userType: users.userType })
+      db.select({ id: users.id, userType: users.userType })
         .from(users)
         .where(eq(users.email, input.email.toLowerCase()))
-        .limit(1);
-      if (user) {
-        sendWelcomeMessageToUser(user.id, user.userType).catch(console.error);
-      }
+        .limit(1)
+        .then(([user]) => {
+          if (user) sendWelcomeMessageToUser(user.id, user.userType).catch(console.error);
+        })
+        .catch(console.error);
     }
   }
 });
@@ -280,16 +279,15 @@ export const loginProcedure = publicProcedure.input(loginSchema).mutation(async 
     console.error("Login error:", error);
     throw new AuthenticationError("Login failed");
   } finally {
-    // Send welcome message if not already sent
     if (input?.email) {
-      const [user] = await db
-        .select({ id: users.id, userType: users.userType })
+      db.select({ id: users.id, userType: users.userType })
         .from(users)
         .where(eq(users.email, input.email.toLowerCase()))
-        .limit(1);
-      if (user) {
-        sendWelcomeMessageToUser(user.id, user.userType).catch(console.error);
-      }
+        .limit(1)
+        .then(([user]) => {
+          if (user) sendWelcomeMessageToUser(user.id, user.userType).catch(console.error);
+        })
+        .catch(console.error);
     }
   }
 });
