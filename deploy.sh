@@ -9,7 +9,7 @@ docker run --rm \
   -v "${MOBILE_DIR}:/app" \
   -w /app \
   node:20-alpine \
-  sh -c "npm ci && npx expo export --platform web"
+  sh -c "npm install && npx expo export --platform web"
 
 echo "🚀 Starting services..."
 cd "$SCRIPT_DIR"
