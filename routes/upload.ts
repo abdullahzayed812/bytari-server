@@ -1,12 +1,8 @@
 import { Hono } from "hono";
-import { serveStatic } from "hono/bun";
-import { mkdir } from "node:fs/promises";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { r2, R2_BUCKET, R2_PUBLIC_URL } from "../lib/r2";
 
 const uploadApp = new Hono();
-
-// Ensure uploads directory exists
-const UPLOAD_DIR = "./uploads";
-await mkdir(UPLOAD_DIR, { recursive: true });
 
 uploadApp.post("/", async (c) => {
   try {
@@ -36,24 +32,23 @@ uploadApp.post("/", async (c) => {
       return c.json({ error: "Invalid image file" }, 400);
     }
 
-    // --- SAVE TO DISK ---
+    // --- UPLOAD TO R2 ---
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 10000);
     const filename = `upload_${timestamp}_${random}.${ext}`;
-    const path = `${UPLOAD_DIR}/${filename}`;
 
-    await Bun.write(path, file);
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: filename,
+        Body: Buffer.from(await file.arrayBuffer()),
+        ContentType: file.type,
+      })
+    );
 
-    const protocol = c.req.header("x-forwarded-proto") || "http";
-    const host = c.req.header("host");
-    const url = `${protocol}://${host}/uploads/${filename}`;
+    const url = `${R2_PUBLIC_URL}/${filename}`;
 
-    return c.json({
-      success: true,
-      url,
-      filename,
-      ext,
-    });
+    return c.json({ success: true, url, filename, ext });
   } catch (error) {
     console.error("Upload error:", error);
     return c.json({ error: "Failed to upload file" }, 500);

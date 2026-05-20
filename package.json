@@ -12,6 +12,7 @@
     "db:seed": "bun run db/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1050.0",
     "@hono/trpc-server": "^0.4.0",
     "@trpc/server": "^11.4.3",
     "bcryptjs": "^3.0.2",
