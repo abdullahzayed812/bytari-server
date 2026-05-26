@@ -294,6 +294,44 @@ export async function seedAdminSystem(db) {
         description: "مراجعة والموافقة على طلبات عرض حيوانات للتزاوج",
         category: "approvals",
       },
+
+      // Poultry section permissions
+      {
+        name: "manage_poultry_section",
+        displayName: "إدارة قسم الدواجن",
+        description: "الوصول الكامل لإدارة قسم الدواجن",
+        category: "farms",
+      },
+      {
+        name: "manage_poultry_traders",
+        displayName: "إدارة تجار الدواجن",
+        description: "إدارة وتفعيل تجار الدواجن",
+        category: "farms",
+      },
+      {
+        name: "manage_poultry_market",
+        displayName: "إدارة سوق الدواجن",
+        description: "إدارة إعلانات سوق الدواجن والموافقة عليها",
+        category: "farms",
+      },
+      {
+        name: "manage_egg_market",
+        displayName: "إدارة سوق البيض",
+        description: "إدارة إعلانات سوق البيض والموافقة عليها",
+        category: "farms",
+      },
+      {
+        name: "manage_poultry_exchange",
+        displayName: "إدارة بورصة الدواجن",
+        description: "إدخال وتحديث أسعار بورصة الدواجن اليومية",
+        category: "farms",
+      },
+      {
+        name: "manage_egg_exchange",
+        displayName: "إدارة بورصة البيض",
+        description: "إدخال وتحديث أسعار بورصة البيض اليومية",
+        category: "farms",
+      },
     ])
     .returning();
 

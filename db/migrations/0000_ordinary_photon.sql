@@ -2006,3 +2006,145 @@ ALTER TABLE "pet_ownership_transfers" ADD CONSTRAINT "pet_ownership_transfers_pe
 ALTER TABLE "pet_ownership_transfers" ADD CONSTRAINT "pet_ownership_transfers_from_user_id_users_id_fk" FOREIGN KEY ("from_user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 --> statement-breakpoint
 ALTER TABLE "pet_ownership_transfers" ADD CONSTRAINT "pet_ownership_transfers_to_user_id_users_id_fk" FOREIGN KEY ("to_user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- ============================================================
+-- POULTRY MODULE — Extended Tables
+-- ============================================================
+
+--> statement-breakpoint
+ALTER TABLE "poultry_farms" ADD COLUMN IF NOT EXISTS "governorate" text;
+--> statement-breakpoint
+ALTER TABLE "poultry_farms" ADD COLUMN IF NOT EXISTS "region" text;
+--> statement-breakpoint
+ALTER TABLE "poultry_farms" ADD COLUMN IF NOT EXISTS "farm_identifier" text;
+
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "poultry_traders" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"business_name" text NOT NULL,
+	"trade_type" text,
+	"governorate" text,
+	"license_number" text,
+	"phone" text,
+	"email" text,
+	"description" text,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"is_active" boolean DEFAULT false NOT NULL,
+	"activation_start_date" timestamp with time zone,
+	"activation_end_date" timestamp with time zone,
+	"needs_renewal" boolean DEFAULT false NOT NULL,
+	"reviewing_renewal_request" boolean DEFAULT false NOT NULL,
+	"admin_notes" text,
+	"reviewed_by" integer,
+	"reviewed_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "poultry_traders" ADD CONSTRAINT "poultry_traders_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+--> statement-breakpoint
+ALTER TABLE "poultry_traders" ADD CONSTRAINT "poultry_traders_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "poultry_market_ads" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"seller_id" integer NOT NULL,
+	"poultry_type" text NOT NULL,
+	"breed" text,
+	"quantity" integer NOT NULL,
+	"unit" text DEFAULT 'bird' NOT NULL,
+	"price_per_unit" numeric(10,2),
+	"total_price" numeric(12,2),
+	"pricing_method" text DEFAULT 'per_unit',
+	"age_weeks" integer,
+	"weight_kg" numeric(8,2),
+	"governorate" text,
+	"region" text,
+	"contact_phone" text,
+	"contact_whatsapp" text,
+	"contact_email" text,
+	"images" jsonb DEFAULT '[]'::jsonb,
+	"notes" text,
+	"is_featured" boolean DEFAULT false NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"is_active" boolean DEFAULT false NOT NULL,
+	"expires_at" timestamp with time zone,
+	"rejection_reason" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "poultry_market_ads" ADD CONSTRAINT "poultry_market_ads_seller_id_users_id_fk" FOREIGN KEY ("seller_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "egg_market_ads" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"seller_id" integer NOT NULL,
+	"egg_type" text NOT NULL,
+	"quantity" integer NOT NULL,
+	"unit" text DEFAULT 'tray' NOT NULL,
+	"price_per_unit" numeric(10,2),
+	"total_price" numeric(12,2),
+	"pricing_method" text DEFAULT 'per_tray',
+	"production_date" timestamp,
+	"governorate" text,
+	"region" text,
+	"contact_phone" text,
+	"contact_whatsapp" text,
+	"contact_email" text,
+	"images" jsonb DEFAULT '[]'::jsonb,
+	"notes" text,
+	"is_featured" boolean DEFAULT false NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"is_active" boolean DEFAULT false NOT NULL,
+	"expires_at" timestamp with time zone,
+	"rejection_reason" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "egg_market_ads" ADD CONSTRAINT "egg_market_ads_seller_id_users_id_fk" FOREIGN KEY ("seller_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "poultry_exchange_prices" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"date" text NOT NULL,
+	"governorate" text NOT NULL,
+	"broiler_price_per_kg" numeric(10,2),
+	"layer_price_per_bird" numeric(10,2),
+	"added_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "poultry_exchange_prices" ADD CONSTRAINT "poultry_exchange_prices_added_by_users_id_fk" FOREIGN KEY ("added_by") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "egg_exchange_prices" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"date" text NOT NULL,
+	"governorate" text NOT NULL,
+	"price_per_tray" numeric(10,2),
+	"added_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "egg_exchange_prices" ADD CONSTRAINT "egg_exchange_prices_added_by_users_id_fk" FOREIGN KEY ("added_by") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "farm_doctor_links" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"farm_id" integer NOT NULL,
+	"doctor_id" integer NOT NULL,
+	"farm_identifier" text NOT NULL,
+	"status" text DEFAULT 'active' NOT NULL,
+	"linked_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"removed_at" timestamp with time zone,
+	CONSTRAINT "farm_doctor_links_farm_id_doctor_id_unique" UNIQUE("farm_id","doctor_id")
+);
+--> statement-breakpoint
+ALTER TABLE "farm_doctor_links" ADD CONSTRAINT "farm_doctor_links_farm_id_poultry_farms_id_fk" FOREIGN KEY ("farm_id") REFERENCES "public"."poultry_farms"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+--> statement-breakpoint
+ALTER TABLE "farm_doctor_links" ADD CONSTRAINT "farm_doctor_links_doctor_id_users_id_fk" FOREIGN KEY ("doctor_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;

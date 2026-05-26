@@ -1512,6 +1512,11 @@ export const poultryFarms = pgTable("poultry_farms", {
   reviewingRenewalRequest: boolean("reviewing_renewal_request").notNull().default(false),
 
   isActive: boolean("is_active").notNull().default(false),
+  // Location detail fields
+  governorate: text("governorate"),
+  region: text("region"),
+  // Unique identifier shared with veterinary doctors for linking
+  farmIdentifier: text("farm_identifier"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -2090,5 +2095,149 @@ export const clinicPetChatMessages = pgTable("clinic_pet_chat_messages", {
 });
 
 // App sections table
+
+// ============================================================
+// POULTRY MODULE — Extended Tables
+// ============================================================
+
+// Iraqi governorates constant (used in validation + UI)
+export const IRAQ_GOVERNORATES = [
+  "بغداد", "نينوى", "البصرة", "النجف", "أربيل",
+  "السليمانية", "كربلاء", "ديالى", "واسط", "صلاح الدين",
+  "الأنبار", "بابل", "ذي قار", "المثنى", "ميسان",
+  "القادسية", "كركوك", "دهوك",
+] as const;
+
+// Add governorate + region to existing poultry_farms handled via ALTER in migration
+
+// ============== POULTRY TRADERS TABLE ==============
+export const poultryTraders = pgTable("poultry_traders", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  businessName: text("business_name").notNull(),
+  tradeType: text("trade_type"), // wholesale, retail, export
+  governorate: text("governorate"),
+  licenseNumber: text("license_number"),
+  phone: text("phone"),
+  email: text("email"),
+  description: text("description"),
+  // Activation / subscription (mirrors clinic/store pattern)
+  status: text("status").notNull().default("pending"), // pending, active, suspended, cancelled
+  isActive: boolean("is_active").notNull().default(false),
+  activationStartDate: timestamp("activation_start_date", { withTimezone: true }),
+  activationEndDate: timestamp("activation_end_date", { withTimezone: true }),
+  needsRenewal: boolean("needs_renewal").notNull().default(false),
+  reviewingRenewalRequest: boolean("reviewing_renewal_request").notNull().default(false),
+  adminNotes: text("admin_notes"),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============== POULTRY MARKET ADS TABLE ==============
+// Auto-deleted after 7 days via cleanup job
+export const poultryMarketAds = pgTable("poultry_market_ads", {
+  id: serial("id").primaryKey(),
+  sellerId: integer("seller_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  poultryType: text("poultry_type").notNull(), // broiler, layer, rooster, turkey, local, other
+  breed: text("breed"),
+  quantity: integer("quantity").notNull(),
+  unit: text("unit").notNull().default("bird"), // bird, kg, batch
+  pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }),
+  totalPrice: decimal("total_price", { precision: 12, scale: 2 }),
+  pricingMethod: text("pricing_method").default("per_unit"), // per_unit, per_weight
+  ageWeeks: integer("age_weeks"),
+  weightKg: decimal("weight_kg", { precision: 8, scale: 2 }),
+  governorate: text("governorate"),
+  region: text("region"),
+  contactPhone: text("contact_phone"),
+  contactWhatsapp: text("contact_whatsapp"),
+  contactEmail: text("contact_email"),
+  images: jsonb("images").$type<string[]>().default([]),
+  notes: text("notes"),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  isActive: boolean("is_active").notNull().default(false),
+  expiresAt: timestamp("expires_at", { withTimezone: true }), // auto-delete after 7 days
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============== EGG MARKET ADS TABLE ==============
+// Auto-deleted after 7 days via cleanup job
+export const eggMarketAds = pgTable("egg_market_ads", {
+  id: serial("id").primaryKey(),
+  sellerId: integer("seller_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  eggType: text("egg_type").notNull(), // white, brown, organic, local, turkey, other
+  quantity: integer("quantity").notNull(),
+  unit: text("unit").notNull().default("tray"), // tray, piece, carton, kg
+  pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }),
+  totalPrice: decimal("total_price", { precision: 12, scale: 2 }),
+  pricingMethod: text("pricing_method").default("per_tray"), // per_tray, per_carton, per_piece
+  productionDate: timestamp("production_date"),
+  governorate: text("governorate"),
+  region: text("region"),
+  contactPhone: text("contact_phone"),
+  contactWhatsapp: text("contact_whatsapp"),
+  contactEmail: text("contact_email"),
+  images: jsonb("images").$type<string[]>().default([]),
+  notes: text("notes"),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  isActive: boolean("is_active").notNull().default(false),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============== POULTRY EXCHANGE PRICES TABLE ==============
+// Daily broiler + layer prices per governorate, entered by admin/moderator
+export const poultryExchangePrices = pgTable("poultry_exchange_prices", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull(), // YYYY-MM-DD
+  governorate: text("governorate").notNull(),
+  broilerPricePerKg: decimal("broiler_price_per_kg", { precision: 10, scale: 2 }), // د.ع / كيلو
+  layerPricePerBird: decimal("layer_price_per_bird", { precision: 10, scale: 2 }), // د.ع / طاقة
+  addedBy: integer("added_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============== EGG EXCHANGE PRICES TABLE ==============
+// Daily egg prices per governorate, entered by admin/moderator
+export const eggExchangePrices = pgTable("egg_exchange_prices", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull(), // YYYY-MM-DD
+  governorate: text("governorate").notNull(),
+  pricePerTray: decimal("price_per_tray", { precision: 10, scale: 2 }), // د.ع / طاقة
+  addedBy: integer("added_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============== FARM DOCTOR LINKS TABLE ==============
+// Veterinary doctors linked to farms via shared identifier
+export const farmDoctorLinks = pgTable("farm_doctor_links", {
+  id: serial("id").primaryKey(),
+  farmId: integer("farm_id")
+    .notNull()
+    .references(() => poultryFarms.id, { onDelete: "cascade" }),
+  doctorId: integer("doctor_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  farmIdentifier: text("farm_identifier").notNull(), // shared code used to link
+  status: text("status").notNull().default("active"), // active, removed
+  linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
+});
 
 export * from "drizzle-orm";

@@ -1,6 +1,8 @@
 # Development override
 services:
   backend:
+    ports:
+      - "3001:3001"
     volumes:
       # Mount source code for hot reload
       - ./:/app

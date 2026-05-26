@@ -21,6 +21,9 @@ import {
   jobApplications,
   fieldSupervisionRequests,
   poultryFarms,
+  poultryTraders,
+  poultryMarketAds,
+  eggMarketAds,
 } from "../../../../db";
 import { and, count, eq, notInArray, or, sql } from "drizzle-orm";
 
@@ -39,6 +42,10 @@ export const getSystemStatsProcedure = publicProcedure
       const [consultationsCount] = await db.select({ count: count() }).from(consultations);
       const [storesCount] = await db.select({ count: count() }).from(stores);
       const [productsCount] = await db.select({ count: count() }).from(products);
+      const [poultryFarmsCount] = await db.select({ count: count() }).from(poultryFarms);
+      const [poultryTradersCount] = await db.select({ count: count() }).from(poultryTraders);
+      const [poultryMarketAdsCount] = await db.select({ count: count() }).from(poultryMarketAds);
+      const [eggMarketAdsCount] = await db.select({ count: count() }).from(eggMarketAds);
 
       // Get pending approval counts
       const [pendingApprovalsCount] = await db
@@ -86,6 +93,10 @@ export const getSystemStatsProcedure = publicProcedure
           magazines: 12, // Mock data
           tips: 48, // Mock data
           sections: 8, // Mock data
+          poultryFarms: poultryFarmsCount.count || 0,
+          poultryTraders: poultryTradersCount.count || 0,
+          poultryMarketAds: poultryMarketAdsCount.count || 0,
+          eggMarketAds: eggMarketAdsCount.count || 0,
           // Pending approval counts
           pendingApprovals: pendingApprovalsCount.count || 0,
           pendingPetApprovals: pendingPetApprovalsCount.count || 0,
@@ -130,6 +141,10 @@ export const getSystemStatsProcedure = publicProcedure
           pendingPetApprovals: 12,
           pendingVetApprovals: 5,
           pendingFieldAssignments: 3,
+          poultryFarms: 0,
+          poultryTraders: 0,
+          poultryMarketAds: 0,
+          eggMarketAds: 0,
         },
         userBreakdown: {
           petOwners: 980,
@@ -282,7 +297,7 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         .from(fieldSupervisionRequests)
         .where(eq(fieldSupervisionRequests.status, "pending"));
 
-      // Pending poultry farms (status=pending + needing renewal), excludes rejected/deactivated/banned
+      // Pending poultry farms
       const [pendingPoultryFarmsCount] = await db
         .select({ count: count() })
         .from(poultryFarms)
@@ -290,6 +305,24 @@ export const getPendingApprovalCountsProcedure = publicProcedure
           eq(poultryFarms.status, "pending"),
           eq(poultryFarms.needsRenewal, true)
         ));
+
+      // Pending poultry traders
+      const [pendingPoultryTradersCount] = await db
+        .select({ count: count() })
+        .from(poultryTraders)
+        .where(eq(poultryTraders.status, "pending"));
+
+      // Pending poultry market ads
+      const [pendingPoultryAdsCount] = await db
+        .select({ count: count() })
+        .from(poultryMarketAds)
+        .where(eq(poultryMarketAds.status, "pending"));
+
+      // Pending egg market ads
+      const [pendingEggAdsCount] = await db
+        .select({ count: count() })
+        .from(eggMarketAds)
+        .where(eq(eggMarketAds.status, "pending"));
 
       // Mock field assignments count (replace with actual query when table is ready)
       const pendingFieldAssignments = 3;
@@ -306,6 +339,8 @@ export const getPendingApprovalCountsProcedure = publicProcedure
           pendingJobVacanciessCount.count + pendingJobApplicationsCount.count + pendingFieldSupervisionsCount.count ||
           0,
         pendingPoultryFarms: pendingPoultryFarmsCount.count || 0,
+        pendingPoultryTraders: pendingPoultryTradersCount.count || 0,
+        pendingPoultryAds: (pendingPoultryAdsCount.count || 0) + (pendingEggAdsCount.count || 0),
 
         total:
           (pendingApprovalsCount.count || 0) +
@@ -313,11 +348,13 @@ export const getPendingApprovalCountsProcedure = publicProcedure
           (pendingVetApprovalsCount.count || 0) +
           (pendingInquiriesCount.count || 0) +
           (pendingConsultationsCount.count || 0) +
+          (pendingPoultryTradersCount.count || 0) +
+          (pendingPoultryAdsCount.count || 0) +
+          (pendingEggAdsCount.count || 0) +
           pendingFieldAssignments,
       };
     } catch (error) {
       console.error("Error fetching pending approval counts:", error);
-      // Return mock data on error
       return {
         pendingApprovals: 8,
         pendingPetApprovals: 12,
@@ -326,6 +363,8 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         pendingConsultations: 6,
         pendingFieldAssignments: 3,
         pendingPoultryFarms: 0,
+        pendingPoultryTraders: 0,
+        pendingPoultryAds: 0,
         total: 38,
       };
     }

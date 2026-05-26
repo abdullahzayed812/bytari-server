@@ -464,6 +464,55 @@ import { reviewsRouter } from "./routes/reviews/route";
 import { addressRouter } from "./routes/address/route";
 import { cartRouter } from "./routes/cart/route";
 
+// ── Poultry extended module ─────────────────────────────────
+import {
+  registerPoultryTraderProcedure,
+  getMyTraderProfileProcedure,
+  requestTraderRenewalProcedure,
+  listPoultryTradersProcedure,
+  activatePoultryTraderProcedure,
+  updatePoultryTraderStatusProcedure,
+} from "./routes/poultry/traders/route";
+import {
+  listPoultryMarketAdsProcedure,
+  createPoultryMarketAdProcedure,
+  getPendingPoultryAdsProcedure,
+  reviewPoultryAdProcedure,
+  deletePoultryAdProcedure,
+  deleteMyPoultryAdProcedure,
+  getMyPoultryAdsProcedure,
+} from "./routes/poultry/market/route";
+import {
+  listEggMarketAdsProcedure,
+  createEggMarketAdProcedure,
+  getPendingEggAdsProcedure,
+  reviewEggAdProcedure,
+  deleteEggAdProcedure,
+  deleteMyEggAdProcedure,
+  getMyEggAdsProcedure,
+} from "./routes/poultry/egg-market/route";
+import {
+  getPoultryExchangePricesProcedure,
+  getPoultryExchangeForEditProcedure,
+  savePoultryExchangePricesProcedure,
+} from "./routes/poultry/exchange/route";
+import {
+  getEggExchangePricesProcedure,
+  getEggExchangeForEditProcedure,
+  saveEggExchangePricesProcedure,
+} from "./routes/poultry/egg-exchange/route";
+import { getPoultryStatisticsProcedure } from "./routes/poultry/statistics/route";
+import {
+  getFarmIdentifierProcedure,
+  linkFarmToDoctorProcedure,
+  getMyLinkedFarmsProcedure,
+  unlinkFarmFromDoctorProcedure,
+  getFarmDoctorsProcedure,
+  removeFarmDoctorProcedure,
+  getAllFarmDoctorLinksProcedure,
+} from "./routes/poultry/farm-doctor/route";
+import { cleanupExpiredAdsProcedure } from "./routes/poultry/cleanup/route";
+
 export const appRouter = createTRPCRouter({
   // Unified Store Router
   unifiedStore: createTRPCRouter(unifiedStoreRouter),
@@ -1043,6 +1092,80 @@ export const appRouter = createTRPCRouter({
   }),
 
   union: unionRouter,
+
+  // ── Poultry extended module ──────────────────────────────────
+  poultry: createTRPCRouter({
+    // Trader accounts
+    traders: createTRPCRouter({
+      register: registerPoultryTraderProcedure,
+      getMyProfile: getMyTraderProfileProcedure,
+      requestRenewal: requestTraderRenewalProcedure,
+      // Admin
+      list: listPoultryTradersProcedure,
+      activate: activatePoultryTraderProcedure,
+      updateStatus: updatePoultryTraderStatusProcedure,
+    }),
+
+    // Poultry market ads
+    market: createTRPCRouter({
+      list: listPoultryMarketAdsProcedure,
+      create: createPoultryMarketAdProcedure,
+      getMyAds: getMyPoultryAdsProcedure,
+      deleteMyAd: deleteMyPoultryAdProcedure,
+      // Admin
+      getPending: getPendingPoultryAdsProcedure,
+      review: reviewPoultryAdProcedure,
+      adminDelete: deletePoultryAdProcedure,
+    }),
+
+    // Egg market ads
+    eggMarket: createTRPCRouter({
+      list: listEggMarketAdsProcedure,
+      create: createEggMarketAdProcedure,
+      getMyAds: getMyEggAdsProcedure,
+      deleteMyAd: deleteMyEggAdProcedure,
+      // Admin
+      getPending: getPendingEggAdsProcedure,
+      review: reviewEggAdProcedure,
+      adminDelete: deleteEggAdProcedure,
+    }),
+
+    // Poultry exchange prices
+    exchange: createTRPCRouter({
+      getPrices: getPoultryExchangePricesProcedure,
+      getForEdit: getPoultryExchangeForEditProcedure,
+      savePrices: savePoultryExchangePricesProcedure,
+    }),
+
+    // Egg exchange prices
+    eggExchange: createTRPCRouter({
+      getPrices: getEggExchangePricesProcedure,
+      getForEdit: getEggExchangeForEditProcedure,
+      savePrices: saveEggExchangePricesProcedure,
+    }),
+
+    // Statistics
+    statistics: createTRPCRouter({
+      get: getPoultryStatisticsProcedure,
+    }),
+
+    // Farm-doctor linking
+    farmDoctor: createTRPCRouter({
+      getIdentifier: getFarmIdentifierProcedure,
+      link: linkFarmToDoctorProcedure,
+      getMyFarms: getMyLinkedFarmsProcedure,
+      unlink: unlinkFarmFromDoctorProcedure,
+      getFarmDoctors: getFarmDoctorsProcedure,
+      removeDoctor: removeFarmDoctorProcedure,
+      // Admin
+      getAllLinks: getAllFarmDoctorLinksProcedure,
+    }),
+
+    // Cleanup job (called by scheduler / cron)
+    cleanup: createTRPCRouter({
+      expiredAds: cleanupExpiredAdsProcedure,
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
