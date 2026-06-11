@@ -10,8 +10,9 @@ const createPoultryFarmSchema = z.object({
   // Required fields
   name: z.string().min(1, "اسم الحقل مطلوب"),
   location: z.string().min(1, "الموقع مطلوب"),
-  farmType: z.enum(["broiler", "layer", "breeder", "mixed"]),
+  farmType: z.enum(["broiler", "layer"]),
   ownerId: z.number().int().positive(),
+  governorate: z.string().min(1, "المحافظة مطلوبة"),
 
   // Optional fields
   capacity: z.number().int().positive().optional(),
@@ -61,6 +62,7 @@ export const createPoultryFarmProcedure = publicProcedure.input(createPoultryFar
         name: input.name,
         location: input.location,
         farmType: input.farmType,
+        governorate: input.governorate,
 
         // Optional fields
         capacity: input.capacity ?? null,

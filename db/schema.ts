@@ -1,18 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import {
-  integer,
-  pgTable,
-  text,
-  real,
-  boolean,
-  timestamp,
-  serial,
-  jsonb,
-  decimal,
-  varchar,
-  pgEnum,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { integer, pgTable, text, real, boolean, timestamp, serial, jsonb, decimal, varchar, pgEnum, uuid } from "drizzle-orm/pg-core";
 
 // Users table
 export const users = pgTable("users", {
@@ -2050,7 +2037,9 @@ export const unionBranchSupervisors = pgTable("union_branch_supervisors", {
 
 export const unionRegistrations = pgTable("union_registrations", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   mainUnionId: integer("main_union_id").references(() => unionMain.id, { onDelete: "cascade" }),
   branchId: integer("branch_id").references(() => unionBranches.id, { onDelete: "cascade" }),
   registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),
@@ -2075,17 +2064,27 @@ export const reviews = pgTable("reviews", {
 
 export const clinicPetChats = pgTable("clinic_pet_chats", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id").notNull().references(() => pets.id, { onDelete: "cascade" }),
-  clinicId: integer("clinic_id").notNull().references(() => clinics.id, { onDelete: "cascade" }),
-  ownerId: integer("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  petId: uuid("pet_id")
+    .notNull()
+    .references(() => pets.id, { onDelete: "cascade" }),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id, { onDelete: "cascade" }),
+  ownerId: integer("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const clinicPetChatMessages = pgTable("clinic_pet_chat_messages", {
   id: serial("id").primaryKey(),
-  chatId: integer("chat_id").notNull().references(() => clinicPetChats.id, { onDelete: "cascade" }),
-  senderId: integer("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  chatId: integer("chat_id")
+    .notNull()
+    .references(() => clinicPetChats.id, { onDelete: "cascade" }),
+  senderId: integer("sender_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   senderRole: text("sender_role").notNull(), // "owner" | "clinic"
   message: text("message").notNull(),
   mediaUrl: text("media_url"),
@@ -2102,10 +2101,22 @@ export const clinicPetChatMessages = pgTable("clinic_pet_chat_messages", {
 
 // Iraqi governorates constant (used in validation + UI)
 export const IRAQ_GOVERNORATES = [
-  "بغداد", "نينوى", "البصرة", "النجف", "أربيل",
-  "السليمانية", "كربلاء", "ديالى", "واسط", "صلاح الدين",
-  "الأنبار", "بابل", "ذي قار", "المثنى", "ميسان",
-  "القادسية", "كركوك", "دهوك",
+  "بغداد",
+  "نينوى",
+  "البصرة",
+  "النجف",
+  "كربلاء",
+  "ديالى",
+  "واسط",
+  "صلاح الدين",
+  "الأنبار",
+  "بابل",
+  "ذي قار",
+  "المثنى",
+  "ميسان",
+  "القادسية",
+  "كركوك",
+  "إقليم كردستان",
 ] as const;
 
 // Add governorate + region to existing poultry_farms handled via ALTER in migration
@@ -2206,7 +2217,7 @@ export const poultryExchangePrices = pgTable("poultry_exchange_prices", {
   date: text("date").notNull(), // YYYY-MM-DD
   governorate: text("governorate").notNull(),
   broilerPricePerKg: decimal("broiler_price_per_kg", { precision: 10, scale: 2 }), // د.ع / كيلو
-  layerPricePerBird: decimal("layer_price_per_bird", { precision: 10, scale: 2 }), // د.ع / طاقة
+  layerPricePerBird: decimal("layer_price_per_bird", { precision: 10, scale: 2 }), // د.ع / طبقة
   addedBy: integer("added_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -2218,7 +2229,7 @@ export const eggExchangePrices = pgTable("egg_exchange_prices", {
   id: serial("id").primaryKey(),
   date: text("date").notNull(), // YYYY-MM-DD
   governorate: text("governorate").notNull(),
-  pricePerTray: decimal("price_per_tray", { precision: 10, scale: 2 }), // د.ع / طاقة
+  pricePerTray: decimal("price_per_tray", { precision: 10, scale: 2 }), // د.ع / طبقة
   addedBy: integer("added_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

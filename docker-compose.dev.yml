@@ -7,6 +7,6 @@ services:
       # Mount source code for hot reload
       - ./:/app
       - /app/node_modules
-    command: bun run dev
+    command: sh -c "bun run db/migrations/migrate.ts && bun run db/seeds/index.ts && bun run dev"
     environment:
       NODE_ENV: development

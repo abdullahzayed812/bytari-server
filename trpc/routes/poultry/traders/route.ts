@@ -1,12 +1,7 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, adminProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import {
-  poultryTraders,
-  notifications,
-  adminNotifications,
-  users,
-} from "../../../../db/schema";
+import { poultryTraders, notifications, adminNotifications, users } from "../../../../db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 const SUPER_ADMIN_EMAILS = ["zuhairalrawi0@gmail.com", "superadmin@petapp.com"];
@@ -18,11 +13,11 @@ export const registerPoultryTraderProcedure = protectedProcedure
       businessName: z.string().min(2),
       tradeType: z.string().optional(),
       governorate: z.string().optional(),
-      licenseNumber: z.string().optional(),
+      // licenseNumber: z.string().optional(),
       phone: z.string().optional(),
       email: z.string().email().optional(),
       description: z.string().optional(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
     const userId = ctx.user.id;
@@ -45,7 +40,7 @@ export const registerPoultryTraderProcedure = protectedProcedure
         businessName: input.businessName,
         tradeType: input.tradeType,
         governorate: input.governorate,
-        licenseNumber: input.licenseNumber,
+        // licenseNumber: input.licenseNumber,
         phone: input.phone,
         email: input.email,
         description: input.description,
@@ -55,10 +50,7 @@ export const registerPoultryTraderProcedure = protectedProcedure
       .returning();
 
     // Notify admins
-    const admins = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.userType, "admin"));
+    const admins = await db.select({ id: users.id }).from(users).where(eq(users.userType, "admin"));
 
     if (admins.length > 0) {
       await db.insert(adminNotifications).values(
@@ -70,7 +62,7 @@ export const registerPoultryTraderProcedure = protectedProcedure
           priority: "normal",
           actionUrl: `/admin/poultry-traders/${trader.id}`,
           isRead: false,
-        }))
+        })),
       );
     }
 
@@ -78,44 +70,34 @@ export const registerPoultryTraderProcedure = protectedProcedure
   });
 
 // ─── User: Get own trader profile ───────────────────────────
-export const getMyTraderProfileProcedure = protectedProcedure
-  .query(async ({ ctx }) => {
-    const [trader] = await db
-      .select()
-      .from(poultryTraders)
-      .where(eq(poultryTraders.userId, ctx.user.id))
-      .limit(1);
+export const getMyTraderProfileProcedure = protectedProcedure.query(async ({ ctx }) => {
+  const [trader] = await db.select().from(poultryTraders).where(eq(poultryTraders.userId, ctx.user.id)).limit(1);
 
-    return { trader: trader || null };
-  });
+  return { trader: trader || null };
+});
 
 // ─── User: Request trader renewal ───────────────────────────
-export const requestTraderRenewalProcedure = protectedProcedure
-  .input(z.object({ traderId: z.number().int().positive() }))
-  .mutation(async ({ input, ctx }) => {
-    const [trader] = await db
-      .select()
-      .from(poultryTraders)
-      .where(and(eq(poultryTraders.id, input.traderId), eq(poultryTraders.userId, ctx.user.id)))
-      .limit(1);
+export const requestTraderRenewalProcedure = protectedProcedure.input(z.object({ traderId: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
+  const [trader] = await db
+    .select()
+    .from(poultryTraders)
+    .where(and(eq(poultryTraders.id, input.traderId), eq(poultryTraders.userId, ctx.user.id)))
+    .limit(1);
 
-    if (!trader) throw new Error("حساب التاجر غير موجود");
-    if (trader.reviewingRenewalRequest) throw new Error("طلب التجديد قيد المراجعة بالفعل");
+  if (!trader) throw new Error("حساب التاجر غير موجود");
+  if (trader.reviewingRenewalRequest) throw new Error("طلب التجديد قيد المراجعة بالفعل");
 
-    await db
-      .update(poultryTraders)
-      .set({ reviewingRenewalRequest: true, updatedAt: new Date() })
-      .where(eq(poultryTraders.id, input.traderId));
+  await db.update(poultryTraders).set({ reviewingRenewalRequest: true, updatedAt: new Date() }).where(eq(poultryTraders.id, input.traderId));
 
-    return { success: true, message: "تم إرسال طلب التجديد" };
-  });
+  return { success: true, message: "تم إرسال طلب التجديد" };
+});
 
 // ─── Admin: List all trader accounts ────────────────────────
 export const listPoultryTradersProcedure = adminProcedure
   .input(
     z.object({
       status: z.enum(["pending", "active", "suspended", "cancelled", "all"]).default("all"),
-    })
+    }),
   )
   .query(async ({ input }) => {
     const query = db
@@ -142,42 +124,33 @@ export const listPoultryTradersProcedure = adminProcedure
     const results =
       input.status === "all"
         ? await query.orderBy(desc(poultryTraders.createdAt))
-        : await query
-            .where(eq(poultryTraders.status, input.status))
-            .orderBy(desc(poultryTraders.createdAt));
+        : await query.where(eq(poultryTraders.status, input.status)).orderBy(desc(poultryTraders.createdAt));
 
     return { traders: results };
   });
 
-// ─── Admin: Activate trader with date range ──────────────────
+// ─── Admin: Activate trader with explicit date range ─────────
 export const activatePoultryTraderProcedure = adminProcedure
   .input(
     z.object({
       traderId: z.number().int().positive(),
-      durationDays: z.number().int().positive().default(365),
+      activationStartDate: z.date(),
+      activationEndDate: z.date(),
       adminNotes: z.string().optional(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
-    const [trader] = await db
-      .select()
-      .from(poultryTraders)
-      .where(eq(poultryTraders.id, input.traderId))
-      .limit(1);
+    const [trader] = await db.select().from(poultryTraders).where(eq(poultryTraders.id, input.traderId)).limit(1);
 
     if (!trader) throw new Error("حساب التاجر غير موجود");
-
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + input.durationDays);
 
     await db
       .update(poultryTraders)
       .set({
         status: "active",
         isActive: true,
-        activationStartDate: startDate,
-        activationEndDate: endDate,
+        activationStartDate: input.activationStartDate,
+        activationEndDate: input.activationEndDate,
         needsRenewal: false,
         reviewingRenewalRequest: false,
         adminNotes: input.adminNotes,
@@ -190,7 +163,7 @@ export const activatePoultryTraderProcedure = adminProcedure
     await db.insert(notifications).values({
       userId: trader.userId,
       title: "تم قبول حساب التاجر",
-      message: `تهانينا! تم تفعيل حساب التاجر الخاص بك (${trader.businessName}). يمكنك الآن الوصول إلى جميع خدمات قسم الدواجن.`,
+      message: `تهانينا! تم تفعيل حساب التاجر الخاص بك (${trader.businessName}). صالح حتى ${input.activationEndDate.toLocaleDateString()}.`,
       type: "approval",
     });
 
@@ -204,14 +177,10 @@ export const updatePoultryTraderStatusProcedure = adminProcedure
       traderId: z.number().int().positive(),
       status: z.enum(["suspended", "cancelled", "active"]),
       adminNotes: z.string().optional(),
-    })
+    }),
   )
   .mutation(async ({ input, ctx }) => {
-    const [trader] = await db
-      .select()
-      .from(poultryTraders)
-      .where(eq(poultryTraders.id, input.traderId))
-      .limit(1);
+    const [trader] = await db.select().from(poultryTraders).where(eq(poultryTraders.id, input.traderId)).limit(1);
 
     if (!trader) throw new Error("حساب التاجر غير موجود");
 

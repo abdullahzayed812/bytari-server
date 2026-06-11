@@ -12,7 +12,7 @@ export const updatePoultryFarmProcedure = publicProcedure
       name: z.string().min(1).optional(),
       location: z.string().optional(),
       address: z.string().optional(),
-      farmType: z.enum(["broiler", "layer", "breeder", "mixed"]).optional(),
+      farmType: z.enum(["broiler", "layer"]).optional(),
       capacity: z.number().int().positive().optional(),
       currentPopulation: z.number().int().min(0).optional(),
       phone: z.string().optional(),

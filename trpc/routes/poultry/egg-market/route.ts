@@ -36,6 +36,7 @@ export const listEggMarketAdsProcedure = publicProcedure
         isFeatured: eggMarketAds.isFeatured,
         expiresAt: eggMarketAds.expiresAt,
         createdAt: eggMarketAds.createdAt,
+        sellerId: eggMarketAds.sellerId,
         sellerName: users.name,
         sellerPhone: users.phone,
       })

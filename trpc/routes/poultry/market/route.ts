@@ -44,6 +44,7 @@ export const listPoultryMarketAdsProcedure = publicProcedure
         isFeatured: poultryMarketAds.isFeatured,
         expiresAt: poultryMarketAds.expiresAt,
         createdAt: poultryMarketAds.createdAt,
+        sellerId: poultryMarketAds.sellerId,
         sellerName: users.name,
         sellerPhone: users.phone,
       })

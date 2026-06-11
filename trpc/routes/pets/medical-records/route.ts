@@ -1,25 +1,14 @@
 import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import {
-  db,
-  pets,
-  users,
-  clinics,
-  medicalRecords,
-  vaccinations,
-  petReminders,
-  treatmentCards,
-  followUpRequests,
-  notifications,
-} from "../../../../db";
+import { db, pets, users, clinics, medicalRecords, vaccinations, petReminders, treatmentCards, followUpRequests, notifications } from "../../../../db";
 
 // Get pet profile with all related data
 export const getPetProfileProcedure = protectedProcedure
   .input(
     z.object({
       petId: z.string(),
-    })
+    }),
   )
   .query(async ({ input }) => {
     try {
@@ -126,11 +115,11 @@ export const createTreatmentCardProcedure = protectedProcedure
           dosage: z.string(),
           frequency: z.string(),
           duration: z.string(),
-        })
+        }),
       ),
       instructions: z.string().optional(),
       followUpDate: z.string().optional(), // ISO string
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -153,8 +142,8 @@ export const createTreatmentCardProcedure = protectedProcedure
       if (pet) {
         await db.insert(notifications).values({
           userId: pet.ownerId,
-          title: "تم إضافة بطاقة علاج جديدة",
-          message: `تم إضافة بطاقة علاج جديدة لحيوانك ${pet.name}`,
+          title: "تم إضافة بطبقة علاج جديدة",
+          message: `تم إضافة بطبقة علاج جديدة لحيوانك ${pet.name}`,
           type: "new_treatment_card",
           data: { treatmentCardId: treatmentCard.id, petId: input.petId },
         });
@@ -180,7 +169,7 @@ export const createFollowUpRequestProcedure = protectedProcedure
       reason: z.string().min(1),
       notes: z.string().optional(),
       urgency: z.enum(["low", "normal", "high"]).default("normal"),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -226,7 +215,7 @@ export const deleteMedicalRecordProcedure = protectedProcedure
   .input(
     z.object({
       recordId: z.number(),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -247,7 +236,7 @@ export const deleteVaccinationProcedure = protectedProcedure
   .input(
     z.object({
       vaccinationId: z.number(),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -268,7 +257,7 @@ export const deleteReminderProcedure = protectedProcedure
   .input(
     z.object({
       reminderId: z.number(),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {
@@ -297,7 +286,7 @@ export const updatePetProcedure = protectedProcedure
       color: z.string().optional(),
       gender: z.enum(["male", "female"]),
       image: z.string().optional(),
-    })
+    }),
   )
   .mutation(async ({ input }) => {
     try {

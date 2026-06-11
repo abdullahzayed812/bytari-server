@@ -119,7 +119,7 @@ export async function seedInquiries(db: NodePgDatabase<any>, users: { id: string
     {
       inquiryId: createdInquiries[2].id, // Dog barking (second reply)
       userId: vets[5].id, // vet6@example.com
-      content: "بالإضافة إلى ذلك، تأكد من أن الكلب يحصل على تمارين كافية، فقد يكون النباح بسبب الطاقة المكبوتة.",
+      content: "بالإضافة إلى ذلك، تأكد من أن الكلب يحصل على تمارين كافية، فقد يكون النباح بسبب الطبقة المكبوتة.",
     },
     {
       inquiryId: createdInquiries[3].id, // Rabbit nutrition
