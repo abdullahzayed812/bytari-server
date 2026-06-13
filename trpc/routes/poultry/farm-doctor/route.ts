@@ -99,6 +99,10 @@ export const getMyLinkedFarmsProcedure = protectedProcedure.query(async ({ ctx }
       licenseNumber: poultryFarms.licenseNumber,
       ownerName: users.name,
       ownerPhone: users.phone,
+      needsRenewal: poultryFarms.needsRenewal,
+      reviewingRenewalRequest: poultryFarms.reviewingRenewalRequest,
+      activationStartDate: poultryFarms.activationStartDate,
+      activationEndDate: poultryFarms.activationEndDate,
     })
     .from(farmDoctorLinks)
     .leftJoin(poultryFarms, eq(farmDoctorLinks.farmId, poultryFarms.id))
