@@ -170,6 +170,26 @@ export const activatePoultryTraderProcedure = adminProcedure
     return { success: true, message: "تم تفعيل حساب التاجر بنجاح" };
   });
 
+// ─── Admin: Delete trader account permanently ────────────────
+export const deletePoultryTraderProcedure = adminProcedure
+  .input(z.object({ traderId: z.number().int().positive() }))
+  .mutation(async ({ input }) => {
+    const [trader] = await db.select().from(poultryTraders).where(eq(poultryTraders.id, input.traderId)).limit(1);
+
+    if (!trader) throw new Error("حساب التاجر غير موجود");
+
+    await db.delete(poultryTraders).where(eq(poultryTraders.id, input.traderId));
+
+    await db.insert(notifications).values({
+      userId: trader.userId,
+      title: "تم حذف حساب التاجر",
+      message: `تم حذف حساب التاجر الخاص بك (${trader.businessName}) من قبل الإدارة.`,
+      type: "warning",
+    });
+
+    return { success: true, message: "تم حذف حساب التاجر نهائياً" };
+  });
+
 // ─── Admin: Suspend / cancel trader ─────────────────────────
 export const updatePoultryTraderStatusProcedure = adminProcedure
   .input(

@@ -472,6 +472,7 @@ import {
   listPoultryTradersProcedure,
   activatePoultryTraderProcedure,
   updatePoultryTraderStatusProcedure,
+  deletePoultryTraderProcedure,
 } from "./routes/poultry/traders/route";
 import {
   listPoultryMarketAdsProcedure,
@@ -1104,6 +1105,7 @@ export const appRouter = createTRPCRouter({
       list: listPoultryTradersProcedure,
       activate: activatePoultryTraderProcedure,
       updateStatus: updatePoultryTraderStatusProcedure,
+      delete: deletePoultryTraderProcedure,
     }),
 
     // Poultry market ads

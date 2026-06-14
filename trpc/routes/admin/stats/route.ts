@@ -312,6 +312,12 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         .from(poultryTraders)
         .where(eq(poultryTraders.status, "pending"));
 
+      // Traders with a renewal request awaiting admin review
+      const [tradersNeedingRenewalCount] = await db
+        .select({ count: count() })
+        .from(poultryTraders)
+        .where(eq(poultryTraders.reviewingRenewalRequest, true));
+
       // Pending poultry market ads
       const [pendingPoultryAdsCount] = await db
         .select({ count: count() })
@@ -340,6 +346,7 @@ export const getPendingApprovalCountsProcedure = publicProcedure
           0,
         pendingPoultryFarms: pendingPoultryFarmsCount.count || 0,
         pendingPoultryTraders: pendingPoultryTradersCount.count || 0,
+        tradersNeedingRenewal: tradersNeedingRenewalCount.count || 0,
         pendingPoultryAds: (pendingPoultryAdsCount.count || 0) + (pendingEggAdsCount.count || 0),
 
         total:
@@ -364,6 +371,7 @@ export const getPendingApprovalCountsProcedure = publicProcedure
         pendingFieldAssignments: 3,
         pendingPoultryFarms: 0,
         pendingPoultryTraders: 0,
+        tradersNeedingRenewal: 0,
         pendingPoultryAds: 0,
         total: 38,
       };
