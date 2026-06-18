@@ -11,6 +11,8 @@ import {
   clinics,
   approvalRequests,
   stores,
+  poultryTraders,
+  poultryFarms,
 } from "../../../../db";
 import { eq, and, desc, inArray, sql, asc, exists } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -23,8 +25,8 @@ export const sendSystemMessage = publicProcedure
       title: z.string().min(1),
       content: z.string().min(1),
       type: z.enum(["announcement", "maintenance", "update", "warning"]),
-      targetAudience: z.enum(["all", "users", "vets", "students", "clinics", "stores", "specific", "multiple"]),
-      targetCategories: z.array(z.enum(["users", "vets", "students", "clinics", "stores"])).optional(),
+      targetAudience: z.enum(["all", "users", "vets", "students", "clinics", "stores", "poultry", "specific", "multiple"]),
+      targetCategories: z.array(z.enum(["users", "vets", "students", "clinics", "stores", "poultry"])).optional(),
       targetUserIds: z.array(z.number()).optional(),
       priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
       scheduledAt: z.date().optional(),
@@ -103,11 +105,34 @@ async function sendMessageToRecipients(
       .select({ id: users.id })
       .from(users)
       .where(and(eq(users.userType, "store"), eq(users.isActive, true)));
+  } else if (targetAudience === "poultry") {
+    const traders = await db.select({ id: poultryTraders.userId }).from(poultryTraders);
+    const farmers = await db.select({ id: poultryFarms.ownerId }).from(poultryFarms);
+    const poultryUserIds = [...new Set([...traders.map((t) => t.id), ...farmers.map((f) => f.id)])];
+    if (poultryUserIds.length > 0) {
+      recipients = await db.select({ id: users.id }).from(users).where(and(inArray(users.id, poultryUserIds), eq(users.isActive, true)));
+    }
   } else if (targetAudience === "multiple" && targetCategories && targetCategories.length > 0) {
-    recipients = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(inArray(users.userType, targetCategories), eq(users.isActive, true)));
+    const nonPoultryCategories = targetCategories.filter((c) => c !== "poultry");
+    const poultryIncluded = targetCategories.includes("poultry");
+    let baseRecipients: { id: number }[] = [];
+    if (nonPoultryCategories.length > 0) {
+      baseRecipients = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(inArray(users.userType, nonPoultryCategories), eq(users.isActive, true)));
+    }
+    if (poultryIncluded) {
+      const traders = await db.select({ id: poultryTraders.userId }).from(poultryTraders);
+      const farmers = await db.select({ id: poultryFarms.ownerId }).from(poultryFarms);
+      const poultryUserIds = [...new Set([...traders.map((t) => t.id), ...farmers.map((f) => f.id)])];
+      if (poultryUserIds.length > 0) {
+        const poultryRecipients = await db.select({ id: users.id }).from(users).where(and(inArray(users.id, poultryUserIds), eq(users.isActive, true)));
+        const existingIds = new Set(baseRecipients.map((r) => r.id));
+        poultryRecipients.forEach((r) => { if (!existingIds.has(r.id)) baseRecipients.push(r); });
+      }
+    }
+    recipients = baseRecipients;
   } else if (targetAudience === "specific" && targetUserIds) {
     recipients = await db
       .select({ id: users.id })

@@ -29,6 +29,8 @@ const registerSchema = z.object({
   phone: z.string().optional(),
   userType: z.enum(["pet_owner", "veterinarian"]).default("pet_owner"),
   avatar: z.string().optional(),
+  country: z.string().optional(),
+  province: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -57,7 +59,7 @@ const resetPasswordSchema = z.object({
 // User registration
 export const registerProcedure = publicProcedure.input(registerSchema).mutation(async ({ input }) => {
   try {
-    const { email, password, name, phone, userType, avatar } = input;
+    const { email, password, name, phone, userType, avatar, country, province } = input;
 
     // Check if user already exists
     const [existingUser] = await db
@@ -83,6 +85,8 @@ export const registerProcedure = publicProcedure.input(registerSchema).mutation(
         phone,
         userType,
         avatar,
+        country,
+        province,
         isActive: true,
       })
       .returning({
@@ -327,6 +331,8 @@ export const getProfileProcedure = protectedProcedure
         userType: users.userType,
         avatar: users.avatar,
         isActive: users.isActive,
+        country: users.country,
+        province: users.province,
       })
       .from(users)
       .where(eq(users.id, ctx.user.id))

@@ -227,6 +227,26 @@ import { unfollowClinicProcedure } from "./routes/clinics/unfollow/route";
 import { isFollowingClinicProcedure } from "./routes/clinics/isFollowing/route";
 import { getClinicFollowerCountProcedure } from "./routes/clinics/getFollowerCount/route";
 import { sendMessageToClinicFollowersProcedure } from "./routes/clinics/sendMessageToFollowers/route";
+import { sendMessageToClinicVisitorsProcedure } from "./routes/clinics/sendMessageToVisitors/route";
+import {
+  getClinicAppointmentsProcedure,
+  createClinicAppointmentProcedure,
+  requestClinicAppointmentProcedure,
+  respondToClinicAppointmentProcedure,
+  respondToCounterProposalProcedure,
+  completeClinicAppointmentProcedure,
+} from "./routes/clinics/appointments/route";
+import {
+  getTemplatesProcedure as getQuickReviewTemplatesProcedure,
+  createTemplateProcedure as createQuickReviewTemplateProcedure,
+  updateTemplateProcedure as updateQuickReviewTemplateProcedure,
+  deleteTemplateProcedure as deleteQuickReviewTemplateProcedure,
+  createQuickReviewProcedure,
+  createFullExamProcedure,
+  getClinicAccessedPetsProcedure,
+  addVaccinationDirectProcedure,
+  addReminderDirectProcedure,
+} from "./routes/clinics/quick-review/route";
 import {
   getOrCreateChatProcedure,
   getChatProcedure,
@@ -768,6 +788,7 @@ export const appRouter = createTRPCRouter({
     isFollowing: isFollowingClinicProcedure,
     getFollowerCount: getClinicFollowerCountProcedure,
     sendMessageToFollowers: sendMessageToClinicFollowersProcedure,
+    sendMessageToVisitors: sendMessageToClinicVisitorsProcedure,
 
     // getVetClinics: getVetClinicsProcedure,
 
@@ -801,6 +822,27 @@ export const appRouter = createTRPCRouter({
       getClinicChats: getClinicChatsProcedure,
       getUnreadCount: getChatUnreadCountProcedure,
       markAsRead: markChatAsReadProcedure,
+    }),
+
+    appointments: createTRPCRouter({
+      getAppointments: getClinicAppointmentsProcedure,
+      createAppointment: createClinicAppointmentProcedure,
+      requestAppointment: requestClinicAppointmentProcedure,
+      respondToAppointment: respondToClinicAppointmentProcedure,
+      respondToCounterProposal: respondToCounterProposalProcedure,
+      completeAppointment: completeClinicAppointmentProcedure,
+    }),
+
+    quickReview: createTRPCRouter({
+      getTemplates: getQuickReviewTemplatesProcedure,
+      createTemplate: createQuickReviewTemplateProcedure,
+      updateTemplate: updateQuickReviewTemplateProcedure,
+      deleteTemplate: deleteQuickReviewTemplateProcedure,
+      createQuickReview: createQuickReviewProcedure,
+      createFullExam: createFullExamProcedure,
+      getAccessedPets: getClinicAccessedPetsProcedure,
+      addVaccination: addVaccinationDirectProcedure,
+      addReminder: addReminderDirectProcedure,
     }),
 
     settings: createTRPCRouter({

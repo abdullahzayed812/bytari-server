@@ -10,6 +10,8 @@ export const users = pgTable("users", {
   phone: text("phone"),
   userType: text("user_type").notNull().default("pet_owner"), // 'pet_owner', 'veterinarian', 'admin'
   avatar: text("avatar"),
+  country: text("country"),
+  province: text("province"),
   isActive: boolean("is_active").notNull().default(true),
   emailVerified: boolean("email_verified").notNull().default(false),
   emailVerificationToken: text("email_verification_token"),
@@ -46,7 +48,7 @@ export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
 
 // Pets table
 export const pets = pgTable("pets", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: varchar("id", { length: 6 }).primaryKey(),
   ownerId: integer("owner_id")
     .notNull()
     .references(() => users.id),
@@ -69,7 +71,7 @@ export const pets = pgTable("pets", {
 // Pet ownership transfer requests
 export const petOwnershipTransfers = pgTable("pet_ownership_transfers", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   fromUserId: integer("from_user_id")
@@ -86,15 +88,21 @@ export const petOwnershipTransfers = pgTable("pet_ownership_transfers", {
 // Medical records table
 export const medicalRecords = pgTable("medical_records", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
   veterinarianId: integer("veterinarian_id").references(() => veterinarians.id),
   diagnosis: text("diagnosis").notNull(),
+  symptoms: text("symptoms"),
+  severity: text("severity"), // 'شديدة' | 'متوسطة' | 'خفيفة'
   treatment: text("treatment").notNull(),
   notes: text("notes"),
+  labNotes: text("lab_notes"),
+  fileUrls: text("file_urls").array(),
   prescriptionImage: text("prescription_image"),
+  isDraft: boolean("is_draft").notNull().default(false),
+  recordType: text("record_type"), // 'مراجعة_سريعة' | 'فحص_شامل'
   date: timestamp("date", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -103,7 +111,7 @@ export const medicalRecords = pgTable("medical_records", {
 // Vaccinations table (structured)
 export const vaccinations = pgTable("vaccinations", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
@@ -119,7 +127,7 @@ export const vaccinations = pgTable("vaccinations", {
 // Pet reminders table
 export const petReminders = pgTable("pet_reminders", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
@@ -135,7 +143,7 @@ export const petReminders = pgTable("pet_reminders", {
 // Treatment cards table
 export const treatmentCards = pgTable("treatment_cards", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -152,7 +160,7 @@ export const treatmentCards = pgTable("treatment_cards", {
 // Follow-up requests table
 export const followUpRequests = pgTable("follow_up_requests", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -169,7 +177,7 @@ export const followUpRequests = pgTable("follow_up_requests", {
 // Single access request table - replaces the need for multiple request types
 export const clinicAccessRequests = pgTable("clinic_access_requests", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -194,7 +202,7 @@ export const clinicAccessRequests = pgTable("clinic_access_requests", {
 // Simple approved access table
 export const approvedClinicAccess = pgTable("approved_clinic_access", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -214,7 +222,7 @@ export const approvedClinicAccess = pgTable("approved_clinic_access", {
 // Pending medical actions - awaiting owner approval
 export const pendingMedicalActions = pgTable("pending_medical_actions", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")
@@ -376,6 +384,47 @@ export const appointments = pgTable("appointments", {
   type: text("type").notNull(), // 'consultation', 'vaccination', 'surgery', etc.
   notes: text("notes"),
   fee: real("fee"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Quick review templates per clinic (used in the مراجعة سريعة flow)
+export const clinicQuickReviewTemplates = pgTable("clinic_quick_review_templates", {
+  id: serial("id").primaryKey(),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  templateType: text("template_type").notNull().default("general"), // 'vaccine' | 'treatment' | 'diagnosis' | 'general'
+  defaultDiagnosis: text("default_diagnosis"),
+  defaultTreatment: text("default_treatment"),
+  defaultNotes: text("default_notes"),
+  intervalDays: integer("interval_days"), // for vaccines: days until next dose
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Clinic Appointments table (clinic-created or owner-requested, supports counter-propose flow)
+export const clinicAppointments = pgTable("clinic_appointments", {
+  id: serial("id").primaryKey(),
+  clinicId: integer("clinic_id")
+    .notNull()
+    .references(() => clinics.id, { onDelete: "cascade" }),
+  petId: varchar("pet_id", { length: 6 })
+    .notNull()
+    .references(() => pets.id, { onDelete: "cascade" }),
+  ownerId: integer("owner_id")
+    .notNull()
+    .references(() => users.id),
+  requestedByClinic: boolean("requested_by_clinic").notNull().default(false),
+  appointmentDate: timestamp("appointment_date", { withTimezone: true }).notNull(),
+  type: text("type").notNull().default("مراجعة"), // 'مراجعة', 'تطعيم', 'فحص', 'جراحة'
+  notes: text("notes"),
+  // 'pending', 'confirmed', 'cancelled', 'completed', 'counter_proposed'
+  status: text("status").notNull().default("pending"),
+  counterProposedDate: timestamp("counter_proposed_date", { withTimezone: true }),
+  counterProposedNotes: text("counter_proposed_notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -2064,7 +2113,7 @@ export const reviews = pgTable("reviews", {
 
 export const clinicPetChats = pgTable("clinic_pet_chats", {
   id: serial("id").primaryKey(),
-  petId: uuid("pet_id")
+  petId: varchar("pet_id", { length: 6 })
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id")

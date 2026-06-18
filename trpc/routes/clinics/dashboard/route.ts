@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { eq, and, desc, sql, countDistinct, count } from "drizzle-orm";
+import { eq, and, desc, countDistinct, count, gte, lte } from "drizzle-orm";
 import { publicProcedure } from "../../../create-context";
 import {
   db,
   clinics,
-  appointments,
+  clinicAppointments,
   pets,
   users,
   veterinarians,
@@ -193,24 +193,89 @@ export const getClinicDashboardDataProcedure = publicProcedure
         .from(vaccinations)
         .where(eq(vaccinations.clinicId, clinicId));
 
+      // Today's stats
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const [todayRemindersRow] = await db
+        .select({ count: count() })
+        .from(petReminders)
+        .where(and(eq(petReminders.clinicId, clinicId), gte(petReminders.reminderDate, todayStart), lte(petReminders.reminderDate, todayEnd)));
+
+      const [todayVaccinationsRow] = await db
+        .select({ count: count() })
+        .from(vaccinations)
+        .where(and(eq(vaccinations.clinicId, clinicId), gte(vaccinations.nextDate, todayStart), lte(vaccinations.nextDate, todayEnd)));
+
+      const [todayAppointmentsRow] = await db
+        .select({ count: count() })
+        .from(clinicAppointments)
+        .where(and(eq(clinicAppointments.clinicId, clinicId), gte(clinicAppointments.appointmentDate, todayStart), lte(clinicAppointments.appointmentDate, todayEnd)));
+
+      // Distinct animals/owners that visited today (any record created today)
+      const todayMedicalPets = await db
+        .selectDistinct({ petId: medicalRecords.petId })
+        .from(medicalRecords)
+        .where(and(eq(medicalRecords.clinicId, clinicId), gte(medicalRecords.createdAt, todayStart), lte(medicalRecords.createdAt, todayEnd)));
+      const todayVaccinationPets = await db
+        .selectDistinct({ petId: vaccinations.petId })
+        .from(vaccinations)
+        .where(and(eq(vaccinations.clinicId, clinicId), gte(vaccinations.createdAt, todayStart), lte(vaccinations.createdAt, todayEnd)));
+      const todayReminderPets = await db
+        .selectDistinct({ petId: petReminders.petId })
+        .from(petReminders)
+        .where(and(eq(petReminders.clinicId, clinicId), gte(petReminders.createdAt, todayStart), lte(petReminders.createdAt, todayEnd)));
+      const todayVisitorPetIds = new Set([
+        ...todayMedicalPets.map((r) => r.petId),
+        ...todayVaccinationPets.map((r) => r.petId),
+        ...todayReminderPets.map((r) => r.petId),
+      ]);
+      const todayVisitors = todayVisitorPetIds.size;
+
+      // Total distinct animals (union of petId across all clinic records)
+      const distinctPetsFromRecords = await db
+        .selectDistinct({ petId: medicalRecords.petId })
+        .from(medicalRecords)
+        .where(eq(medicalRecords.clinicId, clinicId));
+      const distinctPetsFromVaccinations = await db
+        .selectDistinct({ petId: vaccinations.petId })
+        .from(vaccinations)
+        .where(eq(vaccinations.clinicId, clinicId));
+      const distinctPetsFromReminders = await db
+        .selectDistinct({ petId: petReminders.petId })
+        .from(petReminders)
+        .where(eq(petReminders.clinicId, clinicId));
+      const allPetIds = new Set([
+        ...distinctPetsFromRecords.map((r) => r.petId),
+        ...distinctPetsFromVaccinations.map((r) => r.petId),
+        ...distinctPetsFromReminders.map((r) => r.petId),
+      ]);
+
       const stats = {
         totalAnimals,
         activePatients: activePatientsRow?.count ?? 0,
         completedTreatments: completedTreatmentsRow?.count ?? 0,
+        todayReminders: todayRemindersRow?.count ?? 0,
+        todayVaccinations: todayVaccinationsRow?.count ?? 0,
+        todayAppointments: todayAppointmentsRow?.count ?? 0,
+        todayVisitors,
+        totalDistinctAnimals: allPetIds.size,
       };
 
-      // Get recent animals (last 5 appointments) with owner info
+      // Get recent animals (last 5 clinic appointments) with pet + owner info
       const recentAppointments = await db
         .select({
           pet: pets,
-          appointment: appointments,
+          appointment: clinicAppointments,
           owner: users,
         })
-        .from(appointments)
-        .leftJoin(pets, sql`${appointments.petId}::text = ${pets.id}::text`)
-        .leftJoin(users, eq(pets.ownerId, users.id))
-        .where(eq(appointments.clinicId, clinicId))
-        .orderBy(desc(appointments.appointmentDate))
+        .from(clinicAppointments)
+        .leftJoin(pets, eq(clinicAppointments.petId, pets.id))
+        .leftJoin(users, eq(clinicAppointments.ownerId, users.id))
+        .where(eq(clinicAppointments.clinicId, clinicId))
+        .orderBy(desc(clinicAppointments.appointmentDate))
         .limit(5);
 
       const recentAnimals = recentAppointments.map(({ pet, appointment, owner }) => ({

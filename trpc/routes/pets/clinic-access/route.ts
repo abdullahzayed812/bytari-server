@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, and, or, gt, isNull, sql } from "drizzle-orm";
+import { eq, desc, and, or, gt, isNull, sql, inArray } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
 import {
   db,
@@ -11,6 +11,9 @@ import {
   veterinarians,
   notifications,
   clinicStaff,
+  medicalRecords,
+  vaccinations,
+  petReminders,
 } from "../../../../db";
 
 // Vet requests access to pet
@@ -382,49 +385,66 @@ export const getMyAccessRequestsProcedure = protectedProcedure
     }
   });
 
-// Get clinic follow-ups for a pet (using approved access records)
+// Get visited clinics for a pet — clinics that have added any record/vaccination/reminder
 export const getClinicFollowUpsProcedure = protectedProcedure
-  .input(
-    z.object({
-      petId: z.string(),
-    })
-  )
+  .input(z.object({ petId: z.string() }))
   .query(async ({ input, ctx }) => {
     try {
       const { user } = ctx;
 
-      // Verify the user has access to this pet
-      const [pet] = await db
-        .select()
-        .from(pets)
-        .where(and(eq(pets.id, input.petId), eq(pets.ownerId, user.id)));
+      const [pet] = await db.select().from(pets).where(and(eq(pets.id, input.petId), eq(pets.ownerId, user.id)));
+      if (!pet) throw new Error("Pet not found or access denied");
 
-      if (!pet) {
-        throw new Error("Pet not found or access denied");
-      }
+      // Collect distinct clinic IDs from actual records (not access table)
+      const [fromRecords, fromVaccinations, fromReminders] = await Promise.all([
+        db.selectDistinct({ clinicId: medicalRecords.clinicId }).from(medicalRecords).where(eq(medicalRecords.petId, input.petId)),
+        db.selectDistinct({ clinicId: vaccinations.clinicId }).from(vaccinations).where(eq(vaccinations.petId, input.petId)),
+        db.selectDistinct({ clinicId: petReminders.clinicId }).from(petReminders).where(eq(petReminders.petId, input.petId)),
+      ]);
 
-      // Get approved clinic access with clinic information and activity counts
-      const followUps = await db
-        .select({
-          clinicId: approvedClinicAccess.clinicId,
-          clinicName: clinics.name,
+      const clinicIds = [
+        ...new Set([
+          ...fromRecords.map((r) => r.clinicId).filter(Boolean),
+          ...fromVaccinations.map((r) => r.clinicId).filter(Boolean),
+          ...fromReminders.map((r) => r.clinicId).filter(Boolean),
+        ]),
+      ] as number[];
+
+      if (clinicIds.length === 0) return { success: true, followUps: [] };
+
+      const clinicRows = await db.select({ id: clinics.id, name: clinics.name, images: clinics.images }).from(clinics).where(inArray(clinics.id, clinicIds));
+
+      const followUps = await Promise.all(
+        clinicRows.map(async (clinic) => {
+          const [mrCount] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(medicalRecords)
+            .where(and(eq(medicalRecords.petId, input.petId), eq(medicalRecords.clinicId, clinic.id)));
+          const [vacCount] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(vaccinations)
+            .where(and(eq(vaccinations.petId, input.petId), eq(vaccinations.clinicId, clinic.id)));
+          const [remCount] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(petReminders)
+            .where(and(eq(petReminders.petId, input.petId), eq(petReminders.clinicId, clinic.id)));
+
+          const images = clinic.images as string[] | null;
+          return {
+            clinicId: clinic.id,
+            clinicName: clinic.name,
+            clinicLogo: images?.[0] ?? null,
+            expiresAt: null,
+            grantedAt: null,
+            medicalRecordsCount: mrCount?.count ?? 0,
+            vaccinationsCount: vacCount?.count ?? 0,
+            remindersCount: remCount?.count ?? 0,
+            pendingFollowUpsCount: 0,
+          };
         })
-        .from(approvedClinicAccess)
-        .leftJoin(clinics, eq(clinics.id, approvedClinicAccess.clinicId))
-        .leftJoin(clinicAccessRequests, eq(clinicAccessRequests.id, approvedClinicAccess.requestId))
-        .where(
-          and(
-            eq(approvedClinicAccess.petId, input.petId),
-            eq(approvedClinicAccess.isActive, true),
-            or(isNull(approvedClinicAccess.expiresAt), gt(approvedClinicAccess.expiresAt, new Date()))
-          )
-        )
-        .orderBy(desc(approvedClinicAccess.createdAt));
+      );
 
-      return {
-        success: true,
-        followUps,
-      };
+      return { success: true, followUps };
     } catch (error) {
       console.error("Error fetching clinic follow-ups:", error);
       throw new Error("Failed to fetch clinic follow-ups");

@@ -2147,4 +2147,60 @@ CREATE TABLE IF NOT EXISTS "farm_doctor_links" (
 --> statement-breakpoint
 ALTER TABLE "farm_doctor_links" ADD CONSTRAINT "farm_doctor_links_farm_id_poultry_farms_id_fk" FOREIGN KEY ("farm_id") REFERENCES "public"."poultry_farms"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
 --> statement-breakpoint
-ALTER TABLE "farm_doctor_links" ADD CONSTRAINT "farm_doctor_links_doctor_id_users_id_fk" FOREIGN KEY ("doctor_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+ALTER TABLE "farm_doctor_links" ADD CONSTRAINT "farm_doctor_links_doctor_id_users_id_fk" FOREIGN KEY ("doctor_id") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "country" text;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "province" text;--> statement-breakpoint
+CREATE TABLE "clinic_appointments" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"clinic_id" integer NOT NULL,
+	"pet_id" varchar(6) NOT NULL,
+	"owner_id" integer NOT NULL,
+	"requested_by_clinic" boolean DEFAULT false NOT NULL,
+	"appointment_date" timestamp with time zone NOT NULL,
+	"type" text DEFAULT 'مراجعة' NOT NULL,
+	"notes" text,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"counter_proposed_date" timestamp with time zone,
+	"counter_proposed_notes" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "clinic_appointments" ADD CONSTRAINT "clinic_appointments_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "clinic_appointments" ADD CONSTRAINT "clinic_appointments_pet_id_pets_id_fk" FOREIGN KEY ("pet_id") REFERENCES "public"."pets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "clinic_appointments" ADD CONSTRAINT "clinic_appointments_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE TABLE "clinic_quick_review_templates" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"clinic_id" integer NOT NULL,
+	"name" text NOT NULL,
+	"default_diagnosis" text,
+	"default_treatment" text,
+	"default_notes" text,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "clinic_quick_review_templates" ADD CONSTRAINT "clinic_quick_review_templates_clinic_id_clinics_id_fk" FOREIGN KEY ("clinic_id") REFERENCES "public"."clinics"("id") ON DELETE cascade ON UPDATE no action;
+
+
+-- Add templateType and intervalDays to quick review templates
+ALTER TABLE "clinic_quick_review_templates" ADD COLUMN "template_type" text DEFAULT 'general' NOT NULL;
+ALTER TABLE "clinic_quick_review_templates" ADD COLUMN "interval_days" integer;
+
+-- Add severity, symptoms, draft and file fields to medical records
+ALTER TABLE "medical_records" ADD COLUMN "symptoms" text;
+ALTER TABLE "medical_records" ADD COLUMN "severity" text;
+ALTER TABLE "medical_records" ADD COLUMN "lab_notes" text;
+ALTER TABLE "medical_records" ADD COLUMN "file_urls" text[];
+ALTER TABLE "medical_records" ADD COLUMN "is_draft" boolean DEFAULT false NOT NULL;
+
+
+ALTER TABLE "clinic_quick_review_templates" ADD COLUMN IF NOT EXISTS "template_type" text DEFAULT 'general' NOT NULL;
+ALTER TABLE "clinic_quick_review_templates" ADD COLUMN IF NOT EXISTS "interval_days" integer;
+ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "symptoms" text;
+ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "severity" text;
+ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "lab_notes" text;
+ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "file_urls" text[];
+ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "is_draft" boolean DEFAULT false NOT NULL;
+ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "record_type" text;

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, pets, users, clinics, medicalRecords, vaccinations, petReminders, treatmentCards, followUpRequests, notifications } from "../../../../db";
+import { db, pets, users, clinics, medicalRecords, vaccinations, petReminders, treatmentCards, followUpRequests, notifications, veterinarians } from "../../../../db";
 
 // Get pet profile with all related data
 export const getPetProfileProcedure = protectedProcedure
@@ -32,6 +32,7 @@ export const getPetProfileProcedure = protectedProcedure
           updatedAt: pets.updatedAt,
           ownerName: users.name,
           ownerEmail: users.email,
+          ownerPhone: users.phone,
         })
         .from(pets)
         .leftJoin(users, eq(users.id, pets.ownerId))
@@ -41,7 +42,7 @@ export const getPetProfileProcedure = protectedProcedure
         throw new Error("Pet not found");
       }
 
-      // Get medical records with clinic info
+      // Get medical records with clinic info and doctor name
       const medicalRecordsData = await db
         .select({
           id: medicalRecords.id,
@@ -49,11 +50,19 @@ export const getPetProfileProcedure = protectedProcedure
           treatment: medicalRecords.treatment,
           notes: medicalRecords.notes,
           prescriptionImage: medicalRecords.prescriptionImage,
+          recordType: medicalRecords.recordType,
           date: medicalRecords.date,
           clinicName: clinics.name,
+          doctorName: users.name,
+          symptoms: medicalRecords.symptoms,
+          severity: medicalRecords.severity,
+          labNotes: medicalRecords.labNotes,
+          fileUrls: medicalRecords.fileUrls,
         })
         .from(medicalRecords)
         .leftJoin(clinics, eq(clinics.id, medicalRecords.clinicId))
+        .leftJoin(veterinarians, eq(veterinarians.id, medicalRecords.veterinarianId))
+        .leftJoin(users, eq(users.id, veterinarians.userId))
         .where(eq(medicalRecords.petId, input.petId))
         .orderBy(desc(medicalRecords.date));
 

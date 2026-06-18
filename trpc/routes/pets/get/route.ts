@@ -30,6 +30,7 @@ export const getAllPetsProcedure = protectedProcedure
         ownerId: pets.ownerId,
         ownerName: users.name,
         ownerEmail: users.email,
+        ownerPhone: users.phone,
       })
       .from(pets)
       .leftJoin(users, eq(users.id, pets.ownerId))
