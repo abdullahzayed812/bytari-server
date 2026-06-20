@@ -1,13 +1,14 @@
 import { z } from "zod";
-import { eq, desc, and, max, sql } from "drizzle-orm";
+import { eq, desc, max, sql, or, isNotNull, and } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, pets, users, approvedClinicAccess, medicalRecords, vaccinations, petReminders } from "../../../../db";
+import { db, pets, users, medicalRecords, vaccinations, petReminders, approvedClinicAccess } from "../../../../db";
 
 export const getClinicLatestPetsProcedure = protectedProcedure
   .input(
     z.object({
       clinicId: z.number(),
       limit: z.number().optional().default(10),
+      offset: z.number().optional().default(0),
     })
   )
   .query(async ({ input }) => {
@@ -51,6 +52,7 @@ export const getClinicLatestPetsProcedure = protectedProcedure
           gender: pets.gender,
           image: pets.image,
           ownerName: users.name,
+          ownerPhone: users.phone,
           createdAt: pets.createdAt,
           hasMedical: sql<boolean>`${latestMedical.medicalDate} IS NOT NULL`,
           hasVaccination: sql<boolean>`${latestVaccination.vaccinationDate} IS NOT NULL`,
@@ -62,19 +64,19 @@ export const getClinicLatestPetsProcedure = protectedProcedure
         })
         .from(pets)
         .leftJoin(users, eq(users.id, pets.ownerId))
-        .innerJoin(
-          approvedClinicAccess,
-          and(
-            eq(approvedClinicAccess.petId, pets.id),
-            eq(approvedClinicAccess.clinicId, input.clinicId),
-            eq(approvedClinicAccess.isActive, true)
-          )
-        )
         .leftJoin(latestMedical, eq(latestMedical.petId, pets.id))
         .leftJoin(latestVaccination, eq(latestVaccination.petId, pets.id))
         .leftJoin(latestReminder, eq(latestReminder.petId, pets.id))
+        .where(
+          or(
+            isNotNull(latestMedical.medicalDate),
+            isNotNull(latestVaccination.vaccinationDate),
+            isNotNull(latestReminder.reminderDate)
+          )
+        )
         .orderBy(desc(lastActionAt))
-        .limit(input.limit);
+        .limit(input.limit)
+        .offset(input.offset);
 
       const petsWithStatus = clinicPets.map((pet) => {
         const latestDate =
@@ -107,4 +109,18 @@ export const getClinicLatestPetsProcedure = protectedProcedure
       console.error("Error fetching clinic latest pets:", error);
       throw new Error("فشل في جلب بيانات الحيوانات");
     }
+  });
+
+// Remove all clinic data for a specific pet (records, vaccinations, reminders, access)
+export const removeClinicPetDataProcedure = protectedProcedure
+  .input(z.object({ clinicId: z.number(), petId: z.string() }))
+  .mutation(async ({ input }) => {
+    const { clinicId, petId } = input;
+    await Promise.all([
+      db.delete(medicalRecords).where(and(eq(medicalRecords.clinicId, clinicId), eq(medicalRecords.petId, petId))),
+      db.delete(vaccinations).where(and(eq(vaccinations.clinicId, clinicId), eq(vaccinations.petId, petId))),
+      db.delete(petReminders).where(and(eq(petReminders.clinicId, clinicId), eq(petReminders.petId, petId))),
+      db.delete(approvedClinicAccess).where(and(eq(approvedClinicAccess.clinicId, clinicId), eq(approvedClinicAccess.petId, petId))),
+    ]);
+    return { success: true };
   });

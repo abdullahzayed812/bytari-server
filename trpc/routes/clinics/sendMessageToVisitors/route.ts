@@ -9,10 +9,14 @@ import {
   systemMessageRecipients,
   clinics,
   pets,
+  medicalRecords,
+  vaccinations,
+  petReminders,
+  clinicAppointments,
 } from "../../../../db";
 import { eq, and, inArray } from "drizzle-orm";
 
-// Sends a message (notification) to all pet owners who have active approved clinic access
+// Sends a message to all pet owners who have any clinic data (visits, records, vaccinations, reminders, appointments)
 export const sendMessageToClinicVisitorsProcedure = protectedProcedure
   .input(
     z.object({
@@ -49,19 +53,44 @@ export const sendMessageToClinicVisitorsProcedure = protectedProcedure
       .where(eq(clinics.id, clinicId))
       .limit(1);
 
-    // Get distinct owner IDs of pets with active clinic access
-    const accessRows = await db
-      .select({ petId: approvedClinicAccess.petId })
-      .from(approvedClinicAccess)
-      .where(and(eq(approvedClinicAccess.clinicId, clinicId), eq(approvedClinicAccess.isActive, true)));
+    // Collect all pet IDs that have any data from this clinic across all tables
+    const [accessRows, recordRows, vaccinationRows, reminderRows] = await Promise.all([
+      db.select({ petId: approvedClinicAccess.petId }).from(approvedClinicAccess)
+        .where(and(eq(approvedClinicAccess.clinicId, clinicId), eq(approvedClinicAccess.isActive, true))),
+      db.select({ petId: medicalRecords.petId }).from(medicalRecords)
+        .where(eq(medicalRecords.clinicId, clinicId)),
+      db.select({ petId: vaccinations.petId }).from(vaccinations)
+        .where(eq(vaccinations.clinicId, clinicId)),
+      db.select({ petId: petReminders.petId }).from(petReminders)
+        .where(eq(petReminders.clinicId, clinicId)),
+    ]);
 
-    if (accessRows.length === 0) {
-      return { success: true, count: 0 };
-    }
+    // clinicAppointments has ownerId directly — collect those too
+    const appointmentOwnerRows = await db
+      .select({ ownerId: clinicAppointments.ownerId })
+      .from(clinicAppointments)
+      .where(eq(clinicAppointments.clinicId, clinicId));
 
-    const petIds = accessRows.map((r) => r.petId);
-    const petRows = await db.select({ ownerId: pets.ownerId }).from(pets).where(inArray(pets.id, petIds));
-    const visitorUserIds = [...new Set(petRows.map((p) => p.ownerId))];
+    const allPetIds = [
+      ...new Set([
+        ...accessRows.map((r) => r.petId),
+        ...recordRows.map((r) => r.petId),
+        ...vaccinationRows.map((r) => r.petId),
+        ...reminderRows.map((r) => r.petId),
+      ]),
+    ];
+
+    // Resolve pet owners for all pet-based records
+    const petOwnerIds = allPetIds.length > 0
+      ? (await db.select({ ownerId: pets.ownerId }).from(pets).where(inArray(pets.id, allPetIds))).map((p) => p.ownerId)
+      : [];
+
+    const visitorUserIds = [
+      ...new Set([
+        ...petOwnerIds,
+        ...appointmentOwnerRows.map((r) => r.ownerId),
+      ]),
+    ];
 
     if (visitorUserIds.length === 0) {
       return { success: true, count: 0 };

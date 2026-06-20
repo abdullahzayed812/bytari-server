@@ -2204,3 +2204,7 @@ ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "lab_notes" text;
 ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "file_urls" text[];
 ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "is_draft" boolean DEFAULT false NOT NULL;
 ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "record_type" text;
+
+
+ALTER TABLE "vaccinations" ADD COLUMN IF NOT EXISTS "veterinarian_id" integer REFERENCES "veterinarians"("id");
+ALTER TABLE "pet_reminders" ADD COLUMN IF NOT EXISTS "veterinarian_id" integer REFERENCES "veterinarians"("id");

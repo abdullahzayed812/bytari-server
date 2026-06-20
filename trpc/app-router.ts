@@ -177,7 +177,7 @@ import { getActiveClinicsListProcedure } from "./routes/clinics/public/route";
 import { getClinicDashboardDataProcedure } from "./routes/clinics/dashboard/route";
 import { getTodayCasesProcedure } from "./routes/clinics/cases/route";
 import { getClinicAnimalsProcedure } from "./routes/clinics/animals/route";
-import { getClinicLatestPetsProcedure } from "./routes/clinics/pets/route";
+import { getClinicLatestPetsProcedure, removeClinicPetDataProcedure } from "./routes/clinics/pets/route";
 import {
   deleteClinicProcedure,
   toggleClinicVisibilityProcedure,
@@ -246,6 +246,9 @@ import {
   getClinicAccessedPetsProcedure,
   addVaccinationDirectProcedure,
   addReminderDirectProcedure,
+  updateVaccinationDirectProcedure,
+  updateReminderDirectProcedure,
+  updateMedicalRecordProcedure,
 } from "./routes/clinics/quick-review/route";
 import {
   getOrCreateChatProcedure,
@@ -777,6 +780,7 @@ export const appRouter = createTRPCRouter({
     getTodayCases: getTodayCasesProcedure,
     getClinicAnimals: getClinicAnimalsProcedure,
     getLatestPets: getClinicLatestPetsProcedure,
+    removeClinicPetData: removeClinicPetDataProcedure,
     getAllClinics: getAllClinicsForAdmin,
 
     getAdminList: getAdminClinicsListProcedure,
@@ -843,6 +847,9 @@ export const appRouter = createTRPCRouter({
       getAccessedPets: getClinicAccessedPetsProcedure,
       addVaccination: addVaccinationDirectProcedure,
       addReminder: addReminderDirectProcedure,
+      updateVaccination: updateVaccinationDirectProcedure,
+      updateReminder: updateReminderDirectProcedure,
+      updateMedicalRecord: updateMedicalRecordProcedure,
     }),
 
     settings: createTRPCRouter({

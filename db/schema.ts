@@ -115,10 +115,11 @@ export const vaccinations = pgTable("vaccinations", {
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
+  veterinarianId: integer("veterinarian_id").references(() => veterinarians.id),
   name: text("name").notNull(),
   date: timestamp("date", { withTimezone: true }).notNull().defaultNow(),
   nextDate: timestamp("next_date", { withTimezone: true }),
-  status: text("status").notNull().default("scheduled"), // Added status field
+  status: text("status").notNull().default("scheduled"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -131,10 +132,11 @@ export const petReminders = pgTable("pet_reminders", {
     .notNull()
     .references(() => pets.id, { onDelete: "cascade" }),
   clinicId: integer("clinic_id").references(() => clinics.id),
+  veterinarianId: integer("veterinarian_id").references(() => veterinarians.id),
   title: text("title").notNull(),
   description: text("description"),
   reminderDate: timestamp("reminder_date", { withTimezone: true }).notNull(),
-  reminderType: text("reminder_type").notNull().default("checkup"), // 'vaccination', 'medication', 'checkup', 'other'
+  reminderType: text("reminder_type").notNull().default("checkup"),
   isCompleted: boolean("is_completed").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

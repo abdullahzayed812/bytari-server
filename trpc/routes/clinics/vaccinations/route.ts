@@ -38,6 +38,7 @@ export const getClinicVaccinationsProcedure = protectedProcedure
       const vaccinationsQuery = db
         .select({
           id: vaccinations.id,
+          petId: vaccinations.petId,
           petName: pets.name,
           petType: pets.type,
           ownerName: users.name,
@@ -90,6 +91,7 @@ export const getClinicVaccinationsProcedure = protectedProcedure
 
         return {
           id: vaccination.id.toString(),
+          petId: vaccination.petId,
           petName: vaccination.petName,
           petType: vaccination.petType,
           ownerName: vaccination.ownerName,

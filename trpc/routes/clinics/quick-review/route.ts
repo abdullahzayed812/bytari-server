@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { eq, and, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { publicProcedure } from "../../../create-context";
-import { db, clinicQuickReviewTemplates, medicalRecords, vaccinations, petReminders, pets, users } from "../../../../db";
+import { publicProcedure, protectedProcedure } from "../../../create-context";
+import { db, clinicQuickReviewTemplates, medicalRecords, vaccinations, petReminders, pets, users, veterinarians } from "../../../../db";
 
 // ── Templates CRUD ──────────────────────────────────────────────────────────
 
@@ -178,6 +178,7 @@ export const createFullExamProcedure = publicProcedure
         .values({
           petId: input.petId,
           clinicId: input.clinicId,
+          veterinarianId: input.veterinarianId,
           name: input.vaccination.name,
           nextDate: input.vaccination.nextDate ? new Date(input.vaccination.nextDate) : undefined,
           notes: input.vaccination.vaccinationNotes,
@@ -193,6 +194,7 @@ export const createFullExamProcedure = publicProcedure
         .values({
           petId: input.petId,
           clinicId: input.clinicId,
+          veterinarianId: input.veterinarianId,
           title: input.reminder.title,
           reminderDate: new Date(input.reminder.reminderDate),
           description: input.reminder.reminderNotes,
@@ -207,7 +209,7 @@ export const createFullExamProcedure = publicProcedure
 
 // ── Direct vaccination add (no approval required) ───────────────────────────
 
-export const addVaccinationDirectProcedure = publicProcedure
+export const addVaccinationDirectProcedure = protectedProcedure
   .input(
     z.object({
       clinicId: z.number(),
@@ -217,12 +219,14 @@ export const addVaccinationDirectProcedure = publicProcedure
       notes: z.string().optional(),
     })
   )
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input, ctx }) => {
+    const [vet] = await db.select({ id: veterinarians.id }).from(veterinarians).where(eq(veterinarians.userId, ctx.user.id)).limit(1);
     const [record] = await db
       .insert(vaccinations)
       .values({
         petId: input.petId,
         clinicId: input.clinicId,
+        veterinarianId: vet?.id ?? undefined,
         name: input.name,
         nextDate: input.nextDate ? new Date(input.nextDate) : undefined,
         notes: input.notes,
@@ -234,7 +238,7 @@ export const addVaccinationDirectProcedure = publicProcedure
 
 // ── Direct reminder add (no approval required) ───────────────────────────────
 
-export const addReminderDirectProcedure = publicProcedure
+export const addReminderDirectProcedure = protectedProcedure
   .input(
     z.object({
       clinicId: z.number(),
@@ -245,12 +249,14 @@ export const addReminderDirectProcedure = publicProcedure
       reminderType: z.enum(["vaccination", "medication", "checkup", "other"]).optional().default("checkup"),
     })
   )
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input, ctx }) => {
+    const [vet] = await db.select({ id: veterinarians.id }).from(veterinarians).where(eq(veterinarians.userId, ctx.user.id)).limit(1);
     const [record] = await db
       .insert(petReminders)
       .values({
         petId: input.petId,
         clinicId: input.clinicId,
+        veterinarianId: vet?.id ?? undefined,
         title: input.title,
         description: input.description,
         reminderDate: new Date(input.reminderDate),
@@ -259,6 +265,80 @@ export const addReminderDirectProcedure = publicProcedure
       })
       .returning();
     return { success: true, record };
+  });
+
+// ── Update vaccination ───────────────────────────────────────────────────────
+
+export const updateVaccinationDirectProcedure = protectedProcedure
+  .input(
+    z.object({
+      vaccinationId: z.number(),
+      name: z.string().min(1),
+      nextDate: z.string().optional(),
+      notes: z.string().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    await db
+      .update(vaccinations)
+      .set({
+        name: input.name,
+        nextDate: input.nextDate ? new Date(input.nextDate) : undefined,
+        notes: input.notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(vaccinations.id, input.vaccinationId));
+    return { success: true };
+  });
+
+// ── Update reminder ──────────────────────────────────────────────────────────
+
+export const updateReminderDirectProcedure = protectedProcedure
+  .input(
+    z.object({
+      reminderId: z.number(),
+      title: z.string().min(1),
+      description: z.string().optional(),
+      reminderDate: z.string(),
+      reminderType: z.enum(["vaccination", "medication", "checkup", "other"]).optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    await db
+      .update(petReminders)
+      .set({
+        title: input.title,
+        description: input.description,
+        reminderDate: new Date(input.reminderDate),
+        reminderType: input.reminderType ?? "checkup",
+        updatedAt: new Date(),
+      })
+      .where(eq(petReminders.id, input.reminderId));
+    return { success: true };
+  });
+
+// ── Update medical record ────────────────────────────────────────────────────
+
+export const updateMedicalRecordProcedure = protectedProcedure
+  .input(
+    z.object({
+      recordId: z.number(),
+      diagnosis: z.string().min(1),
+      treatment: z.string().min(1),
+      notes: z.string().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    await db
+      .update(medicalRecords)
+      .set({
+        diagnosis: input.diagnosis,
+        treatment: input.treatment,
+        notes: input.notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(medicalRecords.id, input.recordId));
+    return { success: true };
   });
 
 // ── Get clinic's known pets for the pet picker (pets with any clinic records) ──

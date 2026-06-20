@@ -7,6 +7,7 @@ import { rateLimiter } from "hono-rate-limiter";
 import { appRouter } from "./trpc/app-router";
 import { createContext } from "./trpc/create-context";
 import { testConnection } from "./db";
+import { sendDailyScheduledNotifications } from "./lib/daily-notifications";
 
 // Test database connection on startup
 (async () => {
@@ -24,6 +25,36 @@ import { testConnection } from "./db";
     process.exit(1);
   }
 })();
+
+// Daily notifications scheduler — runs at server start then every 24h
+function scheduleDailyNotifications() {
+  const runAndReschedule = async () => {
+    try {
+      await sendDailyScheduledNotifications();
+      console.log("✅ Daily scheduled notifications sent");
+    } catch (err) {
+      console.error("❌ Failed to send daily notifications:", err);
+    }
+    // Schedule next run at midnight
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setDate(nextMidnight.getDate() + 1);
+    nextMidnight.setHours(8, 0, 0, 0); // 8 AM every day
+    const msUntilNext = nextMidnight.getTime() - now.getTime();
+    setTimeout(runAndReschedule, msUntilNext);
+  };
+
+  // First run: at next 8 AM
+  const now = new Date();
+  const nextRun = new Date(now);
+  nextRun.setHours(8, 0, 0, 0);
+  if (nextRun <= now) nextRun.setDate(nextRun.getDate() + 1);
+  const msUntilFirst = nextRun.getTime() - now.getTime();
+  setTimeout(runAndReschedule, msUntilFirst);
+  console.log(`⏰ Daily notifications scheduled — first run at ${nextRun.toISOString()}`);
+}
+
+scheduleDailyNotifications();
 
 // Create Hono app
 const app = new Hono();

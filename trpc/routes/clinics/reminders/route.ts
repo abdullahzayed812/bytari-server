@@ -37,6 +37,7 @@ export const getClinicRemindersProcedure = protectedProcedure
       const remindersQuery = db
         .select({
           id: petReminders.id,
+          petId: petReminders.petId,
           petName: pets.name,
           petType: pets.type,
           ownerName: users.name,
@@ -76,6 +77,7 @@ export const getClinicRemindersProcedure = protectedProcedure
 
         return {
           id: reminder.id.toString(),
+          petId: reminder.petId,
           petName: reminder.petName,
           petType: reminder.petType,
           ownerName: reminder.ownerName,

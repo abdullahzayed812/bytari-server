@@ -28,6 +28,7 @@ export const getPetProfileProcedure = protectedProcedure
           medicalHistory: pets.medicalHistory,
           vaccinations: pets.vaccinations, // Legacy JSON field
           isLost: pets.isLost,
+          isNeutered: pets.isNeutered,
           createdAt: pets.createdAt,
           updatedAt: pets.updatedAt,
           ownerName: users.name,
@@ -66,22 +67,26 @@ export const getPetProfileProcedure = protectedProcedure
         .where(eq(medicalRecords.petId, input.petId))
         .orderBy(desc(medicalRecords.date));
 
-      // Get vaccinations with clinic info
+      // Get vaccinations with clinic info and doctor name
       const vaccinationsData = await db
         .select({
           id: vaccinations.id,
           name: vaccinations.name,
           date: vaccinations.date,
           nextDate: vaccinations.nextDate,
+          status: vaccinations.status,
           notes: vaccinations.notes,
           clinicName: clinics.name,
+          doctorName: users.name,
         })
         .from(vaccinations)
         .leftJoin(clinics, eq(clinics.id, vaccinations.clinicId))
+        .leftJoin(veterinarians, eq(veterinarians.id, vaccinations.veterinarianId))
+        .leftJoin(users, eq(users.id, veterinarians.userId))
         .where(eq(vaccinations.petId, input.petId))
         .orderBy(desc(vaccinations.date));
 
-      // Get reminders with clinic info
+      // Get reminders with clinic info and doctor name
       const remindersData = await db
         .select({
           id: petReminders.id,
@@ -91,9 +96,12 @@ export const getPetProfileProcedure = protectedProcedure
           type: petReminders.reminderType,
           isCompleted: petReminders.isCompleted,
           clinicName: clinics.name,
+          doctorName: users.name,
         })
         .from(petReminders)
         .leftJoin(clinics, eq(clinics.id, petReminders.clinicId))
+        .leftJoin(veterinarians, eq(veterinarians.id, petReminders.veterinarianId))
+        .leftJoin(users, eq(users.id, veterinarians.userId))
         .where(eq(petReminders.petId, input.petId))
         .orderBy(desc(petReminders.reminderDate));
 
