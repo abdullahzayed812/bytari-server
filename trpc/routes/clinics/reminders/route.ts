@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { eq, desc, and, lt } from "drizzle-orm";
-import { protectedProcedure } from "../../../create-context";
-import { db, petReminders, pets, users, notifications } from "../../../../db";
+import { eq, desc, and, lt, gte, lte } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { protectedProcedure, publicProcedure } from "../../../create-context";
+import { db, petReminders, pets, users, notifications, clinicStaff, approvalRequests, clinics } from "../../../../db";
 
 // Get all reminders for a clinic
 export const getClinicRemindersProcedure = protectedProcedure
@@ -219,18 +220,36 @@ export const deleteReminderProcedure = protectedProcedure
       reminderId: z.number(),
     })
   )
-  .mutation(async ({ input }) => {
-    try {
-      await db.delete(petReminders).where(eq(petReminders.id, input.reminderId));
+  .mutation(async ({ input, ctx }) => {
+    const [rem] = await db
+      .select({ petOwnerId: pets.ownerId, clinicId: petReminders.clinicId })
+      .from(petReminders)
+      .innerJoin(pets, eq(pets.id, petReminders.petId))
+      .where(eq(petReminders.id, input.reminderId));
 
-      return {
-        success: true,
-        message: "تم حذف التذكير بنجاح",
-      };
-    } catch (error) {
-      console.error("Error deleting reminder:", error);
-      throw new Error("فشل في حذف التذكير");
+    if (!rem) throw new TRPCError({ code: "NOT_FOUND", message: "التذكير غير موجود" });
+
+    const isPetOwner = rem.petOwnerId === ctx.user.id;
+    if (!isPetOwner && rem.clinicId) {
+      const [staff] = await db
+        .select({ id: clinicStaff.id })
+        .from(clinicStaff)
+        .where(and(eq(clinicStaff.clinicId, rem.clinicId), eq(clinicStaff.userId, ctx.user.id), eq(clinicStaff.isActive, true)))
+        .limit(1);
+      if (!staff) {
+        const [owner] = await db
+          .select({ id: approvalRequests.id })
+          .from(approvalRequests)
+          .where(and(eq(approvalRequests.requesterId, ctx.user.id), eq(approvalRequests.resourceId, rem.clinicId), eq(approvalRequests.requestType, "clinic_activation"), eq(approvalRequests.status, "approved")))
+          .limit(1);
+        if (!owner) throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح لك بحذف هذا التذكير" });
+      }
+    } else if (!isPetOwner) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح لك بحذف هذا التذكير" });
     }
+
+    await db.delete(petReminders).where(eq(petReminders.id, input.reminderId));
+    return { success: true, message: "تم حذف التذكير بنجاح" };
   });
 
 // Get reminder statistics
@@ -268,4 +287,85 @@ export const getReminderStatsProcedure = protectedProcedure
       console.error("Error fetching reminder stats:", error);
       throw new Error("فشل في جلب إحصائيات التذكيرات");
     }
+  });
+
+export const sendReminderNotificationProcedure = publicProcedure
+  .input(z.object({ reminderId: z.number(), clinicId: z.number() }))
+  .mutation(async ({ input }) => {
+    const [row] = await db
+      .select({
+        reminder: petReminders,
+        petName: pets.name,
+        petType: pets.type,
+        ownerId: users.id,
+      })
+      .from(petReminders)
+      .innerJoin(pets, eq(pets.id, petReminders.petId))
+      .innerJoin(users, eq(users.id, pets.ownerId))
+      .where(eq(petReminders.id, input.reminderId))
+      .limit(1);
+
+    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "التذكير غير موجود" });
+
+    const [clinic] = await db.select({ name: clinics.name }).from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
+    const clinicName = clinic?.name ?? "العيادة";
+
+    const typeLabel: Record<string, string> = { vaccination: "تطعيم", medication: "دواء", checkup: "فحص" };
+    const dateStr = new Date(row.reminder.reminderDate).toLocaleDateString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+
+    await db.insert(notifications).values({
+      userId: row.ownerId,
+      title: `تذكير: ${row.reminder.title}`,
+      message: `تذكير من ${clinicName}: حيوانك ${row.petName} لديه ${typeLabel[row.reminder.reminderType] ?? "تذكير"} بتاريخ ${dateStr}`,
+      type: "reminder",
+      data: { reminderId: input.reminderId, petId: row.reminder.petId, clinicId: input.clinicId },
+      isRead: false,
+    });
+
+    return { success: true };
+  });
+
+export const sendTodayRemindersNotificationProcedure = publicProcedure
+  .input(z.object({ clinicId: z.number() }))
+  .mutation(async ({ input }) => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const rows = await db
+      .select({
+        reminder: petReminders,
+        petName: pets.name,
+        ownerId: users.id,
+      })
+      .from(petReminders)
+      .innerJoin(pets, eq(pets.id, petReminders.petId))
+      .innerJoin(users, eq(users.id, pets.ownerId))
+      .where(
+        and(
+          eq(petReminders.clinicId, input.clinicId),
+          eq(petReminders.isCompleted, false),
+          gte(petReminders.reminderDate, todayStart),
+          lte(petReminders.reminderDate, todayEnd),
+        )
+      );
+
+    if (rows.length === 0) return { success: true, count: 0 };
+
+    const [clinic] = await db.select({ name: clinics.name }).from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
+    const clinicName = clinic?.name ?? "العيادة";
+
+    await db.insert(notifications).values(
+      rows.map((r) => ({
+        userId: r.ownerId,
+        title: `تذكير اليوم: ${r.reminder.title}`,
+        message: `تذكير من ${clinicName}: حيوانك ${r.petName} لديه موعد اليوم`,
+        type: "reminder",
+        data: { reminderId: r.reminder.id, petId: r.reminder.petId, clinicId: input.clinicId },
+        isRead: false as const,
+      }))
+    );
+
+    return { success: true, count: rows.length };
   });

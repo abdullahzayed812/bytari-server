@@ -188,6 +188,8 @@ import {
   getClinicRemindersProcedure,
   updateReminderStatusProcedure,
   deleteReminderProcedure,
+  sendReminderNotificationProcedure,
+  sendTodayRemindersNotificationProcedure,
 } from "./routes/clinics/reminders/route";
 import {
   getClinicVaccinationsProcedure,
@@ -235,6 +237,11 @@ import {
   respondToClinicAppointmentProcedure,
   respondToCounterProposalProcedure,
   completeClinicAppointmentProcedure,
+  markAppointmentsAsReadProcedure,
+  getUnreadAppointmentsCountProcedure,
+  getOwnerAppointmentsProcedure,
+  sendAppointmentNotificationProcedure,
+  sendTodayAppointmentsNotificationProcedure,
 } from "./routes/clinics/appointments/route";
 import {
   getTemplatesProcedure as getQuickReviewTemplatesProcedure,
@@ -804,6 +811,8 @@ export const appRouter = createTRPCRouter({
       getClinicReminders: getClinicRemindersProcedure,
       updateReminderStatus: updateReminderStatusProcedure,
       deleteReminder: deleteReminderProcedure,
+      sendReminderNotification: sendReminderNotificationProcedure,
+      sendTodayRemindersNotification: sendTodayRemindersNotificationProcedure,
     }),
     vaccinations: createTRPCRouter({
       getClinicVaccinations: getClinicVaccinationsProcedure,
@@ -835,6 +844,11 @@ export const appRouter = createTRPCRouter({
       respondToAppointment: respondToClinicAppointmentProcedure,
       respondToCounterProposal: respondToCounterProposalProcedure,
       completeAppointment: completeClinicAppointmentProcedure,
+      markAsRead: markAppointmentsAsReadProcedure,
+      getUnreadCount: getUnreadAppointmentsCountProcedure,
+      getForOwner: getOwnerAppointmentsProcedure,
+      sendAppointmentNotification: sendAppointmentNotificationProcedure,
+      sendTodayAppointmentsNotification: sendTodayAppointmentsNotificationProcedure,
     }),
 
     quickReview: createTRPCRouter({

@@ -2208,3 +2208,6 @@ ALTER TABLE "medical_records" ADD COLUMN IF NOT EXISTS "record_type" text;
 
 ALTER TABLE "vaccinations" ADD COLUMN IF NOT EXISTS "veterinarian_id" integer REFERENCES "veterinarians"("id");
 ALTER TABLE "pet_reminders" ADD COLUMN IF NOT EXISTS "veterinarian_id" integer REFERENCES "veterinarians"("id");
+
+
+ALTER TABLE clinic_appointments ADD COLUMN IF NOT EXISTS seen_by_clinic BOOLEAN NOT NULL DEFAULT false;

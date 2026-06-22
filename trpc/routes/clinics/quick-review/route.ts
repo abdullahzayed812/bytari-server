@@ -2,7 +2,32 @@ import { z } from "zod";
 import { eq, and, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure } from "../../../create-context";
-import { db, clinicQuickReviewTemplates, medicalRecords, vaccinations, petReminders, pets, users, veterinarians } from "../../../../db";
+import { db, clinicQuickReviewTemplates, medicalRecords, vaccinations, petReminders, pets, users, veterinarians, clinicStaff, notifications } from "../../../../db";
+
+// Resolve veterinarianId for the acting user in a clinic.
+// Order: clinicStaff record → existing veterinarians entry → auto-create minimal entry.
+async function resolveVetId(clinicId: number, userId: number): Promise<number | undefined> {
+  const [staff] = await db
+    .select({ veterinarianId: clinicStaff.veterinarianId })
+    .from(clinicStaff)
+    .where(and(eq(clinicStaff.clinicId, clinicId), eq(clinicStaff.userId, userId)))
+    .limit(1);
+  if (staff?.veterinarianId) return staff.veterinarianId;
+
+  const [existing] = await db
+    .select({ id: veterinarians.id })
+    .from(veterinarians)
+    .where(eq(veterinarians.userId, userId))
+    .limit(1);
+  if (existing?.id) return existing.id;
+
+  // Clinic owner has no vet record — create a minimal one so doctorName resolves.
+  const [created] = await db
+    .insert(veterinarians)
+    .values({ userId, isVerified: false })
+    .returning({ id: veterinarians.id });
+  return created?.id;
+}
 
 // ── Templates CRUD ──────────────────────────────────────────────────────────
 
@@ -80,7 +105,7 @@ export const deleteTemplateProcedure = publicProcedure
 // ── Create Quick Review (مراجعة سريعة) ──────────────────────────────────────
 // Writes a medicalRecord scoped to this clinic. Private to the clinic per privacy rule.
 
-export const createQuickReviewProcedure = publicProcedure
+export const createQuickReviewProcedure = protectedProcedure
   .input(
     z.object({
       clinicId: z.number(),
@@ -93,13 +118,15 @@ export const createQuickReviewProcedure = publicProcedure
       date: z.string().optional(),
     })
   )
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input, ctx }) => {
+    const vetId = input.veterinarianId ?? await resolveVetId(input.clinicId, ctx.user.id);
+
     const [record] = await db
       .insert(medicalRecords)
       .values({
         petId: input.petId,
         clinicId: input.clinicId,
-        veterinarianId: input.veterinarianId,
+        veterinarianId: vetId,
         diagnosis: input.diagnosis,
         treatment: input.treatment,
         notes: input.notes,
@@ -114,7 +141,7 @@ export const createQuickReviewProcedure = publicProcedure
 // ── Create Full Exam (فحص كامل) ─────────────────────────────────────────────
 // Creates a medical record + optional vaccination + optional reminder
 
-export const createFullExamProcedure = publicProcedure
+export const createFullExamProcedure = protectedProcedure
   .input(
     z.object({
       clinicId: z.number(),
@@ -150,13 +177,15 @@ export const createFullExamProcedure = publicProcedure
         .optional(),
     })
   )
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input, ctx }) => {
+    const vetId = input.veterinarianId ?? await resolveVetId(input.clinicId, ctx.user.id);
+
     const [record] = await db
       .insert(medicalRecords)
       .values({
         petId: input.petId,
         clinicId: input.clinicId,
-        veterinarianId: input.veterinarianId,
+        veterinarianId: vetId,
         diagnosis: input.diagnosis,
         symptoms: input.symptoms,
         severity: input.severity,
@@ -171,6 +200,9 @@ export const createFullExamProcedure = publicProcedure
       })
       .returning();
 
+    // Fetch pet for notifications
+    const pet = await db.query.pets.findFirst({ where: eq(pets.id, input.petId) });
+
     let vaccinationRecord = null;
     if (input.vaccination?.name) {
       [vaccinationRecord] = await db
@@ -178,13 +210,24 @@ export const createFullExamProcedure = publicProcedure
         .values({
           petId: input.petId,
           clinicId: input.clinicId,
-          veterinarianId: input.veterinarianId,
+          veterinarianId: vetId,
           name: input.vaccination.name,
           nextDate: input.vaccination.nextDate ? new Date(input.vaccination.nextDate) : undefined,
           notes: input.vaccination.vaccinationNotes,
           status: "completed",
         })
         .returning();
+
+      if (pet) {
+        await db.insert(notifications).values({
+          userId: pet.ownerId,
+          title: "تم إضافة تطعيم جديد",
+          message: `تم إضافة تطعيم ${input.vaccination.name} لحيوانك ${pet.name}`,
+          type: "new_vaccination",
+          data: { vaccinationId: vaccinationRecord.id, petId: input.petId, clinicId: input.clinicId },
+          isRead: false,
+        });
+      }
     }
 
     let reminderRecord = null;
@@ -194,7 +237,7 @@ export const createFullExamProcedure = publicProcedure
         .values({
           petId: input.petId,
           clinicId: input.clinicId,
-          veterinarianId: input.veterinarianId,
+          veterinarianId: vetId,
           title: input.reminder.title,
           reminderDate: new Date(input.reminder.reminderDate),
           description: input.reminder.reminderNotes,
@@ -202,6 +245,17 @@ export const createFullExamProcedure = publicProcedure
           isCompleted: false,
         })
         .returning();
+
+      if (pet) {
+        await db.insert(notifications).values({
+          userId: pet.ownerId,
+          title: "تم إضافة تذكير جديد",
+          message: `تم إضافة تذكير لحيوانك ${pet.name}: ${input.reminder.title}`,
+          type: "new_reminder",
+          data: { reminderId: reminderRecord.id, petId: input.petId, clinicId: input.clinicId },
+          isRead: false,
+        });
+      }
     }
 
     return { success: true, record, vaccinationRecord, reminderRecord };
@@ -220,19 +274,32 @@ export const addVaccinationDirectProcedure = protectedProcedure
     })
   )
   .mutation(async ({ input, ctx }) => {
-    const [vet] = await db.select({ id: veterinarians.id }).from(veterinarians).where(eq(veterinarians.userId, ctx.user.id)).limit(1);
+    const vetId = await resolveVetId(input.clinicId, ctx.user.id);
     const [record] = await db
       .insert(vaccinations)
       .values({
         petId: input.petId,
         clinicId: input.clinicId,
-        veterinarianId: vet?.id ?? undefined,
+        veterinarianId: vetId,
         name: input.name,
         nextDate: input.nextDate ? new Date(input.nextDate) : undefined,
         notes: input.notes,
         status: "completed",
       })
       .returning();
+
+    const pet = await db.query.pets.findFirst({ where: eq(pets.id, input.petId) });
+    if (pet) {
+      await db.insert(notifications).values({
+        userId: pet.ownerId,
+        title: "تم إضافة تطعيم جديد",
+        message: `تم إضافة تطعيم ${input.name} لحيوانك ${pet.name}`,
+        type: "new_vaccination",
+        data: { vaccinationId: record.id, petId: input.petId, clinicId: input.clinicId },
+        isRead: false,
+      });
+    }
+
     return { success: true, record };
   });
 
@@ -250,13 +317,13 @@ export const addReminderDirectProcedure = protectedProcedure
     })
   )
   .mutation(async ({ input, ctx }) => {
-    const [vet] = await db.select({ id: veterinarians.id }).from(veterinarians).where(eq(veterinarians.userId, ctx.user.id)).limit(1);
+    const vetId = await resolveVetId(input.clinicId, ctx.user.id);
     const [record] = await db
       .insert(petReminders)
       .values({
         petId: input.petId,
         clinicId: input.clinicId,
-        veterinarianId: vet?.id ?? undefined,
+        veterinarianId: vetId,
         title: input.title,
         description: input.description,
         reminderDate: new Date(input.reminderDate),
@@ -264,6 +331,19 @@ export const addReminderDirectProcedure = protectedProcedure
         isCompleted: false,
       })
       .returning();
+
+    const pet = await db.query.pets.findFirst({ where: eq(pets.id, input.petId) });
+    if (pet) {
+      await db.insert(notifications).values({
+        userId: pet.ownerId,
+        title: "تم إضافة تذكير جديد",
+        message: `تم إضافة تذكير لحيوانك ${pet.name}: ${input.title}`,
+        type: "new_reminder",
+        data: { reminderId: record.id, petId: input.petId, clinicId: input.clinicId },
+        isRead: false,
+      });
+    }
+
     return { success: true, record };
   });
 

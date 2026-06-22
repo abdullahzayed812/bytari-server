@@ -214,6 +214,16 @@ export const getClinicDashboardDataProcedure = publicProcedure
         .from(clinicAppointments)
         .where(and(eq(clinicAppointments.clinicId, clinicId), gte(clinicAppointments.appointmentDate, todayStart), lte(clinicAppointments.appointmentDate, todayEnd)));
 
+      const [unreadAppointmentRequestsRow] = await db
+        .select({ count: count() })
+        .from(clinicAppointments)
+        .where(and(eq(clinicAppointments.clinicId, clinicId), eq(clinicAppointments.requestedByClinic, false), eq(clinicAppointments.seenByClinic, false)));
+
+      const [appointmentAnimalsRow] = await db
+        .select({ count: countDistinct(clinicAppointments.petId) })
+        .from(clinicAppointments)
+        .where(eq(clinicAppointments.clinicId, clinicId));
+
       // Distinct animals/owners that visited today (any record created today)
       const todayMedicalPets = await db
         .selectDistinct({ petId: medicalRecords.petId })
@@ -260,8 +270,14 @@ export const getClinicDashboardDataProcedure = publicProcedure
         todayReminders: todayRemindersRow?.count ?? 0,
         todayVaccinations: todayVaccinationsRow?.count ?? 0,
         todayAppointments: todayAppointmentsRow?.count ?? 0,
+        unreadAppointmentRequests: unreadAppointmentRequestsRow?.count ?? 0,
         todayVisitors,
         totalDistinctAnimals: allPetIds.size,
+        // Per-section distinct animal counts (for quick access button labels)
+        medicalAnimals: totalAnimalsRow?.count ?? 0,
+        vaccinationAnimals: totalVaccinationsRow?.count ?? 0,
+        reminderAnimals: totalRemindersRow?.count ?? 0,
+        appointmentAnimals: appointmentAnimalsRow?.count ?? 0,
       };
 
       // Get recent animals (last 5 clinic appointments) with pet + owner info

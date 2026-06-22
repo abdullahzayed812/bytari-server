@@ -427,6 +427,7 @@ export const clinicAppointments = pgTable("clinic_appointments", {
   status: text("status").notNull().default("pending"),
   counterProposedDate: timestamp("counter_proposed_date", { withTimezone: true }),
   counterProposedNotes: text("counter_proposed_notes"),
+  seenByClinic: boolean("seen_by_clinic").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -1,13 +1,16 @@
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure } from "../../../create-context";
-import { db, pets, users, clinics, medicalRecords, vaccinations, petReminders, treatmentCards, followUpRequests, notifications, veterinarians } from "../../../../db";
+import { db, pets, users, clinics, medicalRecords, vaccinations, petReminders, treatmentCards, followUpRequests, notifications, veterinarians, clinicStaff, approvalRequests } from "../../../../db";
 
 // Get pet profile with all related data
 export const getPetProfileProcedure = protectedProcedure
   .input(
     z.object({
       petId: z.string(),
+      clinicId: z.number().optional(), // When provided, filters medical records to this clinic only
     }),
   )
   .query(async ({ input }) => {
@@ -43,10 +46,18 @@ export const getPetProfileProcedure = protectedProcedure
         throw new Error("Pet not found");
       }
 
+      // Aliases for double-join to users table (clinicStaff path + veterinarians fallback)
+      const staffUser = alias(users, "staff_user");
+      const vetUser = alias(users, "vet_user");
+
       // Get medical records with clinic info and doctor name
+      // Primary: clinicStaff.userId → users.name (covers staff members directly)
+      // Fallback: veterinarians.userId → users.name (covers clinic owners via resolveVetId)
+      // When clinicId is provided (clinic mode) only return records from that clinic for isolation
       const medicalRecordsData = await db
         .select({
           id: medicalRecords.id,
+          clinicId: medicalRecords.clinicId,
           diagnosis: medicalRecords.diagnosis,
           treatment: medicalRecords.treatment,
           notes: medicalRecords.notes,
@@ -54,7 +65,7 @@ export const getPetProfileProcedure = protectedProcedure
           recordType: medicalRecords.recordType,
           date: medicalRecords.date,
           clinicName: clinics.name,
-          doctorName: users.name,
+          doctorName: sql<string | null>`COALESCE(${staffUser.name}, ${vetUser.name})`,
           symptoms: medicalRecords.symptoms,
           severity: medicalRecords.severity,
           labNotes: medicalRecords.labNotes,
@@ -62,9 +73,15 @@ export const getPetProfileProcedure = protectedProcedure
         })
         .from(medicalRecords)
         .leftJoin(clinics, eq(clinics.id, medicalRecords.clinicId))
+        .leftJoin(clinicStaff, and(eq(clinicStaff.veterinarianId, medicalRecords.veterinarianId), eq(clinicStaff.clinicId, medicalRecords.clinicId)))
+        .leftJoin(staffUser, eq(staffUser.id, clinicStaff.userId))
         .leftJoin(veterinarians, eq(veterinarians.id, medicalRecords.veterinarianId))
-        .leftJoin(users, eq(users.id, veterinarians.userId))
-        .where(eq(medicalRecords.petId, input.petId))
+        .leftJoin(vetUser, eq(vetUser.id, veterinarians.userId))
+        .where(
+          input.clinicId
+            ? and(eq(medicalRecords.petId, input.petId), eq(medicalRecords.clinicId, input.clinicId))
+            : eq(medicalRecords.petId, input.petId)
+        )
         .orderBy(desc(medicalRecords.date));
 
       // Get vaccinations with clinic info and doctor name
@@ -77,12 +94,14 @@ export const getPetProfileProcedure = protectedProcedure
           status: vaccinations.status,
           notes: vaccinations.notes,
           clinicName: clinics.name,
-          doctorName: users.name,
+          doctorName: sql<string | null>`COALESCE(${staffUser.name}, ${vetUser.name})`,
         })
         .from(vaccinations)
         .leftJoin(clinics, eq(clinics.id, vaccinations.clinicId))
+        .leftJoin(clinicStaff, and(eq(clinicStaff.veterinarianId, vaccinations.veterinarianId), eq(clinicStaff.clinicId, vaccinations.clinicId)))
+        .leftJoin(staffUser, eq(staffUser.id, clinicStaff.userId))
         .leftJoin(veterinarians, eq(veterinarians.id, vaccinations.veterinarianId))
-        .leftJoin(users, eq(users.id, veterinarians.userId))
+        .leftJoin(vetUser, eq(vetUser.id, veterinarians.userId))
         .where(eq(vaccinations.petId, input.petId))
         .orderBy(desc(vaccinations.date));
 
@@ -96,12 +115,14 @@ export const getPetProfileProcedure = protectedProcedure
           type: petReminders.reminderType,
           isCompleted: petReminders.isCompleted,
           clinicName: clinics.name,
-          doctorName: users.name,
+          doctorName: sql<string | null>`COALESCE(${staffUser.name}, ${vetUser.name})`,
         })
         .from(petReminders)
         .leftJoin(clinics, eq(clinics.id, petReminders.clinicId))
+        .leftJoin(clinicStaff, and(eq(clinicStaff.veterinarianId, petReminders.veterinarianId), eq(clinicStaff.clinicId, petReminders.clinicId)))
+        .leftJoin(staffUser, eq(staffUser.id, clinicStaff.userId))
         .leftJoin(veterinarians, eq(veterinarians.id, petReminders.veterinarianId))
-        .leftJoin(users, eq(users.id, veterinarians.userId))
+        .leftJoin(vetUser, eq(vetUser.id, veterinarians.userId))
         .where(eq(petReminders.petId, input.petId))
         .orderBy(desc(petReminders.reminderDate));
 
@@ -255,18 +276,36 @@ export const deleteVaccinationProcedure = protectedProcedure
       vaccinationId: z.number(),
     }),
   )
-  .mutation(async ({ input }) => {
-    try {
-      await db.delete(vaccinations).where(eq(vaccinations.id, input.vaccinationId));
+  .mutation(async ({ input, ctx }) => {
+    const [vac] = await db
+      .select({ petOwnerId: pets.ownerId, clinicId: vaccinations.clinicId })
+      .from(vaccinations)
+      .innerJoin(pets, eq(pets.id, vaccinations.petId))
+      .where(eq(vaccinations.id, input.vaccinationId));
 
-      return {
-        success: true,
-        message: "Vaccination deleted successfully",
-      };
-    } catch (error) {
-      console.error("Error deleting vaccination:", error);
-      throw new Error("Failed to delete vaccination");
+    if (!vac) throw new TRPCError({ code: "NOT_FOUND", message: "التطعيم غير موجود" });
+
+    const isPetOwner = vac.petOwnerId === ctx.user.id;
+    if (!isPetOwner && vac.clinicId) {
+      const [staff] = await db
+        .select({ id: clinicStaff.id })
+        .from(clinicStaff)
+        .where(and(eq(clinicStaff.clinicId, vac.clinicId), eq(clinicStaff.userId, ctx.user.id), eq(clinicStaff.isActive, true)))
+        .limit(1);
+      if (!staff) {
+        const [owner] = await db
+          .select({ id: approvalRequests.id })
+          .from(approvalRequests)
+          .where(and(eq(approvalRequests.requesterId, ctx.user.id), eq(approvalRequests.resourceId, vac.clinicId), eq(approvalRequests.requestType, "clinic_activation"), eq(approvalRequests.status, "approved")))
+          .limit(1);
+        if (!owner) throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح لك بحذف هذا التطعيم" });
+      }
+    } else if (!isPetOwner) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح لك بحذف هذا التطعيم" });
     }
+
+    await db.delete(vaccinations).where(eq(vaccinations.id, input.vaccinationId));
+    return { success: true, message: "تم حذف التطعيم بنجاح" };
   });
 
 // Delete reminder
