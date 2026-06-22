@@ -47,27 +47,34 @@ export const linkFarmToDoctorProcedure = protectedProcedure
 
     if (!farm) throw new Error("رمز الحقل غير صحيح أو غير موجود");
 
-    // Check if already linked
+    // Check for any existing link record (active or removed)
     const [existing] = await db
-      .select({ id: farmDoctorLinks.id })
+      .select({ id: farmDoctorLinks.id, status: farmDoctorLinks.status })
       .from(farmDoctorLinks)
       .where(
         and(
           eq(farmDoctorLinks.farmId, farm.id),
           eq(farmDoctorLinks.doctorId, ctx.user.id),
-          eq(farmDoctorLinks.status, "active")
         )
       )
       .limit(1);
 
-    if (existing) throw new Error("أنت مرتبط بهذا الحقل بالفعل");
+    if (existing?.status === "active") throw new Error("أنت مرتبط بهذا الحقل بالفعل");
 
-    await db.insert(farmDoctorLinks).values({
-      farmId: farm.id,
-      doctorId: ctx.user.id,
-      farmIdentifier: input.farmIdentifier.toUpperCase(),
-      status: "active",
-    });
+    if (existing) {
+      // Reactivate a previously removed link
+      await db
+        .update(farmDoctorLinks)
+        .set({ status: "active", removedAt: null, linkedAt: new Date() })
+        .where(eq(farmDoctorLinks.id, existing.id));
+    } else {
+      await db.insert(farmDoctorLinks).values({
+        farmId: farm.id,
+        doctorId: ctx.user.id,
+        farmIdentifier: input.farmIdentifier.toUpperCase(),
+        status: "active",
+      });
+    }
 
     // Notify farm owner
     await db.insert(notifications).values({
