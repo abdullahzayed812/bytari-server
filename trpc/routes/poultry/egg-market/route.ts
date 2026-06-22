@@ -132,10 +132,20 @@ export const getPendingEggAdsProcedure = adminProcedure.query(async () => {
       quantity: eggMarketAds.quantity,
       unit: eggMarketAds.unit,
       pricePerUnit: eggMarketAds.pricePerUnit,
+      totalPrice: eggMarketAds.totalPrice,
+      pricingMethod: eggMarketAds.pricingMethod,
+      productionDate: eggMarketAds.productionDate,
       governorate: eggMarketAds.governorate,
+      region: eggMarketAds.region,
+      contactPhone: eggMarketAds.contactPhone,
+      contactWhatsapp: eggMarketAds.contactWhatsapp,
+      images: eggMarketAds.images,
+      notes: eggMarketAds.notes,
       status: eggMarketAds.status,
       createdAt: eggMarketAds.createdAt,
+      sellerId: eggMarketAds.sellerId,
       sellerName: users.name,
+      sellerPhone: users.phone,
     })
     .from(eggMarketAds)
     .leftJoin(users, eq(eggMarketAds.sellerId, users.id))
