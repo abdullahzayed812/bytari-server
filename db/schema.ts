@@ -2168,7 +2168,9 @@ export const IRAQ_GOVERNORATES = [
   "ميسان",
   "القادسية",
   "كركوك",
-  "إقليم كردستان",
+  "أربيل",
+  "السليمانية",
+  "دهوك",
 ] as const;
 
 // Add governorate + region to existing poultry_farms handled via ALTER in migration
