@@ -130,6 +130,7 @@ export const respondToClinicAppointmentProcedure = publicProcedure
     z.object({
       appointmentId: z.number(),
       action: z.enum(["confirm", "cancel", "counter_propose"]),
+      confirmedDate: z.string().optional(),
       counterProposedDate: z.string().optional(),
       counterProposedNotes: z.string().optional(),
     })
@@ -151,6 +152,9 @@ export const respondToClinicAppointmentProcedure = publicProcedure
 
     if (input.action === "confirm") {
       updates.status = "confirmed";
+      if (input.confirmedDate) {
+        updates.appointmentDate = new Date(input.confirmedDate);
+      }
     } else if (input.action === "cancel") {
       updates.status = "cancelled";
     } else if (input.action === "counter_propose") {
@@ -172,7 +176,7 @@ export const respondToClinicAppointmentProcedure = publicProcedure
     const clinicName = clinic?.name ?? "";
 
     if (input.action === "confirm") {
-      const dateStr = new Date(existing.appointmentDate).toLocaleString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      const dateStr = new Date(input.confirmedDate ?? existing.appointmentDate).toLocaleString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
       await db.insert(notifications).values({
         userId: existing.ownerId,
         title: "تم تأكيد موعدك",
