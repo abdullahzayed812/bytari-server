@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { eq, desc, and, lt } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure } from "../../../create-context";
 import { db, vaccinations, pets, users, notifications } from "../../../../db";
 
@@ -251,6 +252,22 @@ export const rescheduleVaccinationProcedure = protectedProcedure
       console.error("Error rescheduling vaccination:", error);
       throw new Error("فشل في تأجيل موعد التطعيم");
     }
+  });
+
+// Delete vaccination
+export const deleteVaccinationProcedure = protectedProcedure
+  .input(z.object({ vaccinationId: z.number() }))
+  .mutation(async ({ input }) => {
+    const [vac] = await db
+      .select({ id: vaccinations.id })
+      .from(vaccinations)
+      .where(eq(vaccinations.id, input.vaccinationId))
+      .limit(1);
+
+    if (!vac) throw new TRPCError({ code: "NOT_FOUND", message: "التطعيم غير موجود" });
+
+    await db.delete(vaccinations).where(eq(vaccinations.id, input.vaccinationId));
+    return { success: true, message: "تم حذف التطعيم بنجاح" };
   });
 
 // Get vaccination statistics

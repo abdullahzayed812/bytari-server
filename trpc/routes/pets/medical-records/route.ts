@@ -93,6 +93,7 @@ export const getPetProfileProcedure = protectedProcedure
           nextDate: vaccinations.nextDate,
           status: vaccinations.status,
           notes: vaccinations.notes,
+          clinicId: vaccinations.clinicId,
           clinicName: clinics.name,
           doctorName: sql<string | null>`COALESCE(${staffUser.name}, ${vetUser.name})`,
         })
@@ -114,6 +115,7 @@ export const getPetProfileProcedure = protectedProcedure
           date: petReminders.reminderDate,
           type: petReminders.reminderType,
           isCompleted: petReminders.isCompleted,
+          clinicId: petReminders.clinicId,
           clinicName: clinics.name,
           doctorName: sql<string | null>`COALESCE(${staffUser.name}, ${vetUser.name})`,
         })
