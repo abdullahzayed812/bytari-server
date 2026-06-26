@@ -243,6 +243,7 @@ import {
   getOwnerAppointmentsProcedure,
   sendAppointmentNotificationProcedure,
   sendTodayAppointmentsNotificationProcedure,
+  deleteClinicAppointmentProcedure,
 } from "./routes/clinics/appointments/route";
 import {
   getTemplatesProcedure as getQuickReviewTemplatesProcedure,
@@ -851,6 +852,7 @@ export const appRouter = createTRPCRouter({
       getForOwner: getOwnerAppointmentsProcedure,
       sendAppointmentNotification: sendAppointmentNotificationProcedure,
       sendTodayAppointmentsNotification: sendTodayAppointmentsNotificationProcedure,
+      deleteAppointment: deleteClinicAppointmentProcedure,
     }),
 
     quickReview: createTRPCRouter({

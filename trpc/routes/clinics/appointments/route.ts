@@ -363,6 +363,28 @@ export const sendTodayAppointmentsNotificationProcedure = publicProcedure
     return { success: true, count: rows.length };
   });
 
+// Delete a completed appointment
+export const deleteClinicAppointmentProcedure = publicProcedure
+  .input(z.object({ appointmentId: z.number() }))
+  .mutation(async ({ input }) => {
+    const [existing] = await db
+      .select()
+      .from(clinicAppointments)
+      .where(eq(clinicAppointments.id, input.appointmentId))
+      .limit(1);
+
+    if (!existing) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "الموعد غير موجود" });
+    }
+
+    if (existing.status !== "completed") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكن حذف إلا المواعيد المكتملة" });
+    }
+
+    await db.delete(clinicAppointments).where(eq(clinicAppointments.id, input.appointmentId));
+    return { success: true };
+  });
+
 // Mark appointment as completed
 export const completeClinicAppointmentProcedure = publicProcedure
   .input(z.object({ appointmentId: z.number() }))
