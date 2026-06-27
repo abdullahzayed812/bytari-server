@@ -214,7 +214,7 @@ export const createFullExamProcedure = protectedProcedure
           name: input.vaccination.name,
           nextDate: input.vaccination.nextDate ? new Date(input.vaccination.nextDate) : undefined,
           notes: input.vaccination.vaccinationNotes,
-          status: "completed",
+          status: "scheduled",
         })
         .returning();
 
@@ -284,7 +284,7 @@ export const addVaccinationDirectProcedure = protectedProcedure
         name: input.name,
         nextDate: input.nextDate ? new Date(input.nextDate) : undefined,
         notes: input.notes,
-        status: "completed",
+        status: "scheduled",
       })
       .returning();
 

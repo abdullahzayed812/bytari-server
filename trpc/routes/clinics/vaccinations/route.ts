@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { eq, desc, and, lt } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { protectedProcedure } from "../../../create-context";
-import { db, vaccinations, pets, users, notifications } from "../../../../db";
+import { publicProcedure, protectedProcedure } from "../../../create-context";
+import { db, vaccinations, pets, users, clinics, notifications } from "../../../../db";
 
 // Status enum for validation
 const VaccinationStatus = z.enum(["scheduled", "completed", "cancelled", "overdue"]);
@@ -105,7 +105,7 @@ export const getClinicVaccinationsProcedure = protectedProcedure
           totalDoses: 3, // This should be tracked in a separate field
           nextDueDate: vaccination.nextDate
             ? new Date(vaccination.nextDate).toISOString().split("T")[0]
-            : formattedDate,
+            : null,
           notes: vaccination.notes || "لا توجد ملاحظات",
           veterinarian: "د. محمد أحمد", // This should come from veterinarians table
           createdDate: vaccination.createdAt.toISOString().split("T")[0],
@@ -268,6 +268,43 @@ export const deleteVaccinationProcedure = protectedProcedure
 
     await db.delete(vaccinations).where(eq(vaccinations.id, input.vaccinationId));
     return { success: true, message: "تم حذف التطعيم بنجاح" };
+  });
+
+// Send notification to pet owner about an upcoming vaccination
+export const sendVaccinationNotificationProcedure = publicProcedure
+  .input(z.object({ vaccinationId: z.number(), clinicId: z.number() }))
+  .mutation(async ({ input }) => {
+    const [row] = await db
+      .select({
+        vaccination: vaccinations,
+        petName: pets.name,
+        ownerId: users.id,
+      })
+      .from(vaccinations)
+      .innerJoin(pets, eq(pets.id, vaccinations.petId))
+      .innerJoin(users, eq(users.id, pets.ownerId))
+      .where(eq(vaccinations.id, input.vaccinationId))
+      .limit(1);
+
+    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "التطعيم غير موجود" });
+
+    const [clinic] = await db.select({ name: clinics.name }).from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
+    const clinicName = clinic?.name ?? "العيادة";
+
+    const dateStr = row.vaccination.nextDate
+      ? new Date(row.vaccination.nextDate).toLocaleDateString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric" })
+      : new Date(row.vaccination.date).toLocaleDateString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+
+    await db.insert(notifications).values({
+      userId: row.ownerId,
+      title: `تذكير تطعيم: ${row.vaccination.name}`,
+      message: `تذكير من ${clinicName}: حيوانك ${row.petName} لديه موعد تطعيم ${row.vaccination.name} بتاريخ ${dateStr}`,
+      type: "new_vaccination",
+      data: { vaccinationId: input.vaccinationId, petId: row.vaccination.petId, clinicId: input.clinicId },
+      isRead: false,
+    });
+
+    return { success: true };
   });
 
 // Get vaccination statistics

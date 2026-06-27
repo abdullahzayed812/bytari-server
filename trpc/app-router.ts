@@ -196,6 +196,7 @@ import {
   rescheduleVaccinationProcedure,
   updateVaccinationStatusProcedure,
   deleteVaccinationProcedure,
+  sendVaccinationNotificationProcedure,
 } from "./routes/clinics/vaccinations/route";
 
 import {
@@ -821,6 +822,7 @@ export const appRouter = createTRPCRouter({
       updateVaccinationStatus: updateVaccinationStatusProcedure,
       rescheduleVaccination: rescheduleVaccinationProcedure,
       deleteVaccination: deleteVaccinationProcedure,
+      sendVaccinationNotification: sendVaccinationNotificationProcedure,
     }),
     followups: createTRPCRouter({
       getClinicFollowups: getClinicFollowupsProcedure,
