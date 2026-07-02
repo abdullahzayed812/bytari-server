@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, adminProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { poultryTraders, notifications, adminNotifications, users } from "../../../../db/schema";
+import { poultryTraders, adminNotifications, users } from "../../../../db/schema";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq, and, desc } from "drizzle-orm";
 
 const SUPER_ADMIN_EMAILS = ["zuhairalrawi0@gmail.com", "superadmin@petapp.com"];
@@ -160,8 +161,7 @@ export const activatePoultryTraderProcedure = adminProcedure
       })
       .where(eq(poultryTraders.id, input.traderId));
 
-    await db.insert(notifications).values({
-      userId: trader.userId,
+    await createNotification(trader.userId, {
       title: "تم قبول حساب التاجر",
       message: `تهانينا! تم تفعيل حساب التاجر الخاص بك (${trader.businessName}). صالح حتى ${input.activationEndDate.toLocaleDateString()}.`,
       type: "approval",
@@ -180,8 +180,7 @@ export const deletePoultryTraderProcedure = adminProcedure
 
     await db.delete(poultryTraders).where(eq(poultryTraders.id, input.traderId));
 
-    await db.insert(notifications).values({
-      userId: trader.userId,
+    await createNotification(trader.userId, {
       title: "تم حذف حساب التاجر",
       message: `تم حذف حساب التاجر الخاص بك (${trader.businessName}) من قبل الإدارة.`,
       type: "warning",
@@ -222,8 +221,7 @@ export const updatePoultryTraderStatusProcedure = adminProcedure
       active: "تم إعادة تفعيل حساب التاجر الخاص بك",
     };
 
-    await db.insert(notifications).values({
-      userId: trader.userId,
+    await createNotification(trader.userId, {
       title: "تحديث حالة حساب التاجر",
       message: statusMsg[input.status] || "تم تحديث حالة حسابك",
       type: input.status === "active" ? "approval" : "warning",

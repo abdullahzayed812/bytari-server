@@ -9,12 +9,12 @@ import {
   clinicAccessRequests,
   approvedClinicAccess,
   veterinarians,
-  notifications,
   clinicStaff,
   medicalRecords,
   vaccinations,
   petReminders,
 } from "../../../../db";
+import { createNotification, createNotificationsForUsers } from "../../../../lib/notification-service";
 
 // Vet requests access to pet
 export const requestClinicAccessProcedure = protectedProcedure
@@ -94,8 +94,7 @@ export const requestClinicAccessProcedure = protectedProcedure
         .returning();
 
       // Send notification to pet owner
-      await db.insert(notifications).values({
-        userId: pet.ownerId,
+      await createNotification(pet.ownerId, {
         title: "طلب صلاحية وصول عيادة",
         message: `العيادة تطلب صلاحية الوصول إلى حيوانك ${pet.name}`,
         type: "clinic_access_request",
@@ -226,9 +225,9 @@ export const approveClinicAccessProcedure = protectedProcedure
           .where(eq(clinicStaff.clinicId, clinic.id));
 
         // Send notification to all vets in the clinic
-        for (const vet of clinicVets) {
-          await db.insert(notifications).values({
-            userId: vet.id,
+        const vetUserIds = clinicVets.map((v) => v.id).filter((id): id is number => id !== null);
+        if (vetUserIds.length > 0) {
+          await createNotificationsForUsers(vetUserIds, {
             title: "تمت الموافقة على طلب الصلاحية",
             message: `تمت الموافقة على طلب الصلاحية للحيوان ${accessRequest.request.petId}`,
             type: "clinic_access_approved",

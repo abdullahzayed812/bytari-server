@@ -6,7 +6,6 @@ import {
   systemMessages,
   systemMessageRecipients,
   users,
-  notifications,
   systemMessageReplies,
   clinics,
   approvalRequests,
@@ -14,6 +13,7 @@ import {
   poultryTraders,
   poultryFarms,
 } from "../../../../db";
+import { createNotification, createNotificationsForUsers } from "../../../../lib/notification-service";
 import { eq, and, desc, inArray, sql, asc, exists } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -150,17 +150,12 @@ async function sendMessageToRecipients(
     await db.insert(systemMessageRecipients).values(recipientData);
 
     // Also create notifications for immediate delivery
-    const notificationData = recipients.map((recipient) => ({
-      userId: recipient.id,
+    await createNotificationsForUsers(recipients.map((r) => r.id), {
       title: "رسالة جديدة من الإدارة",
       message: "لديك رسالة جديدة من إدارة التطبيق",
-      type: "system" as const,
-      data: JSON.stringify({ messageId }),
-    }));
-
-    if (notificationData.length > 0) {
-      await db.insert(notifications).values(notificationData);
-    }
+      type: "system",
+      data: { messageId },
+    });
   }
 }
 
@@ -250,15 +245,12 @@ export const sendNotification = publicProcedure
       // TODO: Implement proper permission checking
 
       // Create notifications for target users
-      const notificationData = input.targetUserIds.map((userId: number) => ({
-        userId,
+      const notificationResults = await createNotificationsForUsers(input.targetUserIds, {
         title: input.title,
         message: input.message,
         type: input.type,
-        data: input.data ? JSON.stringify(input.data) : null,
-      }));
-
-      const notificationResults = await db.insert(notifications).values(notificationData).returning();
+        data: input.data,
+      });
 
       return notificationResults;
     } catch (error) {
@@ -478,12 +470,11 @@ export async function sendWelcomeMessageToUser(userId: number, userType: string)
     });
 
     // Create notification
-    await db.insert(notifications).values({
-      userId,
+    await createNotification(userId, {
       title,
       message: "لديك رسالة ترحيبية جديدة",
       type: "system",
-      data: JSON.stringify({ messageId: message.id, isWelcome: true }),
+      data: { messageId: message.id, isWelcome: true },
     });
   } catch (error) {
     console.error("Error sending welcome message:", error);

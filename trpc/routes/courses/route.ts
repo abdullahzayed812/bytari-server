@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure } from "../../create-context";
 import { db } from "../../../db";
-import { courses, courseRegistrations, notifications, users } from "../../../db/schema";
+import { courses, courseRegistrations, users } from "../../../db/schema";
+import { createNotification } from "../../../lib/notification-service";
 import { eq, and, or, like, desc, sql, inArray } from "drizzle-orm";
 
 // Schema for course data
@@ -365,8 +366,7 @@ export const updateRegistrationStatusProcedure = protectedProcedure
           input.status === "approved" ? "قبول" : "رفض"
         } تسجيلك في دورة "${registration.courseName}".`;
 
-        await db.insert(notifications).values({
-          userId: user.id,
+        await createNotification(user.id, {
           title: notificationTitle,
           message: notificationMessage,
           type: input.status === "approved" ? "success" : "error",

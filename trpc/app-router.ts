@@ -471,6 +471,12 @@ import {
   createNotificationProcedure as createUserNotificationProcedure,
 } from "./routes/notifications/route";
 
+// Device tokens (push notification registration)
+import {
+  registerDeviceTokenProcedure,
+  removeDeviceTokenProcedure,
+} from "./routes/devices/route";
+
 // Poultry batches and daily data
 import { addPoultryBatchProcedure, addDailyDataProcedure, sellBatchProcedure, updateDailyDataProcedure } from "./routes/poultry-batches/route";
 
@@ -1159,6 +1165,12 @@ export const appRouter = createTRPCRouter({
     delete: deleteUserNotificationProcedure,
     getUnreadCount: getUnreadUserNotificationsCountProcedure,
     create: createUserNotificationProcedure,
+  }),
+
+  // Device token management for push notifications
+  devices: createTRPCRouter({
+    register: registerDeviceTokenProcedure,
+    remove: removeDeviceTokenProcedure,
   }),
 
   union: unionRouter,

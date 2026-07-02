@@ -3,7 +3,6 @@ import { protectedProcedure } from "../../../create-context";
 import {
   db,
   approvedClinicAccess,
-  notifications,
   approvalRequests,
   systemMessages,
   systemMessageRecipients,
@@ -14,6 +13,7 @@ import {
   petReminders,
   clinicAppointments,
 } from "../../../../db";
+import { createNotificationsForUsers } from "../../../../lib/notification-service";
 import { eq, and, inArray } from "drizzle-orm";
 
 // Sends a message to all pet owners who have any clinic data (visits, records, vaccinations, reminders, appointments)
@@ -117,16 +117,12 @@ export const sendMessageToClinicVisitorsProcedure = protectedProcedure
       visitorUserIds.map((uid) => ({ messageId: systemMessage.id, userId: uid }))
     );
 
-    await db.insert(notifications).values(
-      visitorUserIds.map((uid) => ({
-        userId: uid,
-        title,
-        message,
-        type: "info",
-        data: { clinicId, imageUrl },
-        isRead: false,
-      }))
-    );
+    await createNotificationsForUsers(visitorUserIds, {
+      title,
+      message,
+      type: "info",
+      data: { clinicId, imageUrl },
+    });
 
     return { success: true, count: visitorUserIds.length };
   });

@@ -7,11 +7,11 @@ import {
   veterinarians,
   users,
   vetPermissions,
-  notifications,
   clinicStaff,
   approvalRequests,
   adminNotifications,
 } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 
 // ============== GET CLINIC SETTINGS ==============
 export const getClinicSettingsProcedure = protectedProcedure
@@ -355,8 +355,7 @@ export const addClinicStaffProcedure = protectedProcedure
       const [clinic] = await db.select().from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
 
       // Send notification
-      await db.insert(notifications).values({
-        userId: user.id,
+      await createNotification(user.id, {
         title: "تمت إضافتك كطبيب في عيادة",
         message: `تمت إضافتك إلى عيادة ${clinic?.name || "عيادة جديدة"} كعضو في الفريق الطبي.`,
         type: "vet_added",
@@ -430,8 +429,7 @@ export const removeClinicStaffProcedure = protectedProcedure
         );
 
       // Send notification
-      await db.insert(notifications).values({
-        userId: staffAssignment.userId,
+      await createNotification(staffAssignment.userId, {
         title: "تم إزالتك من عيادة",
         message: "تم إزالتك من الفريق الطبي للعيادة.",
         type: "vet_removed",

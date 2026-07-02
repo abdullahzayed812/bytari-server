@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-import { db, inquiries, inquiryResponses, notifications, aiSettings } from "../../../../db";
+import { db, inquiries, inquiryResponses, aiSettings } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq } from "drizzle-orm";
 import { callAI } from "../../../../lib/ai";
 
@@ -64,14 +65,13 @@ async function triggerAutoReplyForUserInquiry(inquiryId: number, originalInquiry
 
       console.log("✅ AI auto-reply generated and saved for user inquiry reply:", inquiryId);
 
-      await db.insert(notifications).values({
-        userId: originalInquiry.userId,
+      await createNotification(originalInquiry.userId, {
         title: "تم الرد على استفسارك",
         message: `تم الرد على استفسارك رقم ${inquiryId}. يمكنك الاطلاع عليه الآن.`,
         type: "inquiry",
-        data: JSON.stringify({
+        data: {
           inquiryId: inquiryId,
-        }),
+        },
       });
     } else {
       console.error("❌ Failed to generate AI auto-reply for user inquiry reply:", inquiryId, aiResult.response);
@@ -127,16 +127,15 @@ export const userReplyInquiryProcedure = protectedProcedure
       );
 
       if (currentInquiry.moderatorId) {
-        await db.insert(notifications).values({
-          userId: currentInquiry.moderatorId,
+        await createNotification(currentInquiry.moderatorId, {
           title: "رد جديد على استفسار",
           message: `تم إضافة رد جديد على استفسار رقم ${input.inquiryId} تم تعيينه لك من قبل المستخدم.`,
           type: "inquiry",
-          data: JSON.stringify({
+          data: {
             inquiryId: input.inquiryId,
             responseId: newResponse.id,
             isUserReply: true,
-          }),
+          },
         });
       }
 

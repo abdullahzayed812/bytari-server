@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure } from "../../../create-context";
-import { db, pets, users, petOwnershipTransfers, notifications } from "../../../../db";
+import { db, pets, users, petOwnershipTransfers } from "../../../../db";
 import { eq, and, desc, or } from "drizzle-orm";
+import { createNotification } from "../../../../lib/notification-service";
 
 export const initiateTransferProcedure = protectedProcedure
   .input(
@@ -46,13 +47,11 @@ export const initiateTransferProcedure = protectedProcedure
       .returning();
 
     // Notify recipient
-    await db.insert(notifications).values({
-      userId: recipient.id,
+    await createNotification(recipient.id, {
       title: "طلب نقل ملكية حيوان",
       message: `يريد ${sender.name} نقل ملكية الحيوان "${pet.name}" إليك. يمكنك قبول أو رفض الطلب.`,
       type: "system",
       data: { transferId: transfer.id, petId: pet.id, petName: pet.name, fromUserName: sender.name },
-      isRead: false,
     });
 
     return { success: true, transferId: transfer.id };
@@ -86,8 +85,7 @@ export const respondToTransferProcedure = protectedProcedure
     const [pet] = await db.select().from(pets).where(eq(pets.id, transfer.petId));
     const [recipient] = await db.select().from(users).where(eq(users.id, currentUserId));
 
-    await db.insert(notifications).values({
-      userId: transfer.fromUserId,
+    await createNotification(transfer.fromUserId, {
       title: input.action === "approve" ? "تم قبول نقل الملكية" : "تم رفض نقل الملكية",
       message:
         input.action === "approve"
@@ -95,7 +93,6 @@ export const respondToTransferProcedure = protectedProcedure
           : `رفض ${recipient.name} طلب نقل ملكية "${pet?.name}".`,
       type: "system",
       data: { transferId: transfer.id, petId: transfer.petId, petName: pet?.name },
-      isRead: false,
     });
 
     return { success: true, status: newStatus };

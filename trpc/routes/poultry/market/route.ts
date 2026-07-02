@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, adminProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { poultryMarketAds, notifications, adminNotifications, users } from "../../../../db/schema";
+import { poultryMarketAds, adminNotifications, users } from "../../../../db/schema";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq, and, desc, lt, inArray } from "drizzle-orm";
 
 const AD_EXPIRY_DAYS = 7;
@@ -199,8 +200,7 @@ export const reviewPoultryAdProcedure = adminProcedure
       })
       .where(eq(poultryMarketAds.id, input.adId));
 
-    await db.insert(notifications).values({
-      userId: ad.sellerId,
+    await createNotification(ad.sellerId, {
       title: input.action === "approve" ? "تمت الموافقة على إعلانك" : "تم رفض إعلانك",
       message:
         input.action === "approve"

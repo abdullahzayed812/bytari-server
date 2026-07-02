@@ -8,8 +8,8 @@ import {
   fieldSupervisionRequests,
   courseRegistrations,
   users,
-  notifications,
 } from "../../../../db/schema";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq, and, desc, sql, getTableColumns } from "drizzle-orm";
 
 export const jobsRouter = {
@@ -312,8 +312,7 @@ export const jobsRouter = {
             const notificationMessage = `تم ${input.action === "approve" ? "قبول" : "رفض"} طلبك لوظيفة "${job?.title
               }".`;
 
-            await db.insert(notifications).values({
-              userId: user.id,
+            await createNotification(user.id, {
               title: notificationTitle,
               message: notificationMessage,
               type: input.action === "approve" ? "success" : "error",
@@ -587,8 +586,7 @@ export const jobsRouter = {
             const notificationTitle = input.action === "approve" ? "تم قبول طلب" : "تم رفض طلب";
             const notificationMessage = `تم ${input.action === "approve" ? "قبول" : "رفض"} طلب الوظيفة الخاص بك`;
 
-            await db.insert(notifications).values({
-              userId: user.id,
+            await createNotification(user.id, {
               title: notificationTitle,
               message: notificationMessage,
               type: input.action === "approve" ? "success" : "error",

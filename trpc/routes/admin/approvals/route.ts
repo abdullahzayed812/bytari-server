@@ -5,7 +5,6 @@ import {
   approvalRequests,
   adminNotifications,
   emailNotifications,
-  notifications,
   systemMessages,
   systemMessageRecipients,
   users,
@@ -14,6 +13,7 @@ import {
   stores,
   poultryFarms,
 } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq, and, desc } from "drizzle-orm";
 
 // Get pending approval requests
@@ -477,14 +477,11 @@ export const approveRequestProcedure = publicProcedure
       if (["poultry_farm_activation", "poultry_farm_renewal"].includes(requestType)) {
         const isRenewal = requestType === "poultry_farm_renewal";
         const [farmRow] = await db.select({ name: poultryFarms.name }).from(poultryFarms).where(eq(poultryFarms.id, resourceId)).limit(1);
-        await db.insert(notifications).values({
-          userId: requesterId,
+        await createNotification(requesterId, {
           title: isRenewal ? "تم تجديد اشتراك حقل الدواجن" : "تم قبول حقل الدواجن",
           message: `تم ${isRenewal ? "تجديد" : "قبول"} طلب ${isRenewal ? "اشتراك" : "تفعيل"} حقل الدواجن${farmRow?.name ? ` ${farmRow.name}` : ""}. صالح حتى ${endDate.toLocaleDateString("ar-SA")}.`,
           type: "approval",
-          data: JSON.stringify({ requestId: input.requestId, resourceId, requestType }),
-          isRead: false,
-          createdAt: new Date(),
+          data: { requestId: input.requestId, resourceId, requestType },
         });
       } else if (["clinic_activation", "clinic_renewal", "store_activation", "store_renewal"].includes(requestType)) {
         const isClinic = requestType.startsWith("clinic");
@@ -518,18 +515,15 @@ export const approveRequestProcedure = publicProcedure
           ? `تم ${isRenewal ? "تجديد" : "قبول"} طلب ${isRenewal ? "اشتراك" : "تفعيل"} العيادة${resourceName ? ` ${resourceName}` : ""}. يمكنك الآن استخدام حسابك بشكل كامل.`
           : `تم ${isRenewal ? "تجديد" : "قبول"} طلب ${isRenewal ? "اشتراك" : "تفعيل"} المتجر${resourceName ? ` ${resourceName}` : ""}. يمكنك الآن استخدام حسابك بشكل كامل.`;
 
-        await db.insert(notifications).values({
-          userId: requesterId,
+        await createNotification(requesterId, {
           title,
           message,
           type: "approval",
-          data: JSON.stringify({
+          data: {
             requestId: input.requestId,
             resourceId,
             requestType,
-          }),
-          isRead: false,
-          createdAt: new Date(),
+          },
         });
 
         // Send educational video link via system message

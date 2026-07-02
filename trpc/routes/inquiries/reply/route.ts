@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { db, inquiries, inquiryResponses, notifications } from "../../../../db";
+import { db, inquiries, inquiryResponses } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq } from "drizzle-orm";
 
 const replyInquirySchema = z.object({
@@ -53,18 +54,17 @@ export const replyInquiryProcedure = publicProcedure
         .where(eq(inquiries.id, input.inquiryId));
 
       // إرسال إشعار للطبيب صاحب الاستفسار
-      await db.insert(notifications).values({
-        userId: currentInquiry.userId,
+      await createNotification(currentInquiry.userId, {
         title: "تم الرد على استفسارك",
         message: input.keepConversationOpen
           ? "تم الرد على استفسارك. يمكنك الرد مرة أخرى إذا كان لديك استفسارات إضافية."
           : "تم الرد على استفسارك. تم إغلاق المحادثة.",
         type: "inquiry",
-        data: JSON.stringify({
+        data: {
           inquiryId: input.inquiryId,
           responseId: newResponse.id,
           conversationOpen: input.keepConversationOpen,
-        }),
+        },
       });
 
       return {

@@ -2,7 +2,8 @@ import { z } from "zod";
 import { eq, and, desc, gte, lte, count, ne } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure } from "../../../create-context";
-import { db, clinicAppointments, pets, users, clinics, notifications } from "../../../../db";
+import { db, clinicAppointments, pets, users, clinics } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 
 // List appointments for a clinic, with pet + owner info and today's counts
 export const getClinicAppointmentsProcedure = publicProcedure
@@ -83,13 +84,11 @@ export const createClinicAppointmentProcedure = publicProcedure
 
     const [clinic] = await db.select({ name: clinics.name }).from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
     const dateStr = new Date(input.appointmentDate).toLocaleString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    await db.insert(notifications).values({
-      userId: input.ownerId,
+    await createNotification(input.ownerId, {
       title: "موعد جديد من العيادة",
       message: `قامت عيادة ${clinic?.name ?? ""} بإنشاء موعد لك بتاريخ ${dateStr}`,
       type: "appointment_confirmed",
       data: { appointmentId: row.id, clinicId: input.clinicId },
-      isRead: false,
     });
 
     return { success: true, appointment: row };
@@ -177,23 +176,19 @@ export const respondToClinicAppointmentProcedure = publicProcedure
 
     if (input.action === "confirm") {
       const dateStr = new Date(input.confirmedDate ?? existing.appointmentDate).toLocaleString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-      await db.insert(notifications).values({
-        userId: existing.ownerId,
+      await createNotification(existing.ownerId, {
         title: "تم تأكيد موعدك",
         message: `قامت عيادة ${clinicName} بتأكيد موعدك بتاريخ ${dateStr}`,
         type: "appointment_confirmed",
         data: { appointmentId: input.appointmentId, clinicId: existing.clinicId },
-        isRead: false,
       });
     } else if (input.action === "counter_propose" && input.counterProposedDate) {
       const dateStr = new Date(input.counterProposedDate).toLocaleString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-      await db.insert(notifications).values({
-        userId: existing.ownerId,
+      await createNotification(existing.ownerId, {
         title: "اقتراح موعد بديل",
         message: `اقترحت عيادة ${clinicName} موعدًا بديلًا بتاريخ ${dateStr}${input.counterProposedNotes ? " · " + input.counterProposedNotes : ""}`,
         type: "appointment_counter_proposed",
         data: { appointmentId: input.appointmentId, clinicId: existing.clinicId },
-        isRead: false,
       });
     }
 
@@ -302,13 +297,11 @@ export const sendAppointmentNotificationProcedure = publicProcedure
 
     const dateStr = new Date(row.appointment.appointmentDate).toLocaleString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
-    await db.insert(notifications).values({
-      userId: row.appointment.ownerId,
+    await createNotification(row.appointment.ownerId, {
       title: `تذكير بموعد: ${row.petName}`,
       message: `تذكير من ${row.clinicName}: لديك موعد بتاريخ ${dateStr}`,
       type: "appointment_reminder",
       data: { appointmentId: input.appointmentId, clinicId: row.appointment.clinicId },
-      isRead: false,
     });
 
     return { success: true };
@@ -346,19 +339,15 @@ export const sendTodayAppointmentsNotificationProcedure = publicProcedure
 
     const clinicName = rows[0].clinicName ?? "العيادة";
 
-    await db.insert(notifications).values(
-      rows.map((r) => {
-        const dateStr = new Date(r.appointment.appointmentDate).toLocaleString("ar-EG", { hour: "2-digit", minute: "2-digit" });
-        return {
-          userId: r.appointment.ownerId,
-          title: `تذكير بموعد اليوم: ${r.petName}`,
-          message: `تذكير من ${clinicName}: لديك موعد اليوم الساعة ${dateStr}`,
-          type: "appointment_reminder",
-          data: { appointmentId: r.appointment.id, clinicId: input.clinicId },
-          isRead: false as const,
-        };
-      })
-    );
+    for (const r of rows) {
+      const dateStr = new Date(r.appointment.appointmentDate).toLocaleString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+      await createNotification(r.appointment.ownerId, {
+        title: `تذكير بموعد اليوم: ${r.petName}`,
+        message: `تذكير من ${clinicName}: لديك موعد اليوم الساعة ${dateStr}`,
+        type: "appointment_reminder",
+        data: { appointmentId: r.appointment.id, clinicId: input.clinicId },
+      });
+    }
 
     return { success: true, count: rows.length };
   });

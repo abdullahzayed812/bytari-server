@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { eq, and, desc, sql, inArray, count } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, clinicPetChats, clinicPetChatMessages, pets, users, clinicStaff, notifications } from "../../../../db";
+import { db, clinicPetChats, clinicPetChatMessages, pets, users, clinicStaff } from "../../../../db";
+import { createNotification, createNotificationsForUsers } from "../../../../lib/notification-service";
 import { TRPCError } from "@trpc/server";
 
 // Get or create a chat between a clinic and a pet owner (used by vet side)
@@ -147,8 +148,7 @@ export const sendMessageProcedure = protectedProcedure
 
         if (input.senderRole === "clinic") {
           // Notify the pet owner
-          await db.insert(notifications).values({
-            userId: chat.ownerId,
+          await createNotification(chat.ownerId, {
             title: "رسالة جديدة من العيادة",
             message: notifMessage,
             type: "clinic_chat",
@@ -159,15 +159,12 @@ export const sendMessageProcedure = protectedProcedure
           const staff = await db.select({ userId: clinicStaff.userId }).from(clinicStaff).where(eq(clinicStaff.clinicId, chat.clinicId));
 
           if (staff.length > 0) {
-            await db.insert(notifications).values(
-              staff.map((s) => ({
-                userId: s.userId,
-                title: "رسالة جديدة من صاحب الحيوان",
-                message: notifMessage,
-                type: "clinic_chat",
-                data: { chatId: input.chatId, recipientRole: "clinic", clinicId: chat.clinicId },
-              })),
-            );
+            await createNotificationsForUsers(staff.map((s) => s.userId), {
+              title: "رسالة جديدة من صاحب الحيوان",
+              message: notifMessage,
+              type: "clinic_chat",
+              data: { chatId: input.chatId, recipientRole: "clinic", clinicId: chat.clinicId },
+            });
           }
         }
       }

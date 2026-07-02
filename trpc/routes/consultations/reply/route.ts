@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { db, consultations, consultationResponses, notifications } from "../../../../db";
+import { db, consultations, consultationResponses } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq } from "drizzle-orm";
 
 const replyConsultationSchema = z.object({
@@ -50,18 +51,17 @@ export const replyConsultationProcedure = publicProcedure.input(replyConsultatio
       .where(eq(consultations.id, input.consultationId));
 
     // إرسال إشعار لصاحب الحيوان
-    await db.insert(notifications).values({
-      userId: currentConsultation.userId,
+    await createNotification(currentConsultation.userId, {
       title: "تم الرد على استشارتك",
       message: input.keepConversationOpen
         ? "تم الرد على استشارتك. يمكنك الرد مرة أخرى إذا كان لديك استفسارات إضافية."
         : "تم الرد على استشارتك. تم إغلاق المحادثة.",
       type: "consultation",
-      data: JSON.stringify({
+      data: {
         consultationId: input.consultationId,
         responseId: newResponse.id,
         conversationOpen: input.keepConversationOpen,
-      }),
+      },
     });
 
     return {

@@ -2211,3 +2211,15 @@ ALTER TABLE "pet_reminders" ADD COLUMN IF NOT EXISTS "veterinarian_id" integer R
 
 
 ALTER TABLE clinic_appointments ADD COLUMN IF NOT EXISTS seen_by_clinic BOOLEAN NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS "device_tokens" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"token" text NOT NULL,
+	"platform" text NOT NULL,
+	"last_seen" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "device_tokens_token_unique" UNIQUE("token")
+);
+--> statement-breakpoint
+ALTER TABLE "device_tokens" ADD CONSTRAINT "device_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE no action;

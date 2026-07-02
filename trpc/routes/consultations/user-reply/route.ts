@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-import { db, consultations, consultationResponses, notifications, aiSettings } from "../../../../db";
+import { db, consultations, consultationResponses, aiSettings } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq } from "drizzle-orm";
 import { callAI } from "../../../../lib/ai";
 
@@ -66,14 +67,13 @@ async function triggerAutoReplyForUserConsultation(
         .where(eq(consultations.id, consultationId));
       console.log("✅ AI auto-reply generated and saved for user consultation reply:", consultationId);
 
-      await db.insert(notifications).values({
-        userId: originalConsultation.userId,
+      await createNotification(originalConsultation.userId, {
         title: "تم الرد على استشارتك",
         message: `تمت إضافة رد على استشارتك رقم ${consultationId}. يمكنك الاطلاع عليه الآن.`,
         type: "consultation",
-        data: JSON.stringify({
+        data: {
           consultationId: consultationId,
-        }),
+        },
       });
     } else {
       console.error(
@@ -137,16 +137,15 @@ export const userReplyConsultationProcedure = protectedProcedure
       );
 
       if (currentConsultation?.moderatorId) {
-        await db.insert(notifications).values({
-          userId: currentConsultation?.moderatorId,
+        await createNotification(currentConsultation.moderatorId, {
           title: "رد جديد على استشارة",
           message: `تم إضافة رد جديد على استشارة رقم ${input.consultationId} تم تعيينها لك من قبل المستخدم.`,
           type: "consultation",
-          data: JSON.stringify({
+          data: {
             consultationId: input.consultationId,
             responseId: newResponse.id,
             isUserReply: true,
-          }),
+          },
         });
       }
 

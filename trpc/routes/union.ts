@@ -13,7 +13,6 @@ import {
   unionRoleEnum,
   unionAnnouncementTypeEnum,
   unionBranchRegionEnum,
-  notifications,
   systemMessages,
   systemMessageRecipients,
   userRoles,
@@ -24,6 +23,7 @@ import {
   users,
 } from "../../db/schema";
 import { eq, and, gte, lte, desc, count, isNull, lt } from "drizzle-orm";
+import { createNotification, createNotificationsForUsers } from "../../lib/notification-service";
 
 const assignSupervisorSchema = z.object({
   branchId: z.number(),
@@ -288,14 +288,13 @@ export const unionRouter = createTRPCRouter({
           .where(eq(unionBranches.id, input.branchId));
 
         if (branch) {
-          await db.insert(notifications).values({
-            userId: userId,
+          await createNotification(userId, {
             title: "تم تعيينك كمشرف",
             message: `لقد تم تعيينك كمشرف على فرع نقابة ${branch.name}.`,
             type: "union_supervisor_assignment",
-            data: JSON.stringify({
+            data: {
               branchId: input.branchId,
-            }),
+            },
           });
         }
 
@@ -465,19 +464,16 @@ export const unionRouter = createTRPCRouter({
 
         if (followers.length > 0) {
           const followerIds = followers.map((f) => f.userId);
-          const notificationData = followerIds.map((userId) => ({
-            userId,
+          await createNotificationsForUsers(followerIds, {
             title: newTitle,
             message: input.content.substring(0, 100),
-            type: "announcement" as const,
-            data: JSON.stringify({
+            type: "announcement",
+            data: {
               announcementId: newAnnouncement[0].id,
               branchId: input.branchId,
               mainUnionId: input.mainUnionId,
-            }),
-          }));
-
-          await db.insert(notifications).values(notificationData);
+            },
+          });
         }
 
         return { success: true, announcement: newAnnouncement[0] };
@@ -856,14 +852,11 @@ export const unionRouter = createTRPCRouter({
         );
 
         // Bulk insert notifications
-        await db.insert(notifications).values(
-          userIds.map((userId) => ({
-            userId,
-            title,
-            message,
-            type: "union_message",
-          })),
-        );
+        await createNotificationsForUsers(userIds, {
+          title,
+          message,
+          type: "union_message",
+        });
 
         return { success: true, sentCount: userIds.length };
       }),

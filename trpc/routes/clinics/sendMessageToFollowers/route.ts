@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-import { db, clinicFollowers, notifications, approvalRequests, systemMessages, systemMessageRecipients, clinics } from "../../../../db";
+import { db, clinicFollowers, approvalRequests, systemMessages, systemMessageRecipients, clinics } from "../../../../db";
+import { createNotificationsForUsers } from "../../../../lib/notification-service";
 import { eq, and } from "drizzle-orm";
 
 export const sendMessageToClinicFollowersProcedure = protectedProcedure
@@ -78,16 +79,12 @@ export const sendMessageToClinicFollowersProcedure = protectedProcedure
     );
 
     // Bulk insert notifications for each follower
-    await db.insert(notifications).values(
-      followers.map((f) => ({
-        userId: f.userId,
-        title,
-        message,
-        type: "info",
-        data: { clinicId, imageUrl },
-        isRead: false,
-      }))
-    );
+    await createNotificationsForUsers(followers.map((f) => f.userId), {
+      title,
+      message,
+      type: "info",
+      data: { clinicId, imageUrl },
+    });
 
     return { success: true, count: followers.length };
   });

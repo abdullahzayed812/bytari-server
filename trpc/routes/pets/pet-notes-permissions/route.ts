@@ -11,8 +11,8 @@ import {
   pendingMedicalActions,
   users,
   veterinarians,
-  notifications,
 } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 
 // ============================================
 // VETERINARIAN: Request to add medical record
@@ -54,12 +54,11 @@ export const requestAddMedicalRecordProcedure = protectedProcedure
         .from(pets)
         .where(eq(pets.id, input.petId));
       if (pet && pet.ownerId) {
-        await db.insert(notifications).values({
-          userId: pet.ownerId,
+        await createNotification(pet.ownerId, {
           title: "طلب سجل طبي جديد",
           message: `تم تقديم طلب لإضافة سجل طبي لحيوانك الأليف "${pet.name}".`,
           type: "medical_action_request",
-          data: JSON.stringify({ petId: input.petId, requestId: request.id }),
+          data: { petId: input.petId, requestId: request.id },
         });
       }
 
@@ -112,8 +111,7 @@ export const requestAddVaccinationProcedure = protectedProcedure
         .from(pets)
         .where(eq(pets.id, input.petId));
       if (pet && pet.ownerId) {
-        await db.insert(notifications).values({
-          userId: pet.ownerId,
+        await createNotification(pet.ownerId, {
           title: "طلب تطعيم جديد",
           message: `تم تقديم طلب لإضافة تطعيم لحيوانك الأليف "${pet.name}".`,
           type: "medical_action_request",
@@ -172,8 +170,7 @@ export const requestAddReminderProcedure = protectedProcedure
         .from(pets)
         .where(eq(pets.id, input.petId));
       if (pet && pet.ownerId) {
-        await db.insert(notifications).values({
-          userId: pet.ownerId,
+        await createNotification(pet.ownerId, {
           title: "طلب تذكير جديد",
           message: `تم تقديم طلب لإضافة تذكير لحيوانك الأليف "${pet.name}".`,
           type: "medical_action_request",

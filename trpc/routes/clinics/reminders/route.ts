@@ -2,7 +2,8 @@ import { z } from "zod";
 import { eq, desc, and, lt, gte, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure } from "../../../create-context";
-import { db, petReminders, pets, users, notifications, clinicStaff, approvalRequests, clinics } from "../../../../db";
+import { db, petReminders, pets, users, clinicStaff, approvalRequests, clinics } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 
 // Get all reminders for a clinic
 export const getClinicRemindersProcedure = protectedProcedure
@@ -193,8 +194,7 @@ export const createReminderProcedure = protectedProcedure
         where: eq(pets.id, input.petId),
       });
       if (pet) {
-        await db.insert(notifications).values({
-          userId: pet.ownerId,
+        await createNotification(pet.ownerId, {
           title: "تم إضافة تذكير جديد",
           message: `تم إضافة تذكير جديد لحيوانك ${pet.name}: ${input.title}`,
           type: "new_reminder",
@@ -313,13 +313,11 @@ export const sendReminderNotificationProcedure = publicProcedure
     const typeLabel: Record<string, string> = { vaccination: "تطعيم", medication: "دواء", checkup: "فحص" };
     const dateStr = new Date(row.reminder.reminderDate).toLocaleDateString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
 
-    await db.insert(notifications).values({
-      userId: row.ownerId,
+    await createNotification(row.ownerId, {
       title: `تذكير: ${row.reminder.title}`,
       message: `تذكير من ${clinicName}: حيوانك ${row.petName} لديه ${typeLabel[row.reminder.reminderType] ?? "تذكير"} بتاريخ ${dateStr}`,
       type: "reminder",
       data: { reminderId: input.reminderId, petId: row.reminder.petId, clinicId: input.clinicId },
-      isRead: false,
     });
 
     return { success: true };
@@ -356,16 +354,14 @@ export const sendTodayRemindersNotificationProcedure = publicProcedure
     const [clinic] = await db.select({ name: clinics.name }).from(clinics).where(eq(clinics.id, input.clinicId)).limit(1);
     const clinicName = clinic?.name ?? "العيادة";
 
-    await db.insert(notifications).values(
-      rows.map((r) => ({
-        userId: r.ownerId,
+    for (const r of rows) {
+      await createNotification(r.ownerId, {
         title: `تذكير اليوم: ${r.reminder.title}`,
         message: `تذكير من ${clinicName}: حيوانك ${r.petName} لديه موعد اليوم`,
         type: "reminder",
         data: { reminderId: r.reminder.id, petId: r.reminder.petId, clinicId: input.clinicId },
-        isRead: false as const,
-      }))
-    );
+      });
+    }
 
     return { success: true, count: rows.length };
   });

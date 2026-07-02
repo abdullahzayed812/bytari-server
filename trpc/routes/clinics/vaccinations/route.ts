@@ -2,7 +2,8 @@ import { z } from "zod";
 import { eq, desc, and, lt } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure } from "../../../create-context";
-import { db, vaccinations, pets, users, clinics, notifications } from "../../../../db";
+import { db, vaccinations, pets, users, clinics } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 
 // Status enum for validation
 const VaccinationStatus = z.enum(["scheduled", "completed", "cancelled", "overdue"]);
@@ -201,8 +202,7 @@ export const createVaccinationProcedure = protectedProcedure
         where: eq(pets.id, input.petId),
       });
       if (pet) {
-        await db.insert(notifications).values({
-          userId: pet.ownerId,
+        await createNotification(pet.ownerId, {
           title: "تم إضافة تطعيم جديد",
           message: `تم إضافة تطعيم جديد لحيوانك ${pet.name}`,
           type: "new_vaccination",
@@ -295,13 +295,11 @@ export const sendVaccinationNotificationProcedure = publicProcedure
       ? new Date(row.vaccination.nextDate).toLocaleDateString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric" })
       : new Date(row.vaccination.date).toLocaleDateString("ar-EG", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
 
-    await db.insert(notifications).values({
-      userId: row.ownerId,
+    await createNotification(row.ownerId, {
       title: `تذكير تطعيم: ${row.vaccination.name}`,
       message: `تذكير من ${clinicName}: حيوانك ${row.petName} لديه موعد تطعيم ${row.vaccination.name} بتاريخ ${dateStr}`,
       type: "new_vaccination",
       data: { vaccinationId: input.vaccinationId, petId: row.vaccination.petId, clinicId: input.clinicId },
-      isRead: false,
     });
 
     return { success: true };

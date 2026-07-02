@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { db, petSightingReports, lostPets, users, notifications } from "../../../../db";
+import { db, petSightingReports, lostPets, users } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq, and } from "drizzle-orm";
 
 // Report a lost pet sighting
@@ -42,15 +43,14 @@ export const reportPetSighting = publicProcedure
         .where(eq(lostPets.id, input.lostPetId));
 
       if (lostPet && lostPet.ownerId) {
-        await db.insert(notifications).values({
-          userId: lostPet.ownerId,
+        await createNotification(lostPet.ownerId, {
           title: `بلاغ جديد عن حيوانك المفقود`,
           message: `تم الإبلاغ عن مشاهدة حيوانك المفقود "${lostPet.name}".`,
           type: "lost_pet_sighting",
-          data: JSON.stringify({
+          data: {
             lostPetId: input.lostPetId,
             reportId: report.id,
-          }),
+          },
         });
       }
 

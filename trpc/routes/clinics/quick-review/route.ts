@@ -2,7 +2,8 @@ import { z } from "zod";
 import { eq, and, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure } from "../../../create-context";
-import { db, clinicQuickReviewTemplates, medicalRecords, vaccinations, petReminders, pets, users, veterinarians, clinicStaff, notifications } from "../../../../db";
+import { db, clinicQuickReviewTemplates, medicalRecords, vaccinations, petReminders, pets, users, veterinarians, clinicStaff } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 
 // Resolve veterinarianId for the acting user in a clinic.
 // Order: clinicStaff record → existing veterinarians entry → auto-create minimal entry.
@@ -219,13 +220,11 @@ export const createFullExamProcedure = protectedProcedure
         .returning();
 
       if (pet) {
-        await db.insert(notifications).values({
-          userId: pet.ownerId,
+        await createNotification(pet.ownerId, {
           title: "تم إضافة تطعيم جديد",
           message: `تم إضافة تطعيم ${input.vaccination.name} لحيوانك ${pet.name}`,
           type: "new_vaccination",
           data: { vaccinationId: vaccinationRecord.id, petId: input.petId, clinicId: input.clinicId },
-          isRead: false,
         });
       }
     }
@@ -247,13 +246,11 @@ export const createFullExamProcedure = protectedProcedure
         .returning();
 
       if (pet) {
-        await db.insert(notifications).values({
-          userId: pet.ownerId,
+        await createNotification(pet.ownerId, {
           title: "تم إضافة تذكير جديد",
           message: `تم إضافة تذكير لحيوانك ${pet.name}: ${input.reminder.title}`,
           type: "new_reminder",
           data: { reminderId: reminderRecord.id, petId: input.petId, clinicId: input.clinicId },
-          isRead: false,
         });
       }
     }
@@ -290,13 +287,11 @@ export const addVaccinationDirectProcedure = protectedProcedure
 
     const pet = await db.query.pets.findFirst({ where: eq(pets.id, input.petId) });
     if (pet) {
-      await db.insert(notifications).values({
-        userId: pet.ownerId,
+      await createNotification(pet.ownerId, {
         title: "تم إضافة تطعيم جديد",
         message: `تم إضافة تطعيم ${input.name} لحيوانك ${pet.name}`,
         type: "new_vaccination",
         data: { vaccinationId: record.id, petId: input.petId, clinicId: input.clinicId },
-        isRead: false,
       });
     }
 
@@ -334,13 +329,11 @@ export const addReminderDirectProcedure = protectedProcedure
 
     const pet = await db.query.pets.findFirst({ where: eq(pets.id, input.petId) });
     if (pet) {
-      await db.insert(notifications).values({
-        userId: pet.ownerId,
+      await createNotification(pet.ownerId, {
         title: "تم إضافة تذكير جديد",
         message: `تم إضافة تذكير لحيوانك ${pet.name}: ${input.title}`,
         type: "new_reminder",
         data: { reminderId: record.id, petId: input.petId, clinicId: input.clinicId },
-        isRead: false,
       });
     }
 

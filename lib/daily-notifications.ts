@@ -1,5 +1,6 @@
 import { and, eq, gte, lt, isNotNull } from "drizzle-orm";
-import { db, vaccinations, petReminders, pets, notifications, clinics } from "../db";
+import { db, vaccinations, petReminders, pets, clinics } from "../db";
+import { createNotificationsForUsers } from "./notification-service";
 
 export async function sendDailyScheduledNotifications() {
   const todayStart = new Date();
@@ -7,11 +8,16 @@ export async function sendDailyScheduledNotifications() {
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  await Promise.all([sendVaccinationDueNotifications(todayStart, todayEnd), sendReminderDueNotifications(todayStart, todayEnd)]);
+  await Promise.all([
+    sendVaccinationDueNotifications(todayStart, todayEnd),
+    sendReminderDueNotifications(todayStart, todayEnd),
+  ]);
 }
 
-async function sendVaccinationDueNotifications(todayStart: Date, todayEnd: Date) {
-  // Find vaccinations whose nextDate falls today
+async function sendVaccinationDueNotifications(
+  todayStart: Date,
+  todayEnd: Date
+) {
   const dueVaccinations = await db
     .select({
       id: vaccinations.id,
@@ -34,24 +40,33 @@ async function sendVaccinationDueNotifications(todayStart: Date, todayEnd: Date)
 
   if (dueVaccinations.length === 0) return;
 
-  // Fetch clinic names for context
-  const clinicIds = [...new Set(dueVaccinations.map((v) => v.clinicId).filter(Boolean))] as number[];
+  const clinicIds = [
+    ...new Set(
+      dueVaccinations.map((v) => v.clinicId).filter(Boolean)
+    ),
+  ] as number[];
   const clinicNames: Record<number, string> = {};
   if (clinicIds.length > 0) {
-    const clinicRows = await db.select({ id: clinics.id, name: clinics.name }).from(clinics);
+    const clinicRows = await db
+      .select({ id: clinics.id, name: clinics.name })
+      .from(clinics);
     clinicRows.forEach((c) => (clinicNames[c.id] = c.name));
   }
 
-  await db.insert(notifications).values(
-    dueVaccinations.map((v) => ({
-      userId: v.ownerId,
+  // Group by owner so each owner gets a push per vaccination due today
+  for (const v of dueVaccinations) {
+    const clinicSuffix =
+      v.clinicId && clinicNames[v.clinicId]
+        ? ` في ${clinicNames[v.clinicId]}`
+        : "";
+
+    await createNotificationsForUsers([v.ownerId], {
       title: "موعد تطعيم اليوم",
-      message: `حيوانك ${v.petName} لديه موعد تطعيم ${v.vaccineName} اليوم${v.clinicId && clinicNames[v.clinicId] ? ` في ${clinicNames[v.clinicId]}` : ""}`,
+      message: `حيوانك ${v.petName} لديه موعد تطعيم ${v.vaccineName} اليوم${clinicSuffix}`,
       type: "vaccination_due",
       data: { petId: v.petId, vaccinationId: v.id, clinicId: v.clinicId },
-      isRead: false,
-    }))
-  );
+    });
+  }
 }
 
 async function sendReminderDueNotifications(todayStart: Date, todayEnd: Date) {
@@ -76,14 +91,12 @@ async function sendReminderDueNotifications(todayStart: Date, todayEnd: Date) {
 
   if (dueReminders.length === 0) return;
 
-  await db.insert(notifications).values(
-    dueReminders.map((r) => ({
-      userId: r.ownerId,
+  for (const r of dueReminders) {
+    await createNotificationsForUsers([r.ownerId], {
       title: "تذكير اليوم",
       message: `لديك تذكير لحيوانك ${r.petName}: ${r.title}`,
       type: "reminder_due",
       data: { petId: r.petId, reminderId: r.id, clinicId: r.clinicId },
-      isRead: false,
-    }))
-  );
+    });
+  }
 }

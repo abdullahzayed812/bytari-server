@@ -9,6 +9,7 @@ import {
   approvalRequests,
   adminNotifications,
 } from "../../../../db/schema";
+import { createNotification } from "../../../../lib/notification-service";
 import { hashPassword } from "../../../../lib/auth";
 import { sendEmail } from "../../../../lib/email";
 
@@ -121,18 +122,15 @@ export const veterinarianApprovalsRouter = {
             .where(eq(users.id, app.userId));
 
           // Create in-app notification for the user
-          await db.insert(notifications).values({
-            userId: app.userId,
+          await createNotification(app.userId, {
             title: "تم الموافقة على حسابك كطبيب بيطري",
             message:
               "مبروك! تم الموافقة على طلب تسجيلك كطبيب بيطري. يمكنك الآن الوصول إلى جميع ميزات الأطباء البيطريين.",
             type: "veterinarian_approval",
-            isRead: false,
-            data: JSON.stringify({
+            data: {
               applicationId: applicationId,
               adminNotes: input.adminNotes,
-            }),
-            createdAt: new Date(),
+            },
           });
 
           // Send email to user
@@ -215,20 +213,17 @@ export const veterinarianApprovalsRouter = {
             .where(eq(veterinarianApprovals.id, applicationId));
 
           // Create in-app notification for the user
-          await db.insert(notifications).values({
-            userId: app.userId,
+          await createNotification(app.userId, {
             title: "تم رفض طلب التسجيل كطبيب بيطري",
-            content: `نأسف لإعلامك بأنه تم رفض طلب تسجيلك كطبيب بيطري${
+            message: `نأسف لإعلامك بأنه تم رفض طلب تسجيلك كطبيب بيطري${
               input.rejectionReason ? `: ${input.rejectionReason}` : "."
             }`,
             type: "veterinarian_rejection",
-            isRead: false,
-            data: JSON.stringify({
+            data: {
               applicationId: applicationId,
               rejectionReason: input.rejectionReason,
               adminNotes: input.adminNotes,
-            }),
-            createdAt: new Date(),
+            },
           });
 
           // Send email to user

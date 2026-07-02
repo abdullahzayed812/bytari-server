@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { farmStaff, users, poultryFarms, notifications } from "../../../../db/schema";
+import { farmStaff, users, poultryFarms } from "../../../../db/schema";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq, and, inArray } from "drizzle-orm";
 
 // ============== GET FARM WORKERS ==============
@@ -98,14 +99,11 @@ export const addFarmWorkerProcedure = publicProcedure
     }
 
     // Notify the new worker
-    await db.insert(notifications).values({
-      userId: targetUser.id,
+    await createNotification(targetUser.id, {
       title: "تمت إضافتك كموظف في حقل دواجن",
       message: `تمت إضافتك كموظف في حقل الدواجن "${farm.name}". يمكنك الآن الوصول إليه من صفحة حيواناتي.`,
       type: "info",
-      data: JSON.stringify({ farmId: farm.id }),
-      isRead: false,
-      createdAt: new Date(),
+      data: { farmId: farm.id },
     });
 
     return { success: true, message: `تمت إضافة ${targetUser.name} كموظف بنجاح`, userId: targetUser.id, name: targetUser.name };
@@ -142,14 +140,11 @@ export const removeFarmWorkerProcedure = publicProcedure
       .where(eq(farmStaff.id, input.workerId));
 
     if (worker) {
-      await db.insert(notifications).values({
-        userId: worker.userId,
+      await createNotification(worker.userId, {
         title: "تمت إزالتك من حقل دواجن",
         message: `تمت إزالتك من حقل الدواجن "${farm.name}".`,
         type: "warning",
-        data: JSON.stringify({ farmId: input.farmId }),
-        isRead: false,
-        createdAt: new Date(),
+        data: { farmId: input.farmId },
       });
     }
 

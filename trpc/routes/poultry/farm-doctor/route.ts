@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { protectedProcedure, adminProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { farmDoctorLinks, poultryFarms, users, notifications } from "../../../../db/schema";
+import { farmDoctorLinks, poultryFarms, users } from "../../../../db/schema";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 
@@ -77,8 +78,7 @@ export const linkFarmToDoctorProcedure = protectedProcedure
     }
 
     // Notify farm owner
-    await db.insert(notifications).values({
-      userId: farm.ownerId,
+    await createNotification(farm.ownerId, {
       title: "طبيب بيطري جديد مرتبط بحقلك",
       message: `تم ربط طبيب بيطري بحقل ${farm.name}. يمكنه الآن الاطلاع على بيانات الحقل.`,
       type: "info",

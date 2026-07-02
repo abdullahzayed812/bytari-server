@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { protectedProcedure } from "../../../create-context";
-import { db, stores, veterinarians, users, storePermissions, notifications, storeStaff, approvalRequests, adminNotifications } from "../../../../db";
+import { db, stores, veterinarians, users, storePermissions, storeStaff, approvalRequests, adminNotifications } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 
 // ============== GET STORE SETTINGS ==============
 export const getStoreSettingsProcedure = protectedProcedure
@@ -304,8 +305,7 @@ export const addStoreStaffProcedure = protectedProcedure
       const [store] = await db.select().from(stores).where(eq(stores.id, input.storeId)).limit(1);
 
       // Send notification
-      await db.insert(notifications).values({
-        userId: user.id,
+      await createNotification(user.id, {
         title: "تمت إضافتك كطبيب في مكتب",
         message: `تمت إضافتك إلى مكتب ${store?.name || "مكتب جديدة"} كعضو في الفريق الطبي.`,
         type: "vet_added",

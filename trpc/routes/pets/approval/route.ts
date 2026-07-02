@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { petApprovalRequests, notifications, users, adoptionPets, breedingPets, lostPets } from "../../../../db/schema";
+import { petApprovalRequests, users, adoptionPets, breedingPets, lostPets } from "../../../../db/schema";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq, and, desc } from "drizzle-orm";
 
 // Create pet approval request
@@ -156,16 +157,15 @@ export const createPetApprovalProcedure = publicProcedure
         .returning();
 
       // 3️⃣ Send user notification
-      await db.insert(notifications).values({
-        userId: input.ownerId,
+      await createNotification(input.ownerId, {
         title: "تم إرسال الطلب",
         message: "تم إرسال طلبك بنجاح وهو الآن في انتظار موافقة الإدارة. سيتم إشعارك عند اتخاذ قرار بشأن الطلب.",
         type: "pet_approval",
-        data: JSON.stringify({
+        data: {
           petId: petId,
           requestType: input.requestType,
           approvalRequestId: approvalRequest.id,
-        }),
+        },
       });
 
       return {
@@ -339,17 +339,16 @@ export const reviewPetApprovalProcedure = protectedProcedure
           ? `تمت الموافقة على طلبك بنجاح. يمكنك الآن رؤية إعلانك في التطبيق.`
           : `تم رفض طلبك. ${input.rejectionReason ? `السبب: ${input.rejectionReason}` : ""}`;
 
-      await db.insert(notifications).values({
-        userId: approvalRequest.ownerId,
+      await createNotification(approvalRequest.ownerId, {
         title: notificationTitle,
         message: notificationContent,
         type: "pet_approval_result",
-        data: JSON.stringify({
+        data: {
           petId: approvalRequest.petId,
           requestType: approvalRequest.requestType,
           action: input.action,
           rejectionReason: input.rejectionReason,
-        }),
+        },
       });
 
       return {

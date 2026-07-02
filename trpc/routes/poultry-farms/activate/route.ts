@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { adminProcedure, publicProcedure } from "../../../create-context";
 import { db } from "../../../../db";
-import { poultryFarms, adminNotifications, notifications, users, approvalRequests, systemMessages, systemMessageRecipients } from "../../../../db/schema";
+import { poultryFarms, adminNotifications, users, approvalRequests, systemMessages, systemMessageRecipients } from "../../../../db/schema";
+import { createNotification } from "../../../../lib/notification-service";
 import { eq, and, inArray } from "drizzle-orm";
 
 const SUPER_ADMIN_EMAILS = ["zuhairalrawi0@gmail.com", "superadmin@petapp.com"];
@@ -47,14 +48,11 @@ export const activatePoultryFarmProcedure = adminProcedure
       );
 
     // In-app notification to farm owner
-    await db.insert(notifications).values({
-      userId: farm.ownerId,
+    await createNotification(farm.ownerId, {
       title: "تم قبول حقل الدواجن",
       message: `تم قبول وتفعيل حقل الدواجن "${farm.name}". صالح حتى ${input.activationEndDate.toLocaleDateString()}.`,
       type: "approval",
-      data: JSON.stringify({ farmId: farm.id }),
-      isRead: false,
-      createdAt: new Date(),
+      data: { farmId: farm.id },
     });
 
     // Send educational video link via system message
@@ -119,14 +117,11 @@ export const rejectPoultryFarmProcedure = adminProcedure
       );
 
     // In-app notification to farm owner
-    await db.insert(notifications).values({
-      userId: farm.ownerId,
+    await createNotification(farm.ownerId, {
       title: "تم رفض طلب تفعيل حقل الدواجن",
       message: `تم رفض طلب تفعيل حقل الدواجن "${farm.name}". السبب: ${input.rejectionReason}`,
       type: "error",
-      data: JSON.stringify({ farmId: farm.id }),
-      isRead: false,
-      createdAt: new Date(),
+      data: { farmId: farm.id },
     });
 
     return { success: true, message: "تم رفض حقل الدواجن" };
@@ -235,14 +230,11 @@ export const banPoultryFarmProcedure = adminProcedure
       .set({ isActive: false, isVerified: false, status: "banned", needsRenewal: false, reviewingRenewalRequest: false, updatedAt: new Date() })
       .where(eq(poultryFarms.id, input.farmId));
 
-    await db.insert(notifications).values({
-      userId: farm.ownerId,
+    await createNotification(farm.ownerId, {
       title: "تم حظر حقل الدواجن",
       message: `تم حظر حقل الدواجن "${farm.name}". السبب: ${input.reason}`,
       type: "error",
-      data: JSON.stringify({ farmId: farm.id }),
-      isRead: false,
-      createdAt: new Date(),
+      data: { farmId: farm.id },
     });
 
     return { success: true, message: "تم حظر حقل الدواجن" };
@@ -263,14 +255,11 @@ export const deactivatePoultryFarmProcedure = adminProcedure.input(z.object({ fa
     .set({ isActive: false, status: "deactivated", needsRenewal: false, reviewingRenewalRequest: false, updatedAt: new Date() })
     .where(eq(poultryFarms.id, input.farmId));
 
-  await db.insert(notifications).values({
-    userId: farm.ownerId,
+  await createNotification(farm.ownerId, {
     title: "تم إيقاف تفعيل حقل الدواجن",
     message: `تم إيقاف تفعيل حقل الدواجن "${farm.name}" من قبل الإدارة.`,
     type: "warning",
-    data: JSON.stringify({ farmId: farm.id }),
-    isRead: false,
-    createdAt: new Date(),
+    data: { farmId: farm.id },
   });
 
   return { success: true, message: "تم إيقاف تفعيل حقل الدواجن" };

@@ -3,13 +3,14 @@ import { protectedProcedure } from "../../create-context";
 import { db } from "../../../db";
 import { notifications } from "../../../db/schema";
 import { eq, and, desc, or, gte } from "drizzle-orm";
+import { createNotification } from "../../../lib/notification-service";
 
 // Get user notifications
 export const getUserNotificationsProcedure = protectedProcedure
   .input(
     z.object({
       userId: z.number(),
-      type: z.enum(["appointment", "inquiry", "order", "system"]).optional(),
+      type: z.string().optional(),
       isRead: z.boolean().optional(),
       limit: z.number().default(50),
       offset: z.number().default(0),
@@ -55,7 +56,12 @@ export const markNotificationAsReadProcedure = protectedProcedure
     const result = await db
       .update(notifications)
       .set({ isRead: true })
-      .where(and(eq(notifications.id, input.notificationId), eq(notifications.userId, input.userId)))
+      .where(
+        and(
+          eq(notifications.id, input.notificationId),
+          eq(notifications.userId, input.userId)
+        )
+      )
       .returning();
 
     if (result.length === 0) {
@@ -69,11 +75,11 @@ export const markNotificationAsReadProcedure = protectedProcedure
 export const markAllNotificationsAsReadProcedure = protectedProcedure
   .input(z.object({ userId: z.number() }))
   .mutation(async ({ input }) => {
-    console.log("[markAllNotificationsAsRead] Marking all notifications as read for user:", input.userId);
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.userId, input.userId));
 
-    await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, input.userId));
-
-    console.log("[markAllNotificationsAsRead] All notifications marked as read");
     return { success: true };
   });
 
@@ -86,13 +92,15 @@ export const deleteUserNotificationProcedure = protectedProcedure
     })
   )
   .mutation(async ({ input }) => {
-    console.log("[deleteUserNotification] Deleting notification:", input.notificationId);
-
     await db
       .delete(notifications)
-      .where(and(eq(notifications.id, input.notificationId), eq(notifications.userId, input.userId)));
+      .where(
+        and(
+          eq(notifications.id, input.notificationId),
+          eq(notifications.userId, input.userId)
+        )
+      );
 
-    console.log("[deleteUserNotification] Notification deleted");
     return { success: true };
   });
 
@@ -100,45 +108,36 @@ export const deleteUserNotificationProcedure = protectedProcedure
 export const getUnreadNotificationsCountProcedure = protectedProcedure
   .input(z.object({ userId: z.number() }))
   .query(async ({ input }) => {
-    console.log("[getUnreadNotificationsCount] Getting count for user:", input.userId);
-
     const result = await db
       .select()
       .from(notifications)
-      .where(and(eq(notifications.userId, input.userId), eq(notifications.isRead, false)));
+      .where(
+        and(
+          eq(notifications.userId, input.userId),
+          eq(notifications.isRead, false)
+        )
+      );
 
-    const count = result.length;
-    console.log(`[getUnreadNotificationsCount] User has ${count} unread notifications`);
-    return { count };
+    return { count: result.length };
   });
 
-// Create notification
+// Create notification — delegates to notification-service which handles both
+// DB persistence and push delivery. Push failure never affects the DB row.
 export const createNotificationProcedure = protectedProcedure
   .input(
     z.object({
       userId: z.number(),
       title: z.string(),
-      content: z.string(),
-      type: z.enum(["appointment", "inquiry", "order", "system"]),
-      data: z.string().optional(),
+      message: z.string(),
+      type: z.string(),
+      data: z.record(z.unknown()).optional(),
     })
   )
   .mutation(async ({ input }) => {
-    console.log("[createNotification] Creating notification for user:", input.userId);
-
-    const result = await db
-      .insert(notifications)
-      .values({
-        userId: input.userId,
-        title: input.title,
-        content: input.content,
-        type: input.type,
-        data: input.data,
-        isRead: false,
-        createdAt: new Date(),
-      })
-      .returning();
-
-    console.log("[createNotification] Notification created successfully");
-    return result[0];
+    return createNotification(input.userId, {
+      title: input.title,
+      message: input.message,
+      type: input.type,
+      data: input.data as Record<string, unknown> | undefined,
+    });
   });

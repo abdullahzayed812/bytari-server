@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../../../trpc/create-context";
-import { db, products, storeFollowers, notifications, stores } from "../../../../../db";
+import { db, products, storeFollowers, stores } from "../../../../../db";
+import { createNotificationsForUsers } from "../../../../../lib/notification-service";
 import { eq } from "drizzle-orm";
 
 export const addStoreProductProcedure = publicProcedure
@@ -42,8 +43,7 @@ export const addStoreProductProcedure = publicProcedure
 
 
       if (followers.length > 0 && store) {
-        const notificationData = followers.map(follower => ({
-          userId: follower.userId,
+        await createNotificationsForUsers(followers.map((f) => f.userId), {
           title: "منتج جديد في متجر تتابعه",
           message: `تمت إضافة منتج جديد "${newProduct.name}" إلى متجر "${store.name}".`,
           type: "new_product",
@@ -51,9 +51,7 @@ export const addStoreProductProcedure = publicProcedure
             screen: "store-details",
             storeId: input.storeId,
           },
-        }));
-
-        await db.insert(notifications).values(notificationData);
+        });
       }
 
       return {

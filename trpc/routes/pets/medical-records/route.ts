@@ -3,7 +3,8 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure } from "../../../create-context";
-import { db, pets, users, clinics, medicalRecords, vaccinations, petReminders, treatmentCards, followUpRequests, notifications, veterinarians, clinicStaff, approvalRequests } from "../../../../db";
+import { db, pets, users, clinics, medicalRecords, vaccinations, petReminders, treatmentCards, followUpRequests, veterinarians, clinicStaff, approvalRequests } from "../../../../db";
+import { createNotification } from "../../../../lib/notification-service";
 
 // Get pet profile with all related data
 export const getPetProfileProcedure = protectedProcedure
@@ -180,8 +181,7 @@ export const createTreatmentCardProcedure = protectedProcedure
         where: eq(pets.id, input.petId),
       });
       if (pet) {
-        await db.insert(notifications).values({
-          userId: pet.ownerId,
+        await createNotification(pet.ownerId, {
           title: "تم إضافة بطبقة علاج جديدة",
           message: `تم إضافة بطبقة علاج جديدة لحيوانك ${pet.name}`,
           type: "new_treatment_card",
@@ -230,8 +230,7 @@ export const createFollowUpRequestProcedure = protectedProcedure
         where: eq(pets.id, input.petId),
       });
       if (pet) {
-        await db.insert(notifications).values({
-          userId: pet.ownerId,
+        await createNotification(pet.ownerId, {
           title: "تم إنشاء طلب متابعة جديد",
           message: `تم إنشاء طلب متابعة جديد لحيوانك ${pet.name}`,
           type: "new_follow_up_request",
